@@ -23,36 +23,43 @@ export class GeminiService {
 
     const fieldInstructions: Record<RefinementField, string> = {
       notes: isDiamond 
-        ? "Extract specific setup requirements (flowers, champagne, specific messages for cards) from all traces. Define a concise concierge strategy. NOTE: Ignore 'P.O.Nr' fields completely as they are internal IDs, not occasions."
-        : "Provide a clean, luxury-standard summary of housekeeping and guest notes.",
-      facilities: "Extract and list restaurant (🌶️ Spice, 🍴 Source) and spa (💆‍♀️ ESPA) bookings with times. Use a bulleted list with emojis.",
-      inRoomItems: "STRICT HOUSEKEEPING SETUP: Identify items: Champagne, Flowers, Spa Hamper, Bollinger, Prosecco, Chocolates, Fruit, or Cards with messages. IMPORTANT: Minimoon (MIN) and Magical Escape (MAGESC) ALWAYS include 'Champagne • Itinerary'. Output as 'Item1 • Item2'.",
+        ? "CONCIERGE STRATEGY: Max 2 lines. Scan for high-value 'hidden' context: duplicate bookings (SPICE DUPLICATION), past stay resolution (recovery), or specific room requests. CRITICAL: Never include P.O.Nr or system IDs. No markdown."
+        : "Gilpin 5-star standard summary. Concisely capture setup needs and milestones. No markdown.",
+      facilities: "FORMAT: 'Icon Name (Time)'. Max 3 items. Use icons: 🌶️ Spice, 🍴 Source, 💆‍♀️ ESPA, 🍱 Bento, 🍵 Afternoon Tea. Compact strings.",
+      inRoomItems: "STRICT WHITESPACE LIST: Identify Champagne, Flowers, Spa Hamper, Bollinger, Prosecco, or Itinerary. If package is 'MIN' or 'MAGESC', force output 'Champagne • Itinerary'.",
       preferences: isDiamond
-        ? "GUEST DNA: Infer behavioral traits. Are they celebratory? High-profile? Returning to resolve a previous issue? Define concierge greeting strategy."
-        : "List stated preferences like bed setup or dietary needs.",
-      packages: "Convert rate codes like BB_1, LHBB, MIN, MAGESC into human-friendly package names.",
-      history: "LOYALTY PROFILE: Summarize stay count and status (Regular vs New Guest)."
+        ? "ARRIVAL TACTIC: Define how the team should handle them on arrival based on their DNA (e.g., 'Confirm the crab allergy immediately with the guest', 'Warmly mention the birthday card in room')."
+        : "Standard preferences (Bed setup, specific milk).",
+      packages: "Convert rate codes (BB_1, LHBB) to human-readable names ('Bed & Breakfast', 'Magical Escape').",
+      history: "LOYALTY PROFILE: stay count and status (e.g., 'Regular Guest - 12th Stay')."
     };
 
     const activeInstructions = fields.map(f => fieldInstructions[f] || "").join("\n    ");
 
-    const systemInstruction = `You are the Gilpin Hotel Golden Standard Intelligence Engine. 
-    Luxury standards apply. Accuracy is mandatory. Filter out all operational noise like 'send bill to email' or internal system IDs.
+    const systemInstruction = `You are the Gilpin Hotel Diamond Intelligence Engine. 
+     Gilpin is a prestigious 5-star Relais & Châteaux hotel. Luxury standards apply.
+     
+     MISSION: Replicate the 'Guest Greeter' and 'Arrivals List' clarity from provided PDFs.
+     OUTPUT CONSTRAINTS:
+     1. Strictly PLAIN TEXT only (No **bold**, No _italics_).
+     2. Remove all internal P.O.Nr and system booking IDs.
+     3. Ensure high information density (7.5pt-8pt font target).
+     4. Detect 'hidden' contextual issues like booking overlaps or specific 'Do Not Move' flags in traces.
+     
+     ${isDiamond 
+      ? "DIAMOND MODE enabled: High-fidelity reasoning and behavioral DNA analysis required." 
+      : "STANDARD MODE enabled: Provide factual, concise extractions."}
     
-    ${isDiamond 
-      ? "DIAMOND MODE: Conduct high-fidelity reasoning (Guest DNA) and ensure setup accuracy." 
-      : "STANDARD MODE: Provide factual extractions for daily operations."}
-    
-    Output Format: Clean JSON array of objects strictly matching input guest count.`;
+    Return a JSON array of objects strictly matching input count.`;
 
     const guestDataPayload = guests.map((g, i) => 
-      `GUEST #${i+1}: ${g.name} (Room: ${g.room})\nRAW_TEXT: "${g.rawHtml}"\nCURRENT_PRESET: "${g.prefillNotes}"`
+      `GUEST #${i+1}: ${g.name} (Room: ${g.room})\nRAW_INTEL: "${g.rawHtml}"\nINITIAL_PARSING: "${g.prefillNotes}"`
     ).join("\n\n---\n\n");
 
     try {
       const response = await ai.models.generateContent({
         model: modelName,
-        contents: `PROCESS GUEST BATCH DATA FOR GOLDEN STANDARD:\n\n${guestDataPayload}\n\nEXTRACTION TARGETS:\n${activeInstructions}`,
+        contents: `GILPIN ARRIVALS REFINEMENT TASK:\n\n${guestDataPayload}\n\nREFINEMENT TARGETS:\n${activeInstructions}`,
         config: {
           systemInstruction,
           ...(isDiamond ? { thinkingConfig: { thinkingBudget: 24000 } } : {}),

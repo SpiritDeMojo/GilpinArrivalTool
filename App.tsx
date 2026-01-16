@@ -39,8 +39,8 @@ const App: React.FC = () => {
   const [newFlag, setNewFlag] = useState({ emoji: '', name: '', keys: '' });
 
   useEffect(() => {
-    const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    setArrivalDateStr(today);
+    const todayStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    setArrivalDateStr(todayStr);
   }, []);
 
   useEffect(() => {
@@ -91,7 +91,7 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsProcessing(true);
-    setProgressMsg("Loading...");
+    setProgressMsg("Analyzing Intelligence Stream...");
     try {
       await new Promise(r => setTimeout(r, 100));
       const result = await PDFService.parse(file, flags);
@@ -100,13 +100,16 @@ const App: React.FC = () => {
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const fileDate = new Date(result.arrivalDateStr);
-      if (!isNaN(fileDate.getTime())) {
+      if (result.arrivalDateObj) {
+        const fileDate = new Date(result.arrivalDateObj);
+        fileDate.setHours(0,0,0,0);
         setIsOldFile(fileDate < today);
+      } else {
+        setIsOldFile(false);
       }
     } catch (err) {
       console.error(err);
-      alert("Error parsing PDF. Ensure it's a valid Gilpin Arrivals list.");
+      alert("Extraction Failure: Check PDF format.");
     } finally {
       setIsProcessing(false);
     }
@@ -125,7 +128,7 @@ const App: React.FC = () => {
     try {
       for (let i = 0; i < chunks.length; i++) {
         const currentBatch = chunks[i];
-        setProgressMsg(`Loading Segment ${i + 1}/${chunks.length}...`);
+        setProgressMsg(`Refining Intel ${i + 1}/${chunks.length}...`);
         
         try {
           const refinements = await GeminiService.refineGuestBatch(currentBatch, refinementFields, refinementMode);
@@ -166,17 +169,17 @@ const App: React.FC = () => {
         }
 
         if (i < chunks.length - 1) {
-          const delayMs = refinementMode === 'paid' ? 1500 : 15000;
+          const delayMs = refinementMode === 'paid' ? 800 : 10000;
           const seconds = Math.floor(delayMs / 1000);
-          for (let s = seconds; s > 0; s--) {
-            setProgressMsg(`Cooling down (${s}s)...`);
+          for (let s = Math.max(1, seconds); s > 0; s--) {
+            setProgressMsg(`Cooling Core (${s}s)...`);
             await new Promise(r => setTimeout(r, 1000));
           }
         }
       }
     } catch (error: any) {
-      console.error("Refinement error:", error);
-      alert("Loading interrupted.");
+      console.error("AI Cycle Error:", error);
+      alert("Refinement interrupted.");
     } finally {
       setIsProcessing(false);
       setProgressMsg("");
@@ -263,7 +266,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen transition-all duration-300">
+    <div className="min-h-screen transition-all duration-300 font-sans selection:bg-[#c5a065]/30">
       <nav className="navbar no-print">
         <div className="nav-left flex items-center h-full">
           <div className="nav-logo-bubble" onClick={() => window.location.reload()}>
@@ -277,10 +280,10 @@ const App: React.FC = () => {
 
         <div className="flex items-center gap-3">
           <label className="switch">
-            <input type="checkbox" checked={isDark} onChange={(e) => setIsDark(e.target.checked)} />
+            <input type="checkbox" id="theme-switch" checked={isDark} onChange={(e) => setIsDark(e.target.checked)} />
             <span className="slider"></span>
           </label>
-          <button onClick={() => setIsSettingsOpen(true)} className="p-1.5 bg-slate-100 dark:bg-stone-800 rounded-full border border-slate-200 dark:border-stone-700 shadow-sm text-sm">⚙️</button>
+          <button onClick={() => setIsSettingsOpen(true)} className="p-1.5 bg-slate-100 dark:bg-stone-800 rounded-full border border-slate-200 dark:border-stone-700 shadow-sm text-sm hover:scale-110 active:scale-95 transition-transform">⚙️</button>
           
           {guests.length > 0 && (
             <div className="flex gap-1 ml-1">
@@ -293,7 +296,7 @@ const App: React.FC = () => {
                 </button>
                 {showRefineOptions && (
                   <div className="absolute top-full right-0 mt-2 w-56 bg-white/95 dark:bg-stone-900/95 backdrop-blur-2xl rounded-xl shadow-2xl border border-slate-200 dark:border-stone-800 p-4 z-[1100] animate-in fade-in zoom-in-95">
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 px-1">Intel precision</p>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 px-1">Logic Precision</p>
                     <div className="grid grid-cols-2 gap-1.5 mb-3 bg-slate-50 dark:bg-stone-800 p-1.5 rounded-lg border border-slate-100 dark:border-stone-700">
                       <button onClick={() => setRefinementMode('free')} className={`py-1.5 text-[8px] font-black rounded-md ${refinementMode === 'free' ? 'bg-white dark:bg-stone-600 shadow-md text-indigo-600' : 'text-slate-500'}`}>Standard</button>
                       <button onClick={() => setRefinementMode('paid')} className={`py-1.5 text-[8px] font-black rounded-md ${refinementMode === 'paid' ? 'bg-indigo-600 shadow-md text-white' : 'text-slate-500'}`}>Diamond</button>
@@ -313,8 +316,8 @@ const App: React.FC = () => {
       </nav>
 
       {isOldFile && guests.length > 0 && (
-        <div className="fixed top-[50px] left-0 w-full bg-rose-600 text-white text-center py-2 z-[950] font-black uppercase tracking-[0.4em] text-[10px] no-print animate-pulse">
-          ⚠️ SECURITY WARNING: CURRENTLY VIEWING HISTORICAL LIST ({arrivalDateStr})
+        <div className="fixed top-[50px] left-0 w-full bg-rose-600 text-white text-center py-2 z-[950] font-black uppercase tracking-[0.4em] text-[10px] no-print animate-pulse shadow-2xl">
+          ⚠️ SECURITY WARNING: HISTORICAL ARRIVALS FILE ({arrivalDateStr.toUpperCase()})
         </div>
       )}
 
@@ -337,8 +340,8 @@ const App: React.FC = () => {
                 <span className="text-4xl">📄</span>
               </div>
               <h2 className="heading-font text-4xl font-black mb-1 text-slate-900 dark:text-white uppercase tracking-tighter">Gilpin Arrivals Hub</h2>
-              <p className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.5em] max-w-sm">Secure extraction stream v3.95 golden</p>
-              <div className="px-8 py-3 bg-[#c5a065] text-slate-950 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl transform transition-all hover:scale-105 active:scale-95">Load File</div>
+              <p className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.5em] max-w-sm">Secure Extraction Engine v3.98 Gold</p>
+              <div className="px-8 py-3 bg-[#c5a065] text-slate-950 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl transform transition-all hover:scale-105 active:scale-95">Initiate Load</div>
               <input id="file-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
             </div>
           </div>
@@ -356,8 +359,8 @@ const App: React.FC = () => {
                     <th className="w-[70px] p-2.5 text-center">L&L</th>
                     <th className="w-[280px] p-2.5">Facilities</th>
                     <th className="w-[80px] p-2.5 text-center">ETA</th>
-                    <th className="p-2.5">Notes & Extraction</th>
-                    <th className="w-[260px] p-2.5 text-purple-400">Guest DNA Profile</th>
+                    <th className="p-2.5">Notes & Refinement</th>
+                    <th className="w-[260px] p-2.5 text-purple-400">Concierge Intel (Diamond)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -378,50 +381,50 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* GOLDEN PRINT ENGINE V3.95 REFINED */}
-        <div className="hidden print:block w-full font-sans">
-            <div className="flex justify-between items-end border-b-2 border-[#c5a065] pb-2 mb-4">
-                <div className="flex items-center gap-4">
-                    <img src={GILPIN_LOGO_URL} alt="Gilpin" className="h-12" />
+        {/* GOLDEN PRINT ENGINE V3.98 - MAXIMUM DENSITY OPTIMIZATION */}
+        <div className="hidden print:block w-full font-sans leading-tight">
+            <div className="flex justify-between items-end border-b-2 border-[#c5a065] pb-1.5 mb-3">
+                <div className="flex items-center gap-3">
+                    <img src={GILPIN_LOGO_URL} alt="Gilpin" className="h-9" />
                     <div>
-                        <h1 className="text-2xl font-black heading-font uppercase tracking-tighter text-slate-950 leading-none mb-1">
-                          {printMode === 'main' ? 'ARRIVALS LIST' : printMode === 'greeter' ? 'GUEST GREETER' : 'HK SETUP LIST'}
+                        <h1 className="text-xl font-black heading-font uppercase tracking-tighter text-slate-950 leading-none mb-0.5">
+                          {printMode === 'main' ? 'ARRIVALS LIST' : printMode === 'greeter' ? 'GUEST GREETER' : 'HOUSEKEEPING SETUP'}
                         </h1>
-                        <div className="text-[12px] font-black uppercase tracking-[0.4em] text-[#c5a065]">{arrivalDateStr.toUpperCase()}</div>
+                        <div className="text-[9px] font-black uppercase tracking-[0.4em] text-[#c5a065]">{arrivalDateStr.toUpperCase()}</div>
                     </div>
                 </div>
-                <div className="flex gap-2 items-center mb-1">
-                   <div className="border border-slate-950 rounded px-3 py-1 flex flex-col items-center min-w-[40pt]"><span className="text-[6pt] font-black uppercase text-slate-400 leading-none">Total</span><span className="text-[10pt] font-black leading-none mt-1">{stats.total}</span></div>
-                   <div className="border border-slate-950 rounded px-3 py-1 flex flex-col items-center min-w-[40pt]"><span className="text-[6pt] font-black uppercase text-slate-400 leading-none">Main</span><span className="text-[10pt] font-black leading-none mt-1">{stats.mainHotel}</span></div>
-                   <div className="border border-slate-950 rounded px-3 py-1 flex flex-col items-center min-w-[40pt]"><span className="text-[6pt] font-black uppercase text-slate-400 leading-none">Returns</span><span className="text-[10pt] font-black leading-none mt-1">{stats.returns}</span></div>
+                <div className="flex gap-1.5 items-center mb-0.5">
+                   <div className="border border-slate-950 rounded px-2 py-0.5 flex flex-col items-center min-w-[32pt]"><span className="text-[5pt] font-black uppercase text-slate-400 leading-none">Total</span><span className="text-[8.5pt] font-black leading-none mt-0.5">{stats.total}</span></div>
+                   <div className="border border-slate-950 rounded px-2 py-0.5 flex flex-col items-center min-w-[32pt]"><span className="text-[5pt] font-black uppercase text-slate-400 leading-none">Main</span><span className="text-[8.5pt] font-black leading-none mt-0.5">{stats.mainHotel}</span></div>
+                   <div className="border border-slate-950 rounded px-2 py-0.5 flex flex-col items-center min-w-[32pt]"><span className="text-[5pt] font-black uppercase text-slate-400 leading-none">Lake</span><span className="text-[8.5pt] font-black leading-none mt-0.5">{stats.lakeHouse}</span></div>
                 </div>
             </div>
 
             {printMode === 'main' && (
               <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-900 uppercase text-[8pt] font-black tracking-widest text-left border-b-2 border-slate-950">
-                        <th className="p-2 w-[55pt]">Room</th>
-                        <th className="p-2 w-[140pt]">Guest Name</th>
-                        <th className="p-2 w-[35pt] text-center">Stay</th>
-                        <th className="p-2 w-[80pt]">Car Reg</th>
-                        <th className="p-2 w-[40pt] text-center">L&L</th>
-                        <th className="p-2 w-[180pt]">Facilities</th>
-                        <th className="p-2 w-[55pt] text-center">ETA</th>
-                        <th className="p-2">Notes / Occasion</th>
+                    <tr className="bg-slate-50 text-slate-900 uppercase text-[7pt] font-black tracking-widest text-left border-b-2 border-slate-950">
+                        <th className="p-1 w-[42pt]">Room</th>
+                        <th className="p-1 w-[125pt]">Guest Name</th>
+                        <th className="p-1 w-[28pt] text-center">Stay</th>
+                        <th className="p-1 w-[78pt]">Car Reg</th>
+                        <th className="p-1 w-[32pt] text-center">L&L</th>
+                        <th className="p-1 w-[160pt]">Facilities</th>
+                        <th className="p-1 w-[42pt] text-center">ETA</th>
+                        <th className="p-1">Notes / Occasion</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {filteredGuests.map(g => (
-                      <tr key={g.id} className="text-[8.5pt] border-b border-slate-200 break-inside-avoid">
-                          <td className="p-2 font-black text-[#c5a065] uppercase">{g.room}</td>
-                          <td className="p-2 font-black uppercase leading-tight">{g.name}</td>
-                          <td className="p-2 text-center font-bold text-slate-500">{g.duration}</td>
-                          <td className="p-2 font-mono font-black text-indigo-700 uppercase tracking-tight">{g.car}</td>
-                          <td className="p-2 text-center font-black">{g.ll}</td>
-                          <td className="p-2 text-[7.5pt] leading-tight font-medium whitespace-pre-line">{g.facilities}</td>
-                          <td className="p-2 text-center font-black">{g.eta || 'N/A'}</td>
-                          <td className="p-2 text-[8pt] italic text-slate-800 leading-snug whitespace-pre-line">{g.prefillNotes}</td>
+                      <tr key={g.id} className="text-[7.5pt] border-b border-slate-200 break-inside-avoid">
+                          <td className="p-1 font-black text-[#c5a065] uppercase leading-none">{g.room}</td>
+                          <td className="p-1 font-black uppercase leading-tight">{g.name}</td>
+                          <td className="p-1 text-center font-bold text-slate-500">{g.duration}</td>
+                          <td className="p-1 font-mono font-black text-indigo-700 uppercase tracking-tight">{g.car}</td>
+                          <td className="p-1 text-center font-black">{g.ll}</td>
+                          <td className="p-1 text-[6.8pt] leading-tight font-medium whitespace-pre-line">{g.facilities}</td>
+                          <td className="p-1 text-center font-black">{g.eta || 'N/A'}</td>
+                          <td className="p-1 text-[7pt] italic text-slate-800 leading-[1.1] whitespace-pre-line">{g.prefillNotes}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -430,7 +433,7 @@ const App: React.FC = () => {
 
             {printMode === 'greeter' && (
               <div className="w-full border-t border-slate-950">
-                <div className="grid grid-cols-[70pt_90pt_220pt_110pt_1fr] bg-slate-50 font-black uppercase text-[9pt] tracking-widest p-2 border-b-2 border-slate-950">
+                <div className="grid grid-cols-[55pt_75pt_180pt_95pt_1fr] bg-slate-50 font-black uppercase text-[7.5pt] tracking-widest p-1.5 border-b-2 border-slate-950">
                   <div>Time</div>
                   <div>Room</div>
                   <div>Guest Name</div>
@@ -438,15 +441,15 @@ const App: React.FC = () => {
                   <div>Notes / Occasion</div>
                 </div>
                 {filteredGuests.map(g => (
-                  <div key={g.id} className="grid grid-cols-[70pt_90pt_220pt_110pt_1fr] p-4 border-b border-slate-200 break-inside-avoid items-center text-[10pt]">
-                    <div className="font-black text-slate-950 text-xl">{g.eta || 'N/A'}</div>
-                    <div className="font-black text-slate-950 text-xl uppercase leading-none">
+                  <div key={g.id} className="grid grid-cols-[55pt_75pt_180pt_95pt_1fr] p-2.5 border-b border-slate-200 break-inside-avoid items-center text-[8.5pt]">
+                    <div className="font-black text-slate-950 text-base">{g.eta || 'N/A'}</div>
+                    <div className="font-black text-slate-950 text-base uppercase leading-none">
                         {g.room.split(' ')[0]}
-                        <div className="text-[7.5pt] text-slate-400 tracking-wider font-bold mt-0.5">{g.room.split(' ').slice(1).join(' ')}</div>
+                        <div className="text-[6pt] text-slate-400 tracking-wider font-bold mt-0.5">{g.room.split(' ').slice(1).join(' ')}</div>
                     </div>
-                    <div className="font-black text-slate-950 text-lg uppercase leading-tight pr-4">{g.name}</div>
-                    <div className="font-mono font-black text-indigo-700 tracking-wider uppercase text-base">{g.car}</div>
-                    <div className="text-[10pt] font-medium leading-snug text-slate-800 whitespace-pre-line">{g.prefillNotes}</div>
+                    <div className="font-black text-slate-950 text-[9.5pt] uppercase leading-tight pr-3">{g.name}</div>
+                    <div className="font-mono font-black text-indigo-700 tracking-wider uppercase text-xs">{g.car}</div>
+                    <div className="text-[8.5pt] font-medium leading-tight text-slate-800 whitespace-pre-line">{g.prefillNotes}</div>
                   </div>
                 ))}
               </div>
@@ -455,10 +458,10 @@ const App: React.FC = () => {
             {printMode === 'inroom' && (
               <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 text-slate-900 uppercase text-[10pt] font-black tracking-widest text-left border-b-2 border-slate-950">
-                        <th className="p-6 w-[120pt] text-center bg-slate-100">Room</th>
-                        <th className="p-6 w-[200pt]">Guest Name</th>
-                        <th className="p-6 bg-white">Housekeeping Requirements</th>
+                    <tr className="bg-slate-50 text-slate-900 uppercase text-[8pt] font-black tracking-widest text-left border-b-2 border-slate-950">
+                        <th className="p-3.5 w-[85pt] text-center bg-slate-100">Room</th>
+                        <th className="p-3.5 w-[150pt]">Guest Name</th>
+                        <th className="p-3.5 bg-white">Housekeeping Setup Specification</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-300">
@@ -466,9 +469,9 @@ const App: React.FC = () => {
                       .filter(g => g.inRoomItems && g.inRoomItems.trim().length > 1)
                       .map(g => (
                       <tr key={g.id} className="border-b border-slate-200 break-inside-avoid">
-                          <td className="p-10 font-black text-7xl text-center bg-slate-100 border-r-4 border-[#c5a065]">{g.room.split(' ')[0]}</td>
-                          <td className="p-10 font-black text-3xl uppercase leading-tight">{g.name}</td>
-                          <td className="p-10 text-[#c5a065] font-black italic text-4xl leading-relaxed whitespace-pre-line">
+                          <td className="p-5 font-black text-5xl text-center bg-slate-100 border-r-4 border-[#c5a065]">{g.room.split(' ')[0]}</td>
+                          <td className="p-5 font-black text-xl uppercase leading-tight">{g.name}</td>
+                          <td className="p-5 text-[#c5a065] font-black italic text-2xl leading-snug whitespace-pre-line bg-white">
                             {g.inRoomItems}
                           </td>
                       </tr>
@@ -477,8 +480,8 @@ const App: React.FC = () => {
               </table>
             )}
 
-            <div className="fixed bottom-0 left-0 w-full text-center text-[7pt] font-black uppercase text-slate-400 py-6 tracking-[0.4em]">
-                GILPIN HOTEL & LAKE HOUSE • V3.95 GOLDEN • {new Date().toLocaleString()} • {arrivalDateStr.toUpperCase()}
+            <div className="fixed bottom-0 left-0 w-full text-center text-[5.5pt] font-black uppercase text-slate-400 py-3 tracking-[0.4em]">
+                GILPIN HOTEL & LAKE HOUSE • V3.98 GOLDEN • {new Date().toLocaleString()} • {arrivalDateStr.toUpperCase()}
             </div>
         </div>
       </main>
@@ -502,14 +505,14 @@ const App: React.FC = () => {
                 </h3>
                 <div className="bg-slate-50 dark:bg-stone-800/80 p-8 rounded-3xl border border-slate-100 dark:border-stone-800 shadow-inner">
                   <button onClick={handleUpdateApiKey} className="w-full bg-slate-950 dark:bg-[#c5a065] text-white dark:text-slate-950 text-[11px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl shadow-2xl hover:scale-105 active:scale-95 mb-6 transition-all">🔑 Sync AI Link</button>
-                  <p className="text-[11px] text-slate-400 italic text-center px-4 leading-relaxed">Mandatory for Diamond reasoning tiers.</p>
+                  <p className="text-[11px] text-slate-400 italic text-center px-4 leading-relaxed">Required for Diamond reasoning tiers.</p>
                 </div>
               </section>
 
               <section>
                 <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-[#c5a065] mb-6 flex items-center gap-3">
                     <div className="w-2.5 h-2.5 rounded-full bg-[#c5a065] animate-pulse"></div>
-                    Logic Patch Console
+                    Custom Patch Rules
                 </h3>
                 <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-3">
                   {flags.map(flag => (
@@ -543,7 +546,7 @@ const App: React.FC = () => {
             </div>
             <div className="absolute inset-0 border-4 border-white/5 rounded-full animate-ping opacity-10"></div>
           </div>
-          <h2 className="heading-font text-6xl font-black mb-8 tracking-tighter uppercase leading-none text-white">Loading...</h2>
+          <h2 className="heading-font text-6xl font-black mb-8 tracking-tighter uppercase leading-none text-white">Refining...</h2>
           <p className="text-[#c5a065] font-black uppercase tracking-[0.6em] text-[15px] mb-12 animate-pulse whitespace-pre-wrap max-w-xl leading-relaxed">{progressMsg}</p>
           <div className="w-[450px] h-[3px] bg-slate-800/40 rounded-full overflow-hidden shadow-2xl">
             <div className="h-full bg-gradient-to-r from-transparent via-[#c5a065] to-transparent animate-[shimmer_2.5s_infinite] w-full" style={{ backgroundSize: '200% 100%' }}></div>

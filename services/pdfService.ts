@@ -4,7 +4,7 @@ import { ROOM_MAP } from '../constants';
 declare const pdfjsLib: any;
 
 export class PDFService {
-  static async parse(file: File, flags: Flag[]): Promise<{ guests: Guest[], arrivalDateStr: string }> {
+  static async parse(file: File, flags: Flag[]): Promise<{ guests: Guest[], arrivalDateStr: string, arrivalDateObj: Date | null }> {
     const buffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument(new Uint8Array(buffer)).promise;
     let rawItems: any[] = [];
@@ -76,7 +76,7 @@ export class PDFService {
       return rA - rB;
     });
 
-    return { guests, arrivalDateStr };
+    return { guests, arrivalDateStr, arrivalDateObj };
   }
 
   private static getRoomSortValue(roomString: string): number {
@@ -175,27 +175,27 @@ export class PDFService {
       ll = "Yes";
     }
 
-    // STRICT WHITELISTED IN ROOM ITEMS
+    // STRICT WHITELISTED IN ROOM ITEMS - ULTIMATE REFINEMENT
     const inRoomWhitelist = [
       "champagne", "champ", "flowers", "spa hamper", "bollinger", 
       "prosecco", "card with a specific message", "card", 
-      "minimoon package", "magical escape"
+      "minimoon package", "magical escape", "chocolates", "fruit plate"
     ];
     const inRoomMarkers = ["In Room on Arrival:", "In-Room:", "IN ROOM:", "In Room Spa Hamper:", "Billing:", "Traces:"];
     let rawInRoomItems: string[] = [];
     
-    // Automatic package triggers
-    if (rateCode === "MIN" || rateCode === "MAGESC" || singleLineText.match(/minimoon/i) || singleLineText.match(/magical escape/i)) {
+    // Automatic package triggers: Match the "In Room" expectations from provided PDFs
+    if (rateCode === "MIN" || rateCode === "MAGESC" || singleLineText.toLowerCase().includes("minimoon") || singleLineText.toLowerCase().includes("magical escape")) {
         rawInRoomItems.push("Champagne", "Itinerary");
     }
 
     inRoomMarkers.forEach(marker => {
-      const extracted = this.extractSection(singleLineText, marker, ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Facility Bookings:", "Req. Vip", "Page"]);
+      const extracted = this.extractSection(singleLineText, marker, ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Facility Bookings:", "Req. Vip", "Page", "P.O.Nr"]);
       if (extracted && extracted.length > 2) {
-        const parts = extracted.split(/,|•|\/|\|/).map(p => p.trim()).filter(p => p.length > 2);
+        const parts = extracted.split(/,|•|\/|\||&/).map(p => p.trim()).filter(p => p.length > 2);
         parts.forEach(part => {
             if (inRoomWhitelist.some(w => part.toLowerCase().includes(w))) {
-                rawInRoomItems.push(part);
+                rawInRoomItems.push(part.replace(/🎁|IN ROOM:/g, "").trim());
             }
         });
       }
@@ -204,14 +204,15 @@ export class PDFService {
     let notesList: string[] = [];
     const scanLower = singleLineText.toLowerCase();
 
+    // Occasion extraction - stop at internal P.O.Nr markers to replicate Greeter PDF cleanliness
     const occSection = this.extractSection(singleLineText, "Occasion:", ["P.O.Nr:", "Traces:", "Booking Notes:", "Facility Bookings:"]);
     const combinedOcc = occSection.replace(/None|NDR|^\d+$/i, "").trim();
     if(combinedOcc.length > 2) notesList.push(`🎉 ${combinedOcc}`);
 
-    const hkRaw = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Billing:", "Booking Notes:"]);
+    const hkRaw = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Billing:", "Booking Notes:", "P.O.Nr"]);
     if(hkRaw && !hkRaw.match(/Booking\.com/i)) notesList.push(`🏠 ${hkRaw}`);
     
-    const guestRaw = this.extractSection(singleLineText, "Guest Notes:", ["HK Notes:", "Billing:", "Unit:", "Booking Notes:"]);
+    const guestRaw = this.extractSection(singleLineText, "Guest Notes:", ["HK Notes:", "Billing:", "Unit:", "Booking Notes:", "P.O.Nr"]);
     if(guestRaw) notesList.push(`👤 ${guestRaw}`);
 
     flags.forEach(f => {
@@ -229,14 +230,14 @@ export class PDFService {
     let inRoomStr = Array.from(new Set(rawInRoomItems)).join(" • ");
     if (inRoomStr) notesList.push(`🎁 IN ROOM: ${inRoomStr}`);
 
-    const facilitiesRaw = this.extractSection(singleLineText, "Facility Bookings:", ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Booking Notes:"]);
+    const facilitiesRaw = this.extractSection(singleLineText, "Facility Bookings:", ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Booking Notes:", "P.O.Nr"]);
     const facilities = facilitiesRaw.split('/').map(f => f.trim()).filter(f => f.length > 5).map(f => {
         let fText = f;
         if (f.toLowerCase().includes("spice")) fText = "🌶️ " + f;
         else if (f.toLowerCase().includes("source")) fText = "🍴 " + f;
         else if (f.toLowerCase().includes("spa") || f.toLowerCase().includes("massage") || f.toLowerCase().includes("facial")) fText = "💆‍♀️ " + f;
         else if (f.toLowerCase().includes("bento")) fText = "🍱 " + f;
-        else if (f.toLowerCase().includes("hot-tub") || f.toLowerCase().includes("pool")) fText = "♨️ " + f;
+        else if (f.toLowerCase().includes("hot-tub") || f.toLowerCase().includes("pool") || f.toLowerCase().includes("mud")) fText = "♨️ " + f;
         return fText;
     }).join("\n");
 
