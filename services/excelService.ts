@@ -1,4 +1,3 @@
-
 import { Guest } from '../types';
 import { ROOM_MAP } from '../constants';
 
@@ -16,9 +15,24 @@ export class ExcelService {
   }
 
   static export(guests: Guest[]) {
-    const headers = ["Room", "Guest Name", "Car Reg", "Car Type", "L & L ", "ETA", "Arrival Time", "Location", "Notes", "Status"];
+    // Headers mapped precisely to Rec Host Sheet: A, B, C, D, E, F, G, H, I, J, K, L
+    const headers = [
+      "Room", 
+      "Guest Name", 
+      "Car Reg", 
+      "Car Type", 
+      "L & L", 
+      "ETA", 
+      "Arrival Time", 
+      "Location", 
+      "Notes", 
+      "Status",
+      "Initial",
+      "Time"
+    ];
     
-    const masterRooms: ({ n: number, l: string, gap?: boolean })[] = [
+    // Aligned to visual structure of the Rec Host Sheet screenshot
+    const masterRooms: ({ n: number, l: string, gap?: boolean, header?: string })[] = [
       { n: 1, l: "1 LYTH" }, { n: 2, l: "2 WINSTER" }, { n: 3, l: "3 CLEABARROW" },
       { n: 4, l: "4 CROSTHWAITE" }, { n: 5, l: "5 CROOK" }, { n: 6, l: "6 WETHERLAM" },
       { n: 0, l: "", gap: true },
@@ -31,15 +45,16 @@ export class ExcelService {
       { n: 0, l: "", gap: true },
       { n: 21, l: "21 BIRDOSWALD" }, { n: 22, l: "22 MAGLONA" }, { n: 23, l: "23 GLANNOVENTA" },
       { n: 24, l: "24 VOREDA" }, { n: 25, l: "25 HARDKNOTT" }, { n: 26, l: "26 BRATHAY" },
-      { n: 27, l: "27 CRAKE" }, { n: 28, l: "28 DUDDON" },
-      { n: 30, l: "30 LOWTHER" }, { n: 31, l: "31 LYVENNET" },
-      { n: 0, l: "", gap: true },
+      { n: 27, l: "27 CRAKE" }, { n: 28, l: "28 DUDDON" }, { n: 30, l: "30 LOWTHER" }, { n: 31, l: "31 LYVENNET" },
+      { n: 0, l: "Lakehouse rooms", header: "Lakehouse rooms" }, // Match the orange banner in screenshot
       { n: 51, l: "51 HARRIET" }, 
       { n: 52, l: "52 ETHEL" }, 
       { n: 53, l: "53 ADGIE" }, 
       { n: 54, l: "54 GERTIE" }, 
-      { n: 57, l: "57 KNIPE" }, 
-      { n: 58, l: "58 TARN" }
+      { n: 55, l: "55 MAUD" }, // Room 55 Included as requested
+      { n: 56, l: "56 BEATRICE" }, 
+      { n: 57, l: "57 TARN SUITE" }, // Corrected labels to match screenshot
+      { n: 58, l: "58 KNIPE SUITE" }
     ];
 
     const guestMap = new Map<number, Guest>();
@@ -51,8 +66,10 @@ export class ExcelService {
     const wsData: any[][] = [headers];
 
     masterRooms.forEach(item => {
-      if (item.gap) {
-        wsData.push(["", "", "", "", "", "", "", "", "", ""]);
+      if (item.header) {
+        wsData.push([item.header, "", "", "", "", "", "", "", "", "", "", ""]);
+      } else if (item.gap) {
+        wsData.push(["", "", "", "", "", "", "", "", "", "", "", ""]);
       } else {
         const g = guestMap.get(item.n);
         if (g) {
@@ -66,10 +83,12 @@ export class ExcelService {
             "", // Arrival Time
             "", // Location
             g.prefillNotes.replace(/\n/g, ' • '), 
-            ""  // Status
+            "", // Status
+            "", // Initial
+            ""  // Time
           ]);
         } else {
-          wsData.push([item.l, "", "", "", "", "", "", "", "", ""]);
+          wsData.push([item.l, "", "", "", "", "", "", "", "", "", "", ""]);
         }
       }
     });
@@ -80,16 +99,33 @@ export class ExcelService {
     });
 
     if (extraGuests.length > 0) {
-      wsData.push(["", "", "", "", "", "", "", "", "", ""]);
-      wsData.push(["Extra / Unassigned", "", "", "", "", "", "", "", "", ""]);
+      wsData.push(["", "", "", "", "", "", "", "", "", "", "", ""]);
+      wsData.push(["Extra / Unassigned", "", "", "", "", "", "", "", "", "", "", ""]);
       extraGuests.forEach(g => {
-        wsData.push([g.room, g.name, g.car, "", g.ll, g.eta, "", "", g.prefillNotes.replace(/\n/g, ' • '), ""]);
+        wsData.push([g.room, g.name, g.car, "", g.ll, g.eta, "", "", g.prefillNotes.replace(/\n/g, ' • '), "", "", ""]);
       });
     }
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(wsData);
-    XLSX.utils.book_append_sheet(wb, ws, "Arrivals");
-    XLSX.writeFile(wb, `Gilpin_Arrivals_Master_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    // Apply some basic column width formatting
+    ws['!cols'] = [
+      { wch: 18 }, // Room
+      { wch: 30 }, // Guest Name
+      { wch: 12 }, // Car Reg
+      { wch: 10 }, // Car Type
+      { wch: 8 },  // L & L
+      { wch: 8 },  // ETA
+      { wch: 12 }, // Arrival Time
+      { wch: 15 }, // Location
+      { wch: 50 }, // Notes
+      { wch: 10 }, // Status
+      { wch: 8 },  // Initial
+      { wch: 8 }   // Time
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Master Copy");
+    XLSX.writeFile(wb, `Gilpin_Arrivals_Rec_Host_${new Date().toISOString().split('T')[0]}.xlsx`);
   }
 }

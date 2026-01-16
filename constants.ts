@@ -7,7 +7,7 @@ export const ROOM_MAP: RoomMapping = {
   'dollywagon': 17, 'haystacks': 18, 'st sunday': 19, 'sergeant': 20, 'birdoswald': 21,
   'maglona': 22, 'glannoventa': 23, 'voreda': 24, 'hardknott': 25, 'brathay': 26,
   'crake': 27, 'duddon': 28, 'mint': 29, 'lowther': 30, 'lyvennet': 31,
-  'harriet': 51, 'ethel': 52, 'adgie': 53, 'gertie': 54, 'maud': 55, 'beatrice': 56, 'knipe': 57, 'tarn': 58,
+  'harriet': 51, 'ethel': 52, 'adgie': 53, 'gertie': 54, 'maud': 55, 'beatrice': 56, 'tarn': 57, 'knipe': 58,
   'boat': 60, 'lodge': 60
 };
 

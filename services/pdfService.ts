@@ -157,31 +157,25 @@ export class PDFService {
     const rateCodeMatch = singleLineText.match(packageRegex);
     const rateCode = rateCodeMatch ? rateCodeMatch[1].toUpperCase() : "";
 
-    // ULTIMATE STAY DURATION LOGIC: Date delta calculation
+    // Duration extraction: Difference between Departure date and Arrival date
     let duration = "1";
     if (arrivalDate) {
         const firstLineRaw = block.lines[0].items.map((i: any) => i.str).join(" ");
         const firstLineDates = firstLineRaw.match(/\d{2}\/\d{2}\/\d{2,4}/g) || [];
-        
-        if (firstLineDates.length > 0) {
-            // Find a date that is clearly after the arrival date
-            for (const dStr of firstLineDates) {
-                const parts = dStr.split('/');
-                const d = parseInt(parts[0]);
-                const m = parseInt(parts[1]);
-                let y = parseInt(parts[2]);
-                if (y < 100) y += 2000;
-                
-                const checkDate = new Date(y, m - 1, d);
-                checkDate.setHours(0,0,0,0);
-                
-                if (checkDate > arrivalDate) {
-                    const diffTime = checkDate.getTime() - arrivalDate.getTime();
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    if (diffDays > 0 && diffDays < 15) {
-                        duration = diffDays.toString();
-                        break;
-                    }
+        for (const dStr of firstLineDates) {
+            const parts = dStr.split('/');
+            const d = parseInt(parts[0]);
+            const m = parseInt(parts[1]);
+            let y = parseInt(parts[2]);
+            if (y < 100) y += 2000;
+            const checkDate = new Date(y, m - 1, d);
+            checkDate.setHours(0,0,0,0);
+            if (checkDate > arrivalDate) {
+                const diffTime = checkDate.getTime() - arrivalDate.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays > 0 && diffDays < 21) {
+                    duration = diffDays.toString();
+                    break;
                 }
             }
         }
