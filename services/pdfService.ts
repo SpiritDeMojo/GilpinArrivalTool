@@ -153,7 +153,7 @@ export class PDFService {
       .replace(/\s+/g, ' ')
       .trim();
 
-    const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB1|LHBB2|LHBB|RO)\b/i;
+    const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB1|LHBB2|LHBB|RO|CEL_DBB_1|LHSS)\b/i;
     const rateCodeMatch = singleLineText.match(packageRegex);
     const rateCode = rateCodeMatch ? rateCodeMatch[1].toUpperCase() : "";
 
@@ -204,13 +204,17 @@ export class PDFService {
     const inRoomWhitelist = [
       "champagne", "champ", "flowers", "spa hamper", "bollinger", 
       "prosecco", "card with a specific message", "card", 
-      "minimoon", "magical escape", "chocolates", "itinerary"
+      "minimoon", "magical escape", "chocolates", "itinerary", "balloons"
     ];
     const inRoomMarkers = ["In Room on Arrival:", "In-Room:", "IN ROOM:", "In Room Spa Hamper:", "Billing:", "Traces:"];
     let rawInRoomItems: string[] = [];
     
+    // Automatic injection for specific packages
     if (rateCode === "MIN" || rateCode === "MAGESC" || scanLower.includes("minimoon") || scanLower.includes("magical escape")) {
         rawInRoomItems.push("Champagne", "Itinerary");
+    }
+    if (rateCode === "CEL_DBB_1") {
+        rawInRoomItems.push("Champagne", "Balloons");
     }
 
     inRoomMarkers.forEach(marker => {

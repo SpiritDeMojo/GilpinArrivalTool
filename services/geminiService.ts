@@ -22,9 +22,9 @@ export class GeminiService {
     const fieldInstructions: Record<RefinementField, string> = {
       notes: "OUTPUT: 'Notes / Occasion' column content. MISSION: Combine occasion, housekeeping specifics, and internal alerts. CRITICAL: Detect hidden booking issues (e.g., 'Noticed a SPICE DUPLICATION' or 'Source Conflict Check'). Include VIP status icons (⭐). Filter out P.O.Nr and billing email addresses. Use bullet points (•) for multiple items. NO MARKDOWN.",
       facilities: "OUTPUT: 'Facilities' column content. FORMAT: 'Icon Name (DD.MM.YY @ HHMM)'. Use: 🌶️ Spice, 🍴 Source, 💆‍♀️ ESPA, 🍱 Bento, 🍵 Afternoon Tea, ♨️ Spa. Maximum 4 items, prioritizing the most immediate bookings.",
-      inRoomItems: "OUTPUT: 'Housekeeping Setup Specification'. STRICT: List only physical items for room setup (e.g., 'In-Room Spa Hamper • Bottle of Champagne • Balloons'). If 'MIN' or 'MAGESC' package detected, ensure 'Champagne • Itinerary' is specified.",
+      inRoomItems: "OUTPUT: 'Housekeeping Setup Specification'. STRICT: List only physical items for room setup (e.g., 'In-Room Spa Hamper • Bottle of Champagne • Balloons'). If 'MIN', 'MAGESC', or 'CEL_DBB_1' package detected, ensure 'Champagne' and appropriate items ('Itinerary' for MIN/MAGESC, 'Balloons' for CEL_DBB_1) are specified.",
       preferences: "OUTPUT: 'Concierge Strategy' (Tactical Greeting). MISSION: Provide a 1-sentence instruction for the front-of-house team. Examples: 'Warn of the biterness in peppermint tea if ordered', 'Discreetly confirm Room 55 request', 'Confirm the 88th birthday card is present'.",
-      packages: "Human-readable translation of the RateCode. (e.g., 'BB_1' -> 'Bed & Breakfast', 'MAGESC' -> 'Magical Escape').",
+      packages: "Human-readable translation of the RateCode. Mappings: 'CEL_DBB_1' -> 'Celebration Package', 'BB_1' -> 'Bed & Breakfast', 'MAGESC' -> 'Magical Escape', 'LHSS' -> 'Lake House Spa Suite'.",
       history: "LOYALTY: Summarize stay count and behavior (e.g., 'Regular - 5th stay', 'New Guest')."
     };
 
