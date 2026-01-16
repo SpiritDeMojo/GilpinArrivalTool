@@ -22,6 +22,5 @@ export const DEFAULT_FLAGS: Flag[] = [
   { id: 9, name: "Comp Stay", emoji: "🟢", keys: ["comp stay", "complimentary", "foc", "upgrade", "unaware"] },
   { id: 10, name: "Prev Issue", emoji: "🚩", keys: ["complaint", "recovery", "issue", "dissatisfied", "previous problem", "recovery stay"] },
   { id: 11, name: "Occasion", emoji: "🎉", keys: ["birthday", "anniversary", "honeymoon", "proposal", "engagement", "celebration", "babymoon"] },
-  { id: 12, name: "Voucher", emoji: "🎫", keys: ["voucher", "redeem", "gift certificate"] },
-  { id: 13, name: "Pre-Reg", emoji: "📱", keys: ["pre-registration", "completed online"] }
+  { id: 12, name: "Voucher", emoji: "🎫", keys: ["voucher", "redeem", "gift certificate"] }
 ];

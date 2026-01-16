@@ -1,11 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Guest, FilterType, Flag, PrintMode, RefinementField } from './types';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Guest, FilterType, Flag, PrintMode, RefinementField, RefinementMode } from './types';
 import { PDFService } from './services/pdfService';
 import { GeminiService } from './services/geminiService';
 import { ExcelService } from './services/excelService';
 import { DEFAULT_FLAGS } from './constants';
 import Dashboard from './components/Dashboard';
 import GuestRow from './components/GuestRow';
+
+const BATCH_SIZE = 8;
+
+// Official Gilpin Logo Source
+const GILPIN_LOGO_URL = "https://i.ibb.co/nsfDhDSs/Gilpin-logo.png";
 
 const App: React.FC = () => {
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -15,9 +20,16 @@ const App: React.FC = () => {
   const [progressMsg, setProgressMsg] = useState("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [printMode, setPrintMode] = useState<PrintMode>('main');
-  const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
+  
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved ? saved === 'dark' : true;
+  });
+  
+  const [isSticky, setIsSticky] = useState(false);
   
   const [refinementFields, setRefinementFields] = useState<RefinementField[]>(['notes', 'facilities', 'inRoomItems', 'preferences', 'packages', 'history']);
+  const [refinementMode, setRefinementMode] = useState<RefinementMode>('paid');
   const [showRefineOptions, setShowRefineOptions] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -31,6 +43,16 @@ const App: React.FC = () => {
     const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     setArrivalDateStr(today);
   }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (guests.length > 0) {
+        setIsSticky(window.scrollY > 20);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [guests.length]);
 
   useEffect(() => {
     const theme = isDark ? 'dark' : 'light';
@@ -70,7 +92,7 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsProcessing(true);
-    setProgressMsg("Scanning Intelligence coordinates...");
+    setProgressMsg("Scoping Intel Stream...");
     try {
       await new Promise(r => setTimeout(r, 100));
       const result = await PDFService.parse(file, flags);
@@ -85,56 +107,64 @@ const App: React.FC = () => {
   };
 
   const handleAIRefine = async () => {
-    if (guests.length === 0 || refinementFields.length === 0) return;
-
-    const aistudio = (window as any).aistudio;
-    if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
-      const hasKey = await aistudio.hasSelectedApiKey();
-      if (!hasKey) {
-        await handleUpdateApiKey();
-      }
+    if (guests.length === 0) return;
+    setIsProcessing(true);
+    const validGuests = guests.filter(g => g.id && !g.id.toString().startsWith('MAN-'));
+    
+    const chunks: Guest[][] = [];
+    for (let i = 0; i < validGuests.length; i += BATCH_SIZE) {
+      chunks.push(validGuests.slice(i, i + BATCH_SIZE));
     }
 
-    setIsProcessing(true);
-    const validGuests = guests.filter(g => g.id && !g.id.startsWith('MAN-'));
-    
     try {
-      for (let i = 0; i < validGuests.length; i++) {
-        const guest = validGuests[i];
-        setProgressMsg(`Refining Data ${i + 1}/${validGuests.length}: ${guest.name}`);
+      for (let i = 0; i < chunks.length; i++) {
+        const currentBatch = chunks[i];
+        const tierLabel = refinementMode === 'paid' ? '💎 DIAMOND' : '✨ STANDARD';
+        setProgressMsg(`${tierLabel} BATCH ${i + 1}/${chunks.length}\nAnalyzing ${currentBatch.length} Records...`);
         
-        const refinement = await GeminiService.refineGuestData(guest, refinementFields);
-        if (refinement) {
-          setGuests(prev => prev.map(g => g.id === guest.id ? { 
-            ...g, 
-            ...refinement
-          } : g));
+        try {
+          const refinements = await GeminiService.refineGuestBatch(currentBatch, refinementFields, refinementMode);
+          if (refinements && Array.isArray(refinements)) {
+            setGuests(prev => {
+              const next = [...prev];
+              currentBatch.forEach((guest, index) => {
+                const refinement = refinements[index];
+                if (refinement) {
+                  const targetIndex = next.findIndex(g => g.id === guest.id);
+                  if (targetIndex !== -1) {
+                    next[targetIndex] = { ...next[targetIndex], ...refinement };
+                  }
+                }
+              });
+              return next;
+            });
+          }
+        } catch (innerError: any) {
+          if (innerError.message === "API_KEY_INVALID") {
+            alert("API Key issue detected. Please re-link your key.");
+            await handleUpdateApiKey();
+            break; 
+          }
+          throw innerError;
         }
 
-        if (i < validGuests.length - 1) {
-          await new Promise(r => setTimeout(r, 1200));
+        if (i < chunks.length - 1) {
+          const delayMs = refinementMode === 'paid' ? 2000 : 15000;
+          const seconds = Math.floor(delayMs / 1000);
+          for (let s = seconds; s > 0; s--) {
+            setProgressMsg(`Quota Cooling (${s}s)...\nUp Next: Batch ${i + 2}/${chunks.length}`);
+            await new Promise(r => setTimeout(r, 1000));
+          }
         }
       }
     } catch (error: any) {
-      console.error("Refinement error:", error);
-      const errorStr = error?.message || JSON.stringify(error);
-      if (errorStr.includes("Requested entity was not found")) {
-        alert("API Key configuration error. Please select a valid API key from a paid GCP project.");
-        await handleUpdateApiKey();
-      } else {
-        alert(`AI Extraction Error. Ensure the API_KEY is correctly configured.`);
-      }
+      console.error("Batch refinement error:", error);
+      alert("Intelligence cycle interrupted.");
     } finally {
       setIsProcessing(false);
       setProgressMsg("");
       setShowRefineOptions(false);
     }
-  };
-
-  const toggleRefinementField = (field: RefinementField) => {
-    setRefinementFields(prev => 
-      prev.includes(field) ? prev.filter(f => f !== field) : [...prev, field]
-    );
   };
 
   const updateGuest = useCallback((id: string, updates: Partial<Guest>) => {
@@ -180,6 +210,25 @@ const App: React.FC = () => {
     setFlags(prev => prev.filter(f => f.id !== id));
   };
 
+  const getStatsValues = () => {
+    const total = guests.length;
+    const mainHotel = guests.filter(g => {
+      const parts = g.room.split(' ');
+      const rNum = parseInt(parts[0]);
+      return (rNum > 0 && rNum <= 31) || isNaN(rNum);
+    }).length;
+    const lakeHouse = guests.filter(g => {
+      const parts = g.room.split(' ');
+      const rNum = parseInt(parts[0]);
+      return rNum >= 51 && rNum <= 60;
+    }).length;
+    const vips = guests.filter(g => g.prefillNotes.includes('⭐') || g.prefillNotes.includes('VIP')).length;
+    const allergies = guests.filter(g => g.prefillNotes.includes('⚠️') || g.prefillNotes.includes('🥛') || g.prefillNotes.includes('🥜') || g.prefillNotes.includes('🍞') || g.prefillNotes.includes('🧀')).length;
+    const returns = guests.filter(g => g.ll.toLowerCase().includes('yes')).length;
+
+    return { total, mainHotel, lakeHouse, vips, allergies, returns };
+  };
+
   const filteredGuests = guests.filter(g => {
     if (activeFilter === 'all') return true;
     const parts = g.room.split(' ');
@@ -197,109 +246,93 @@ const App: React.FC = () => {
     setTimeout(() => window.print(), 200);
   };
 
+  const stats = getStatsValues();
+
   return (
     <div className="min-h-screen transition-all duration-300">
       <nav className="navbar no-print">
         <div className="nav-left flex items-center h-full">
           <div className="nav-logo-bubble" onClick={() => window.location.reload()} title="Reset System">
-            <img src="Gilpin-logo.png" alt="Gilpin" className="nav-logo-img" />
+            <img src={GILPIN_LOGO_URL} alt="Gilpin" className="nav-logo-img" />
           </div>
           <div className="nav-text-container ml-2">
-            <div className="nav-title">Gilpin Hotel</div>
-            <div className="nav-date">{arrivalDateStr}</div>
+            <div className="nav-title font-black text-lg tracking-tighter uppercase heading-font leading-none mb-0.5">Gilpin Hotel</div>
+            <div className="nav-date font-bold text-slate-400 text-[7px] tracking-widest uppercase leading-none">{arrivalDateStr}</div>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="switch-wrapper mr-4">
-            <span className="text-stone-800 dark:text-stone-200">☀️</span>
+          <div className="flex items-center gap-2">
             <label className="switch">
               <input type="checkbox" checked={isDark} onChange={(e) => setIsDark(e.target.checked)} />
               <span className="slider"></span>
             </label>
-            <span className="text-stone-800 dark:text-stone-200">🌙</span>
           </div>
 
-          <button 
-            onClick={() => setIsSettingsOpen(true)} 
-            className="p-2 bg-white dark:bg-stone-800 rounded-full hover:shadow-md transition-all text-xl border border-slate-200 dark:border-slate-700 shadow-sm" 
-            title="App Settings"
-          >
-            ⚙️
-          </button>
+          <button onClick={() => setIsSettingsOpen(true)} className="p-1 bg-white/50 dark:bg-stone-800/50 rounded-full border border-slate-200 dark:border-stone-700 shadow-sm text-sm">⚙️</button>
           
           {guests.length > 0 && (
-            <div className="flex gap-2 ml-4">
+            <div className="flex gap-1 ml-1">
               <div className="relative">
                 <button 
                   onClick={() => setShowRefineOptions(!showRefineOptions)}
-                  className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-md hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+                  className={`px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm transition-all flex items-center gap-1 ${refinementMode === 'paid' ? 'bg-indigo-700' : 'bg-indigo-600'} text-white`}
                 >
-                  ✨ AI Refine
+                  {refinementMode === 'paid' ? '💎 DIAMOND' : '✨ AI REFINE'}
                 </button>
                 {showRefineOptions && (
-                  <div className="absolute top-full right-0 mt-4 w-56 bg-white dark:bg-stone-900 rounded-xl shadow-2xl border border-slate-200 dark:border-stone-800 p-4 z-[1100] animate-in fade-in zoom-in-95">
-                    <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2 px-1 border-b border-slate-100 dark:border-slate-800 pb-1">Extraction Scope</p>
-                    <div className="space-y-1 mt-2">
-                      {[
-                        { id: 'notes', label: 'Briefing Notes' },
-                        { id: 'facilities', label: 'Activities & Times' },
-                        { id: 'inRoomItems', label: 'Packages & Items' },
-                        { id: 'preferences', label: 'Guest Habits' },
-                        { id: 'history', label: 'Stay History' }
-                      ].map(field => (
-                        <label key={field.id} className="flex items-center gap-2 px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors">
-                          <input 
-                            type="checkbox" 
-                            checked={refinementFields.includes(field.id as RefinementField)}
-                            onChange={() => toggleRefinementField(field.id as RefinementField)}
-                            className="accent-indigo-600"
-                          />
-                          <span className="text-[10px] font-bold text-slate-900 dark:text-slate-100">{field.label}</span>
-                        </label>
-                      ))}
+                  <div className="absolute top-full right-0 mt-1 w-48 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md rounded-lg shadow-2xl border border-slate-200 dark:border-stone-800 p-3 z-[1100] animate-in fade-in zoom-in-95">
+                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1 px-1 border-b border-slate-100 dark:border-slate-800 pb-1">Intel Tier</p>
+                    <div className="grid grid-cols-2 gap-1 mb-2 bg-slate-50/50 dark:bg-stone-800/50 p-1 rounded-md">
+                      <button onClick={() => setRefinementMode('free')} className={`py-1 text-[7px] font-black rounded ${refinementMode === 'free' ? 'bg-white dark:bg-stone-700 shadow-sm text-indigo-600' : 'text-slate-500'}`}>Standard</button>
+                      <button onClick={() => setRefinementMode('paid')} className={`py-1 text-[7px] font-black rounded ${refinementMode === 'paid' ? 'bg-indigo-600 shadow-sm text-white' : 'text-slate-500'}`}>Diamond</button>
                     </div>
-                    <button onClick={handleAIRefine} className="w-full mt-4 bg-indigo-600 text-white text-[10px] font-black uppercase py-2.5 rounded-lg shadow-md transition-all hover:bg-indigo-700">Initialize Process</button>
+                    <button onClick={handleAIRefine} className="w-full mt-1.5 bg-indigo-600 text-white text-[7.5px] font-black uppercase py-2 rounded shadow-md">Initiate Analysis</button>
                   </div>
                 )}
               </div>
-              <button onClick={() => triggerPrint('inroom')} className="bg-sky-500 text-white px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-md">🎁 In Room</button>
-              <button onClick={() => triggerPrint('greeter')} className="bg-amber-500 text-slate-900 px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-md">👋 Greeter</button>
-              <button onClick={() => triggerPrint('main')} className="bg-slate-900 dark:bg-stone-800 text-white px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-md">🖨️ Arrivals</button>
-              <button onClick={() => ExcelService.export(guests)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-md">⬇️ Excel</button>
-              <button onClick={addManual} className="bg-slate-100 dark:bg-stone-700 text-slate-800 dark:text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm ml-2">➕ Add</button>
+              <button onClick={() => triggerPrint('inroom')} className="bg-sky-600 text-white px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">🎁 In Room</button>
+              <button onClick={() => triggerPrint('greeter')} className="bg-amber-500 text-slate-900 px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">👋 Greeter</button>
+              <button onClick={() => triggerPrint('main')} className="bg-slate-950 dark:bg-stone-800 text-white px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">🖨️ Arrivals</button>
+              <button onClick={() => ExcelService.export(guests)} className="bg-emerald-600 text-white px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">⬇️ Excel</button>
+              <button onClick={addManual} className="bg-slate-100/80 dark:bg-stone-700/80 text-slate-800 dark:text-white px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">➕ Add</button>
             </div>
           )}
         </div>
       </nav>
 
-      {guests.length > 0 && <Dashboard guests={guests} activeFilter={activeFilter} onFilterChange={setActiveFilter} />}
+      {guests.length > 0 && (
+        <div className={`dashboard-container no-print ${isSticky ? 'sticky' : ''}`}>
+          <Dashboard guests={guests} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+        </div>
+      )}
 
-      <main className="max-w-[1920px] mx-auto p-6">
+      <main className="max-w-[1920px] mx-auto p-2">
         {guests.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[60vh]">
-            <div id="drop-zone" onClick={() => (document.getElementById('file-upload') as HTMLInputElement).click()}>
-              <h2 className="heading-font text-4xl font-black mb-4 text-slate-900 dark:text-white">Arrivals.pdf</h2>
-              <p className="text-slate-500 font-medium">drop off file here or press here</p>
-              <input id="file-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
+          <div className="flex flex-col items-center justify-center min-h-[85vh]">
+            <div id="drop-zone" className="p-10 border-2 border-dashed border-slate-300 dark:border-stone-800 rounded-[2rem] bg-white/40 dark:bg-stone-900/40 backdrop-blur-xl flex flex-col items-center gap-4 cursor-pointer hover:border-[#c5a065] transition-all shadow-xl" onClick={() => (document.getElementById('file-upload') as HTMLInputElement).click()}>
+                <h2 className="heading-font text-3xl font-black mb-1 dynamic-text uppercase text-slate-900 dark:text-white">Upload Arrivals PDF</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-[9px] font-black uppercase tracking-widest">Secure Intelligence Protocol V3.72 Stable</p>
+                <div className="w-12 h-0.5 bg-amber-400 rounded-full opacity-60"></div>
+                <input id="file-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
             </div>
           </div>
         ) : (
-          <div className="bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden print:hidden mt-8 transition-colors duration-300">
+          <div className="bg-white/90 dark:bg-stone-900/90 backdrop-blur-md rounded-lg shadow-lg border border-slate-200 dark:border-stone-800 overflow-hidden print:hidden mt-1">
             <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse table-fixed min-w-[1800px]">
+              <table className="w-full text-left border-collapse table-fixed min-w-[1850px]">
                 <thead>
-                  <tr className="bg-slate-950 text-slate-300 uppercase text-[9px] font-black tracking-[0.2em] border-b border-slate-800">
-                    <th className="w-[60px] p-4"></th>
-                    <th className="w-[120px] p-4">Room</th>
-                    <th className="w-[240px] p-4">Guest Name</th>
-                    <th className="w-[80px] p-4 text-center">Stay</th>
-                    <th className="w-[120px] p-4">Car Reg</th>
-                    <th className="w-[80px] p-4 text-center">L&L</th>
-                    <th className="w-[280px] p-4">Facilities</th>
-                    <th className="w-[280px] p-4">Inferred Preferences</th>
-                    <th className="w-[80px] p-4 text-center">ETA</th>
-                    <th className="p-4">Notes & Strategy</th>
+                  <tr className="bg-slate-950 text-slate-400 uppercase text-[7.5px] font-black tracking-widest border-b border-slate-800">
+                    <th className="w-[30px] p-1.5"></th>
+                    <th className="w-[100px] p-1.5">Room</th>
+                    <th className="w-[220px] p-1.5">Guest Name</th>
+                    <th className="w-[50px] p-1.5 text-center">Stay</th>
+                    <th className="w-[100px] p-1.5">Car Reg</th>
+                    <th className="w-[50px] p-1.5 text-center">L&L</th>
+                    <th className="w-[240px] p-1.5">Facilities</th>
+                    <th className="w-[60px] p-1.5 text-center">ETA</th>
+                    <th className="p-1.5">Notes & Strategy</th>
+                    <th className="w-[220px] p-1.5">Inferred DNA</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -320,186 +353,171 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* --- PRINT CONTENT --- */}
+        {/* PRINT ENGINE */}
         <div className="hidden print:block w-full">
-            <div className="print-header">
-                <div className="print-logo-grp">
-                    <img src="Gilpin-logo.png" className="print-logo" />
+            <div className="flex justify-between items-end border-b-2 border-[#c5a065] pb-2 mb-4">
+                <div className="flex items-center gap-3">
+                    <img src={GILPIN_LOGO_URL} alt="Gilpin" className="h-12" />
                     <div>
-                        <h1 className="print-h1">{printMode === 'main' ? 'Arrivals List' : printMode === 'greeter' ? 'Guest Greeter' : 'Requirements'}</h1>
-                        <div className="print-sub">{arrivalDateStr}</div>
+                        <h1 className="text-xl font-black heading-font uppercase tracking-tighter text-slate-950">
+                          {printMode === 'main' ? 'Arrivals List' : printMode === 'greeter' ? 'Guest Greeter' : 'Requirements'}
+                        </h1>
+                        <div className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{arrivalDateStr}</div>
                     </div>
+                </div>
+                {/* Dashboard Stats in Header for Context */}
+                <div className="flex gap-2 items-center mb-1">
+                   <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">Total</span><span className="text-[7pt] font-bold">{stats.total}</span></div>
+                   <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">Main</span><span className="text-[7pt] font-bold">{stats.mainHotel}</span></div>
+                   <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">Lake</span><span className="text-[7pt] font-bold">{stats.lakeHouse}</span></div>
+                   <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">Return</span><span className="text-[7pt] font-bold">{stats.returns}</span></div>
+                   <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">VIP</span><span className="text-[7pt] font-bold">{stats.vips}</span></div>
                 </div>
             </div>
 
-            {printMode === 'main' && (
-              <div className="print-highlights">
-                  <div className="ph-item"><span className="ph-label">Total:</span><span className="ph-val">{guests.length}</span></div>
-                  <div className="ph-item"><span className="ph-label">Main:</span><span className="ph-val">{guests.filter(g => { const r = parseInt(g.room); return (r > 0 && r <= 31) || isNaN(r); }).length}</span></div>
-                  <div className="ph-item"><span className="ph-label">Lake House:</span><span className="ph-val">{guests.filter(g => { const r = parseInt(g.room); return r >= 51 && r <= 60; }).length}</span></div>
-                  <div className="ph-item"><span className="ph-label">Returns:</span><span className="ph-val">{guests.filter(g => g.ll.toLowerCase().includes('yes')).length}</span></div>
-                  <div className="ph-item"><span className="ph-label">VIPs:</span><span className="ph-val">{guests.filter(g => g.prefillNotes.includes('⭐')).length}</span></div>
-              </div>
-            )}
-            
-            <table className="w-full">
+            <table className="w-full border-collapse">
                 <thead>
+                  <tr className="bg-slate-100 text-slate-900 uppercase text-[6pt] font-black tracking-widest text-left">
                   {printMode === 'main' && (
-                    <tr>
-                      <th style={{ width: '60px' }}>Room</th>
-                      <th style={{ width: '150px' }}>Guest Name</th>
-                      <th style={{ width: '40px' }}>Stay</th>
-                      <th style={{ width: '80px' }}>Car Reg</th>
-                      <th style={{ width: '50px' }}>L&L</th>
-                      <th style={{ width: '220px' }}>Facilities</th>
-                      <th style={{ width: '180px' }}>Preferences</th>
-                      <th style={{ width: '55px' }}>ETA</th>
-                      <th style={{ width: 'auto' }}>Notes</th>
-                    </tr>
+                    <>
+                      <th className="p-1 w-[40pt]">Room</th>
+                      <th className="p-1 w-[120pt]">Guest Name</th>
+                      <th className="p-1 w-[25pt] text-center">Stay</th>
+                      <th className="p-1 w-[60pt]">Car Reg</th>
+                      <th className="p-1 w-[30pt] text-center">L&L</th>
+                      <th className="p-1 w-[150pt]">Facilities</th>
+                      <th className="p-1 w-[40pt] text-center">ETA</th>
+                      <th className="p-1">Notes</th>
+                      <th className="p-1 w-[90pt]">DNA</th>
+                    </>
                   )}
                   {printMode === 'greeter' && (
-                    <tr>
-                      <th style={{ width: '10%' }}>Time</th>
-                      <th style={{ width: '12%' }}>Room</th>
-                      <th style={{ width: '30%' }}>Guest Name</th>
-                      <th style={{ width: '15%' }}>Car Reg</th>
-                      <th style={{ width: 'auto' }}>Notes / Occasion</th>
-                    </tr>
+                    <>
+                      <th className="p-3 w-[50pt] text-center">Time</th>
+                      <th className="p-3 w-[50pt]">Room</th>
+                      <th className="p-3 w-[150pt]">Guest Name</th>
+                      <th className="p-3 w-[80pt]">Car Reg</th>
+                      <th className="p-3">Notes</th>
+                    </>
                   )}
                   {printMode === 'inroom' && (
-                    <tr>
-                      <th style={{ width: '15%' }}>Room</th>
-                      <th style={{ width: '35%' }}>Guest Name</th>
-                      <th style={{ width: '50%' }}>In Room Requirements</th>
-                    </tr>
+                    <>
+                      <th className="p-4 w-[70pt]">Room</th>
+                      <th className="p-4 w-[180pt]">Guest Name</th>
+                      <th className="p-4">Requirements</th>
+                    </>
                   )}
+                  </tr>
                 </thead>
-                <tbody>
-                  {filteredGuests.map(g => (
-                    <tr key={g.id}>
+                <tbody className="divide-y divide-slate-200">
+                  {filteredGuests
+                    .filter(g => {
+                      if (printMode !== 'inroom') return true;
+                      // Logic: Only print guests with specific in-room needs
+                      const hasItems = (g.inRoomItems && g.inRoomItems.length > 2);
+                      const hasNotes = g.prefillNotes.toLowerCase().includes('in room') || g.prefillNotes.toLowerCase().includes('setup');
+                      return hasItems || hasNotes;
+                    })
+                    .map(g => (
+                    <tr key={g.id} className="text-[7pt] border-b border-slate-100">
                       {printMode === 'main' && (
                         <>
-                          <td className="font-bold">{g.room}</td>
-                          <td className="font-bold">{g.name}</td>
-                          <td className="text-center">{g.duration}</td>
-                          <td className="font-mono">{g.car}</td>
-                          <td className="text-center">{g.ll}</td>
-                          <td className="text-[8pt]">{g.facilities.replace(/\n/g, ' • ')}</td>
-                          <td className="text-[8pt] italic text-indigo-900">{g.preferences}</td>
-                          <td className="text-center font-bold">{g.eta}</td>
-                          <td className="italic text-[8pt]">{g.prefillNotes.replace(/\n/g, ' • ')}</td>
+                          <td className="p-1 font-bold">{g.room}</td>
+                          <td className="p-1 font-bold">{g.name}</td>
+                          <td className="p-1 text-center font-bold text-slate-500">{g.duration}</td>
+                          <td className="p-1 font-mono">{g.car}</td>
+                          <td className="p-1 text-center">{g.ll}</td>
+                          <td className="p-1 text-[6pt] leading-tight">{g.facilities.replace(/\n/g, ' • ')}</td>
+                          <td className="p-1 text-center font-black">{g.eta}</td>
+                          <td className="p-1 text-[6pt] italic text-slate-800">{g.prefillNotes.replace(/\n/g, ' • ')}</td>
+                          <td className="p-1 text-[6pt] font-bold text-purple-950">{g.preferences}</td>
                         </>
                       )}
                       {printMode === 'greeter' && (
                         <>
-                          <td className="font-bold text-[10pt]">{g.eta}</td>
-                          <td className="font-bold text-[10pt]">{g.room}</td>
-                          <td className="font-bold text-[10pt]">{g.name}</td>
-                          <td className="font-mono">{g.car}</td>
-                          <td className="italic text-[8pt]">{g.prefillNotes.replace(/\n/g, ' • ')}</td>
+                          <td className="p-3 text-center font-black text-lg">{g.eta || '--:--'}</td>
+                          <td className="p-3 font-black text-base">{g.room}</td>
+                          <td className="p-3 font-black text-base">{g.name}</td>
+                          <td className="p-3 font-mono font-bold text-base">{g.car}</td>
+                          <td className="p-3 text-[9pt] italic font-bold leading-tight">{g.prefillNotes.replace(/\n/g, ' • ')}</td>
                         </>
                       )}
                       {printMode === 'inroom' && (
                         <>
-                          <td className="font-bold text-xl">{g.room}</td>
-                          <td className="font-bold text-xl">{g.name}</td>
-                          <td className="text-[#c5a065] font-bold italic text-[12pt]">{g.prefillNotes.replace(/\n/g, ' • ')}</td>
+                          <td className="p-5 font-black text-xl border-r-2 border-[#c5a065]">{g.room}</td>
+                          <td className="p-5 font-black text-xl">{g.name}</td>
+                          <td className="p-5 text-[#c5a065] font-black italic text-lg">{g.inRoomItems || g.prefillNotes.replace(/\n/g, ' • ')}</td>
                         </>
                       )}
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div className="print-footer">Gilpin Hotel & Lake House • Concierge Diamond Intel V3.00 Stable Core • {new Date().toLocaleString()}</div>
+              <div className="fixed bottom-0 left-0 w-full text-center text-[5pt] font-black uppercase text-slate-400 py-2">
+                Gilpin Hotel & Lake House • Diamond Intel V3.72 • {new Date().toLocaleString()}
+              </div>
         </div>
       </main>
 
-      {/* Unified Settings Modal */}
       {isSettingsOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 dark:bg-black/90 backdrop-blur-xl z-[4000] flex items-center justify-center p-6 animate-in fade-in duration-500">
-          <div className="bg-white dark:bg-stone-900 w-full max-w-2xl rounded-[2.5rem] shadow-2xl border-2 border-[#c5a065]/20 p-8 transform transition-all animate-in zoom-in-95 duration-500 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[4000] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-stone-900 w-full max-w-2xl rounded-xl shadow-2xl border border-[#c5a065]/40 p-8 transform transition-all animate-in zoom-in-95 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center mb-8">
               <div className="flex items-center gap-4">
-                <span className="text-4xl">⚙️</span>
-                <div>
-                  <h2 className="heading-font text-2xl font-black text-slate-900 dark:text-white">App Settings</h2>
-                  <p className="text-[10px] font-bold text-[#c5a065] uppercase tracking-[0.2em] mt-1">System Architecture</p>
-                </div>
+                <span className="text-3xl">⚙️</span>
+                <h2 className="heading-font text-2xl font-black text-slate-900 dark:text-white uppercase">System Config</h2>
               </div>
-              <button onClick={() => setIsSettingsOpen(false)} className="bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 w-10 h-10 rounded-full flex items-center justify-center font-bold text-2xl transition-all shadow-md hover:rotate-90">×</button>
+              <button onClick={() => setIsSettingsOpen(false)} className="bg-slate-100 dark:bg-stone-800 text-slate-500 hover:text-rose-500 w-8 h-8 rounded-full flex items-center justify-center font-bold text-2xl transition-all">×</button>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <section>
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-[#c5a065] mb-3">AI Connection</h3>
-                  <div className="bg-slate-50 dark:bg-stone-800/60 p-6 rounded-[1.5rem] border border-slate-100 dark:border-stone-800 shadow-inner">
-                    <button 
-                      onClick={handleUpdateApiKey}
-                      className="w-full bg-slate-950 dark:bg-stone-700 text-white text-[9px] font-black uppercase py-3 rounded-lg shadow-md hover:brightness-125 transition-all"
-                    >
-                      🔑 Link AI Studio Key
-                    </button>
-                  </div>
-                  <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-2 px-1">Ensure your key is from a project with billing enabled.</p>
-                </section>
+              <section>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c5a065] mb-4">Core Uplink</h3>
+                <div className="bg-slate-50 dark:bg-stone-800/60 p-4 rounded-lg border border-slate-100 dark:border-stone-800 shadow-inner">
+                  <button onClick={handleUpdateApiKey} className="w-full bg-slate-950 dark:bg-[#c5a065] text-white dark:text-slate-950 text-[9px] font-black uppercase py-3 rounded-md shadow mb-4">🔑 Sync Token</button>
+                  <p className="text-[9px] text-slate-400 italic text-center px-2">Link Gemini Pro key for high-throughput extraction.</p>
+                </div>
+              </section>
 
-                <section>
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-[#c5a065] mb-3">Environment</h3>
-                  <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-stone-800/60 rounded-[1.5rem] border border-slate-100 dark:border-stone-800 shadow-inner">
-                    <div>
-                      <p className="text-[13px] font-black text-slate-800 dark:text-slate-100">Midnight Mode</p>
-                    </div>
-                    <button 
-                      onClick={() => setIsDark(!isDark)}
-                      className={`w-12 h-6 rounded-full transition-all relative ${isDark ? 'bg-indigo-600' : 'bg-slate-300'}`}
-                    >
-                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isDark ? 'left-7' : 'left-1'}`}></div>
-                    </button>
-                  </div>
-                </section>
-              </div>
-
-              <div className="space-y-6">
-                <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-[#c5a065] mb-2">Detection Rules</h3>
-                <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+              <section>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c5a065] mb-4">Logic Patches</h3>
+                <div className="space-y-1.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-1.5">
                   {flags.map(flag => (
-                    <div key={flag.id} className="flex items-center justify-between p-3 bg-white dark:bg-stone-800/40 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all group">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{flag.emoji}</span>
-                        <div>
-                          <p className="font-black text-slate-900 dark:text-white text-[12px]">{flag.name}</p>
-                        </div>
+                    <div key={flag.id} className="flex items-center justify-between p-2 bg-white dark:bg-stone-800/40 rounded-md border border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{flag.emoji}</span>
+                        <p className="font-black text-slate-900 dark:text-white text-[10px] uppercase">{flag.name}</p>
                       </div>
-                      <button onClick={() => removeFlag(flag.id)} className="text-rose-400 hover:text-rose-600 font-bold p-2 text-xl">×</button>
+                      <button onClick={() => removeFlag(flag.id)} className="text-rose-400 hover:text-rose-600 font-bold p-1 text-base">×</button>
                     </div>
                   ))}
                 </div>
-
-                <div className="bg-slate-100 dark:bg-stone-800/50 p-5 rounded-3xl border border-[#c5a065]/30">
-                  <div className="grid grid-cols-4 gap-3 mb-3">
-                    <input type="text" placeholder="✨" className="p-2 bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-700 rounded-xl text-center text-slate-900 dark:text-white" value={newFlag.emoji} onChange={e => setNewFlag({...newFlag, emoji: e.target.value})} />
-                    <input type="text" placeholder="Rule" className="col-span-3 p-2 bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-700 rounded-xl text-[10px] font-black text-slate-900 dark:text-white" value={newFlag.name} onChange={e => setNewFlag({...newFlag, name: e.target.value})} />
+                <div className="mt-4 bg-slate-50 dark:bg-stone-800/60 p-4 rounded-lg">
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    <input type="text" placeholder="✨" className="p-2 bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-700 rounded text-center text-slate-900 dark:text-white text-base font-black" value={newFlag.emoji} onChange={e => setNewFlag({...newFlag, emoji: e.target.value})} />
+                    <input type="text" placeholder="Rule Name" className="col-span-3 p-2 bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-700 rounded text-[10px] font-black text-slate-900 dark:text-white uppercase" value={newFlag.name} onChange={e => setNewFlag({...newFlag, name: e.target.value})} />
                   </div>
-                  <textarea placeholder="Keywords..." className="w-full p-3 bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-700 rounded-xl mb-3 text-[10px] font-bold text-slate-900 dark:text-white" rows={2} value={newFlag.keys} onChange={e => setNewFlag({...newFlag, keys: e.target.value})} />
-                  <button onClick={addFlag} className="w-full bg-[#c5a065] text-slate-950 font-black uppercase tracking-[0.2em] text-[9px] py-3 rounded-xl shadow-lg hover:brightness-110 active:scale-95 transition-all">💾 Update Logic Cluster</button>
+                  <button onClick={addFlag} className="w-full bg-[#c5a065] text-slate-950 font-black uppercase text-[9px] py-3 rounded-md shadow">Add Logic</button>
                 </div>
-              </div>
+              </section>
             </div>
           </div>
         </div>
       )}
 
       {isProcessing && (
-        <div className="fixed inset-0 bg-stone-950/98 backdrop-blur-3xl z-[5000] flex flex-col items-center justify-center text-white text-center p-12 animate-in fade-in duration-500">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-[5000] flex flex-col items-center justify-center text-white text-center p-12 animate-in fade-in duration-500 overflow-hidden">
           <div className="relative mb-12">
-            <div className="w-32 h-32 bg-gradient-to-br from-[#c5a065] to-yellow-100 rounded-full animate-pulse flex items-center justify-center text-[5.5rem] shadow-[0_0_100px_rgba(197,160,101,0.6)]">🤖</div>
-            <div className="absolute inset-0 border-[6px] border-[#c5a065]/20 rounded-full animate-ping duration-[4s]"></div>
+            <div className={`w-32 h-32 bg-gradient-to-br ${refinementMode === 'paid' ? 'from-indigo-400 to-indigo-950' : 'from-[#c5a065] to-yellow-100'} rounded-full animate-pulse flex items-center justify-center text-[5rem] shadow-[0_0_80px_rgba(197,160,101,0.3)]`}>
+              {refinementMode === 'paid' ? '💎' : '🤖'}
+            </div>
           </div>
-          <h2 className="heading-font text-4xl font-black mb-4 tracking-tighter">Diamond Core 3.0</h2>
-          <p className="text-[#c5a065] font-black uppercase tracking-[0.6em] text-sm mb-10 animate-pulse">{progressMsg}</p>
-          <div className="w-[300px] h-1.5 bg-slate-900/50 rounded-full overflow-hidden border border-slate-800">
-            <div className="h-full bg-gradient-to-r from-transparent via-[#c5a065] to-transparent animate-[shimmer_3s_infinite] w-full" style={{ backgroundSize: '200% 100%' }}></div>
+          <h2 className="heading-font text-4xl font-black mb-4 tracking-tighter uppercase leading-none">
+            {refinementMode === 'paid' ? 'Diamond Intel' : 'Extraction Hub'}
+          </h2>
+          <p className="text-[#c5a065] font-black uppercase tracking-[0.4em] text-[10px] mb-10 animate-pulse whitespace-pre-wrap max-w-md">{progressMsg}</p>
+          <div className="w-[300px] h-[2px] bg-slate-800/60 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-transparent via-[#c5a065] to-transparent animate-[shimmer_2s_infinite] w-full" style={{ backgroundSize: '200% 100%' }}></div>
           </div>
         </div>
       )}

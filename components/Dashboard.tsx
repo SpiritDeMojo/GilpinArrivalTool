@@ -35,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({ guests, activeFilter, onFilterCha
   };
 
   return (
-    <div className="dashboard-strip no-print">
+    <div className="dashboard-strip">
       {getStats().map(stat => (
         <div
           key={stat.id}

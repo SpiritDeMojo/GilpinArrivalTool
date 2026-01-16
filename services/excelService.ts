@@ -1,3 +1,4 @@
+
 import { Guest } from '../types';
 import { ROOM_MAP } from '../constants';
 
@@ -15,10 +16,8 @@ export class ExcelService {
   }
 
   static export(guests: Guest[]) {
-    // Exact headers from user screenshot
-    const headers = [" ", "Guest Name", "Car Reg", "Car Type", "L & L ", "ETA", "Arrival Time", "Location", "Notes", "Status"];
+    const headers = ["Room", "Guest Name", "Car Reg", "Car Type", "L & L ", "ETA", "Arrival Time", "Location", "Notes", "Status"];
     
-    // Master Rooms Sequence based on screenshot
     const masterRooms: ({ n: number, l: string, gap?: boolean })[] = [
       { n: 1, l: "1 LYTH" }, { n: 2, l: "2 WINSTER" }, { n: 3, l: "3 CLEABARROW" },
       { n: 4, l: "4 CROSTHWAITE" }, { n: 5, l: "5 CROOK" }, { n: 6, l: "6 WETHERLAM" },
@@ -35,7 +34,12 @@ export class ExcelService {
       { n: 27, l: "27 CRAKE" }, { n: 28, l: "28 DUDDON" },
       { n: 30, l: "30 LOWTHER" }, { n: 31, l: "31 LYVENNET" },
       { n: 0, l: "", gap: true },
-      { n: 51, l: "51 HARRIET" }, { n: 54, l: "54 GERTIE" }, { n: 57, l: "57 KNIPE" }, { n: 58, l: "58 TARN" }
+      { n: 51, l: "51 HARRIET" }, 
+      { n: 52, l: "52 ETHEL" }, 
+      { n: 53, l: "53 ADGIE" }, 
+      { n: 54, l: "54 GERTIE" }, 
+      { n: 57, l: "57 KNIPE" }, 
+      { n: 58, l: "58 TARN" }
     ];
 
     const guestMap = new Map<number, Guest>();
@@ -70,51 +74,22 @@ export class ExcelService {
       }
     });
 
-    // Handle Unassigned or those not in master list
-    const masterIds = new Set(masterRooms.map(m => m.n));
     const extraGuests = guests.filter(g => {
       const rNum = this.getRoomNumber(g.room);
-      return !masterIds.has(rNum) || rNum === 0;
+      return !masterRooms.find(m => m.n === rNum) || rNum === 0;
     });
 
     if (extraGuests.length > 0) {
       wsData.push(["", "", "", "", "", "", "", "", "", ""]);
       wsData.push(["Extra / Unassigned", "", "", "", "", "", "", "", "", ""]);
       extraGuests.forEach(g => {
-        wsData.push([
-          g.room, 
-          g.name, 
-          g.car, 
-          "", 
-          g.ll, 
-          g.eta, 
-          "", 
-          "", 
-          g.prefillNotes.replace(/\n/g, ' • '), 
-          ""
-        ]);
+        wsData.push([g.room, g.name, g.car, "", g.ll, g.eta, "", "", g.prefillNotes.replace(/\n/g, ' • '), ""]);
       });
     }
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(wsData);
-    
-    // Formatting matching screenshot feel
-    const wscols = [
-      { wch: 18 }, // Room
-      { wch: 30 }, // Name
-      { wch: 15 }, // Car Reg
-      { wch: 10 }, // Car Type
-      { wch: 12 }, // L&L
-      { wch: 8 },  // ETA
-      { wch: 12 }, // Arrival Time
-      { wch: 12 }, // Location
-      { wch: 60 }, // Notes
-      { wch: 10 }  // Status
-    ];
-    ws['!cols'] = wscols;
-
     XLSX.utils.book_append_sheet(wb, ws, "Arrivals");
-    XLSX.writeFile(wb, `Gilpin_Arrivals_Ultimate_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `Gilpin_Arrivals_Master_${new Date().toISOString().split('T')[0]}.xlsx`);
   }
 }

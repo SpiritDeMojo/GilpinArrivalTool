@@ -27,6 +27,7 @@ export interface Flag {
 export type FilterType = 'all' | 'main' | 'lake' | 'vip' | 'allergy' | 'return';
 export type PrintMode = 'main' | 'greeter' | 'inroom';
 export type RefinementField = 'notes' | 'facilities' | 'inRoomItems' | 'preferences' | 'packages' | 'history';
+export type RefinementMode = 'free' | 'paid';
 
 export interface RoomMapping {
   [key: string]: number;
