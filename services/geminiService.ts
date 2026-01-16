@@ -20,21 +20,23 @@ export class GeminiService {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
     const isDiamond = mode === 'paid';
     
-    // Diamond utilizes the Pro model for deep analysis. Standard uses Flash.
+    // Tiered model selection
+    // Diamond (Paid): Pro model with reasoning capabilities
+    // Standard (Free): Flash model for cost-effective speed
     const model = isDiamond ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
 
     const fieldInstructions: Record<RefinementField, string> = {
       notes: isDiamond 
-        ? "Analyze all notes deeply. Identify specific 'In Room' requirements vs 'Strategy' vs 'Factual History'. Highlight mobility issues, past complaints, or specific anniversaries."
-        : "Extract key HK and Guest notes. List birthdays and anniversaries.",
+        ? "Analyze all notes deeply. Identify specific 'In Room' requirements vs 'Strategy' vs 'Factual History'. Highlight mobility issues, past complaints, or specific anniversaries mentioned in the raw stream."
+        : "Extract key HK and Guest notes. List birthdays and anniversaries from the text.",
       facilities: "Summarize all restaurant and spa bookings with exact times and locations (Spice, Source, ESPA).",
-      inRoomItems: "IN-ROOM SETUP: Identify exactly what needs to be placed in the room (e.g., hampers, flowers, specific milk, extra towels, celebratory items). Specifically look for the marker 'In Room on Arrival:'. This is HIGH PRIORITY.",
+      inRoomItems: "IN-ROOM SETUP: Identify exactly what needs to be placed in the room (e.g., hampers, flowers, specific milk, extra towels, celebratory items). Specifically look for markers like 'In Room on Arrival:' or 'Billing:'. This is HIGH PRIORITY for housekeeping.",
       preferences: isDiamond
-        ? "GUEST DNA: Infer behavioral traits. Do they value privacy? Are they high-maintenance? Did they have a previous bad experience? Provide a 'How to Handle' summary."
-        : "List stated preferences like bed configuration.",
-      packages: "Turn shorthand rate codes into guest-friendly package names.",
+        ? "GUEST DNA: Infer behavioral traits. Do they value privacy? Are they high-maintenance? Did they have a previous bad experience mentioned in history? Provide a 'How to Handle' strategy summary."
+        : "List stated preferences like bed configuration or room requests.",
+      packages: "Turn shorthand rate codes into guest-friendly package names (e.g. BB_2 -> 2 Night B&B).",
       history: isDiamond
-        ? "LOYALTY PROFILE: Summarize stay frequency and total value. Highlight if they are returning specifically to resolve a previous issue."
+        ? "LOYALTY PROFILE: Summarize stay frequency and total value. Highlight if they are 'Friends of Gilpin' or returning to resolve a previous issue."
         : "Count previous stays and label as New/Return."
     };
 
@@ -42,11 +44,12 @@ export class GeminiService {
 
     const systemInstruction = `You are the Gilpin Hotel Diamond Intelligence Engine. 
     Gilpin is a 5-star Relais & Châteaux property. Accuracy and luxury tone are critical.
-    ${isDiamond 
-      ? "DIAMOND MODE (PREMIUM): Provide high-fidelity extraction. Infer Guest DNA. Focus on previous complaints and 'In-Room' setup. Use your full reasoning capabilities." 
-      : "STANDARD MODE (FREE): Provide clean, factual extractions for operational efficiency."}
     
-    Output: A clean JSON array of objects mapping to each guest. 
+    ${isDiamond 
+      ? "DIAMOND MODE (PREMIUM): Provide high-fidelity extraction and behavioral inference. This mode is for complex strategy development. Use full thinking capacity." 
+      : "STANDARD MODE (FREE): Provide clean, factual extractions for daily operational efficiency."}
+    
+    Output: A clean JSON array of objects mapping to each guest in the provided batch. 
     Formatting: Professional hospitality tone. No filler.`;
 
     const guestDataPayload = guests.map((g, i) => 
@@ -59,8 +62,8 @@ export class GeminiService {
         contents: `REFINE THE FOLLOWING ${guests.length} GUESTS DATA:\n\n${guestDataPayload}\n\nTARGET EXTRACTION FIELDS:\n${activeInstructions}`,
         config: {
           systemInstruction,
-          // Diamond mode gets the extra reasoning budget for DNA inference
-          ...(isDiamond ? { thinkingConfig: { thinkingBudget: 4000 } } : {}),
+          // Only enable thinking budget for Diamond mode with Pro model
+          ...(isDiamond ? { thinkingConfig: { thinkingBudget: 8000 } } : {}),
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.ARRAY,

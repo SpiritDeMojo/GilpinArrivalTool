@@ -282,11 +282,14 @@ const App: React.FC = () => {
                 </button>
                 {showRefineOptions && (
                   <div className="absolute top-full right-0 mt-1 w-48 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md rounded-lg shadow-2xl border border-slate-200 dark:border-stone-800 p-3 z-[1100] animate-in fade-in zoom-in-95">
-                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1 px-1 border-b border-slate-100 dark:border-slate-800 pb-1">Intel Tier</p>
+                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1 px-1 border-b border-slate-100 dark:border-slate-800 pb-1">Refinement Tier</p>
                     <div className="grid grid-cols-2 gap-1 mb-2 bg-slate-50/50 dark:bg-stone-800/50 p-1 rounded-md">
                       <button onClick={() => setRefinementMode('free')} className={`py-1 text-[7px] font-black rounded ${refinementMode === 'free' ? 'bg-white dark:bg-stone-700 shadow-sm text-indigo-600' : 'text-slate-500'}`}>Standard</button>
                       <button onClick={() => setRefinementMode('paid')} className={`py-1 text-[7px] font-black rounded ${refinementMode === 'paid' ? 'bg-indigo-600 shadow-sm text-white' : 'text-slate-500'}`}>Diamond</button>
                     </div>
+                    <p className="text-[6px] text-slate-400 leading-tight mb-2 px-1">
+                      {refinementMode === 'paid' ? 'Diamond uses the Premium Pro model for deep DNA inference.' : 'Standard uses the Flash model for rapid factual extraction.'}
+                    </p>
                     <button onClick={handleAIRefine} className="w-full mt-1.5 bg-indigo-600 text-white text-[7.5px] font-black uppercase py-2 rounded shadow-md">Initiate Analysis</button>
                   </div>
                 )}
@@ -360,12 +363,11 @@ const App: React.FC = () => {
                     <img src={GILPIN_LOGO_URL} alt="Gilpin" className="h-12" />
                     <div>
                         <h1 className="text-xl font-black heading-font uppercase tracking-tighter text-slate-950">
-                          {printMode === 'main' ? 'Arrivals List' : printMode === 'greeter' ? 'Guest Greeter' : 'Requirements'}
+                          {printMode === 'main' ? 'Arrivals List' : printMode === 'greeter' ? 'Guest Greeter' : 'In-Room Requirements'}
                         </h1>
                         <div className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{arrivalDateStr}</div>
                     </div>
                 </div>
-                {/* Dashboard Stats in Header for Context */}
                 <div className="flex gap-2 items-center mb-1">
                    <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">Total</span><span className="text-[7pt] font-bold">{stats.total}</span></div>
                    <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">Main</span><span className="text-[7pt] font-bold">{stats.mainHotel}</span></div>
@@ -402,9 +404,9 @@ const App: React.FC = () => {
                   )}
                   {printMode === 'inroom' && (
                     <>
-                      <th className="p-4 w-[70pt]">Room</th>
-                      <th className="p-4 w-[180pt]">Guest Name</th>
-                      <th className="p-4">Requirements</th>
+                      <th className="p-4 w-[80pt] border-b-2 border-slate-200">Room</th>
+                      <th className="p-4 w-[180pt] border-b-2 border-slate-200">Guest Name</th>
+                      <th className="p-4 border-b-2 border-slate-200">Requirements / Setup</th>
                     </>
                   )}
                   </tr>
@@ -413,7 +415,6 @@ const App: React.FC = () => {
                   {filteredGuests
                     .filter(g => {
                       if (printMode !== 'inroom') return true;
-                      // Logic: Only print guests with specific in-room needs
                       const hasItems = (g.inRoomItems && g.inRoomItems.length > 2);
                       const hasNotes = g.prefillNotes.toLowerCase().includes('in room') || g.prefillNotes.toLowerCase().includes('setup');
                       return hasItems || hasNotes;
@@ -444,9 +445,11 @@ const App: React.FC = () => {
                       )}
                       {printMode === 'inroom' && (
                         <>
-                          <td className="p-5 font-black text-xl border-r-2 border-[#c5a065]">{g.room}</td>
+                          <td className="p-5 font-black text-2xl border-r-2 border-[#c5a065] bg-slate-50/30">{g.room}</td>
                           <td className="p-5 font-black text-xl">{g.name}</td>
-                          <td className="p-5 text-[#c5a065] font-black italic text-lg">{g.inRoomItems || g.prefillNotes.replace(/\n/g, ' • ')}</td>
+                          <td className="p-5 text-[#c5a065] font-black italic text-xl leading-relaxed">
+                            {g.inRoomItems || g.prefillNotes.split('\n').filter(n => n.toLowerCase().includes('in room')).join(' • ') || 'CHECK GUEST NOTES'}
+                          </td>
                         </>
                       )}
                     </tr>

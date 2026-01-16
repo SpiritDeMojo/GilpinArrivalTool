@@ -180,6 +180,7 @@ export class PDFService {
     let notesList: string[] = [];
     const scanLower = singleLineText.toLowerCase();
 
+    // Occasions
     const occSection = this.extractSection(singleLineText, "Occasion:", ["Traces:", "Booking Notes:", "Facility Bookings:"]);
     const occ2Section = this.extractSection(singleLineText, "Special Occasion:", ["ETA:", "Billing:", "HK Notes:"]);
     const combinedOcc = [occSection, occ2Section]
@@ -187,16 +188,7 @@ export class PDFService {
       .join(" / ");
     if(combinedOcc.length > 2) notesList.push(`🎉 ${combinedOcc}`);
 
-    const hkRaw = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Billing:", "Booking Notes:"]);
-    if(hkRaw && !hkRaw.match(/Booking\.com/i)) notesList.push(`🏠 ${hkRaw}`);
-    
-    const guestRaw = this.extractSection(singleLineText, "Guest Notes:", ["HK Notes:", "Billing:", "Unit:", "Booking Notes:"]);
-    if(guestRaw) notesList.push(`👤 ${guestRaw}`);
-
-    const bookingRaw = this.extractSection(singleLineText, "Booking Notes:", ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Facility Bookings:"]);
-    if(bookingRaw) notesList.push(`📝 ${bookingRaw}`);
-
-    // High Priority "In Room" capture - Improved for Room 31 Flowers
+    // In Room Capture - High priority as per v3.72
     const inRoomRegex = /(?:In Room on Arrival|In-Room|In Room Spa Hamper|IN ROOM|Billing):?\s*([^•\n\r|ID:|Req.]+)/gi;
     let match;
     let inRoomParts = [];
@@ -208,14 +200,35 @@ export class PDFService {
         inRoomParts.push(val);
       }
     }
+    
+    // Explicitly check for "Flowers" mentioned in billing or in room setup
+    if (scanLower.includes("flowers") && !inRoomParts.some(p => p.toLowerCase().includes("flowers"))) {
+        if (scanLower.match(/billing:.*?flowers/i) || scanLower.match(/in room.*?flowers/i)) {
+            inRoomParts.push("Flowers");
+        }
+    }
+
     let inRoomItems = inRoomParts.join(" • ");
+    if (inRoomItems) {
+        notesList.push(`🎁 IN ROOM: ${inRoomItems}`);
+    }
+
+    const hkRaw = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Billing:", "Booking Notes:"]);
+    if(hkRaw && !hkRaw.match(/Booking\.com/i)) notesList.push(`🏠 ${hkRaw}`);
+    
+    const guestRaw = this.extractSection(singleLineText, "Guest Notes:", ["HK Notes:", "Billing:", "Unit:", "Booking Notes:"]);
+    if(guestRaw) notesList.push(`👤 ${guestRaw}`);
+
+    const bookingRaw = this.extractSection(singleLineText, "Booking Notes:", ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Facility Bookings:"]);
+    if(bookingRaw) notesList.push(`📝 ${bookingRaw}`);
 
     flags.forEach(f => {
       const match = f.keys.some(k => {
         const keyLower = k.toLowerCase();
         const regex = new RegExp(`\\b${keyLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
         
-        if ((keyLower === "cat" || keyLower === "pet") && (room.toLowerCase().includes("catbells") || room.toLowerCase().includes("carpet"))) {
+        // Safety logic to prevent false positives for "Pets" on room names or category text
+        if ((keyLower === "cat" || keyLower === "pet") && (room.toLowerCase().includes("catbells") || scanLower.includes("category"))) {
           return false;
         }
         
