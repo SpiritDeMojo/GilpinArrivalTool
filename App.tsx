@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Guest, FilterType, Flag, PrintMode, RefinementField, RefinementMode } from './types';
+import { Guest, FilterType, Flag, PrintMode, RefinementField } from './types';
 import { PDFService } from './services/pdfService';
 import { GeminiService } from './services/geminiService';
 import { ExcelService } from './services/excelService';
@@ -26,11 +26,9 @@ const App: React.FC = () => {
   });
   
   const [isSticky, setIsSticky] = useState(false);
-  
-  const [refinementFields, setRefinementFields] = useState<RefinementField[]>(['notes', 'facilities', 'inRoomItems', 'preferences', 'packages', 'history']);
-  const [refinementMode, setRefinementMode] = useState<RefinementMode>('paid');
-  const [showRefineOptions, setShowRefineOptions] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const refinementFields: RefinementField[] = ['notes', 'facilities', 'inRoomItems', 'preferences', 'packages', 'history'];
 
   const [flags, setFlags] = useState<Flag[]>(() => {
     const saved = localStorage.getItem('custom_flags');
@@ -91,7 +89,7 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsProcessing(true);
-    setProgressMsg("Analyzing Intelligence Stream...");
+    setProgressMsg("Scanning Intelligence Stream...");
     try {
       await new Promise(r => setTimeout(r, 100));
       const result = await PDFService.parse(file, flags);
@@ -128,10 +126,10 @@ const App: React.FC = () => {
     try {
       for (let i = 0; i < chunks.length; i++) {
         const currentBatch = chunks[i];
-        setProgressMsg(`Refining Intel ${i + 1}/${chunks.length}...`);
+        setProgressMsg(`Refining Intel Segment ${i + 1}/${chunks.length}...`);
         
         try {
-          const refinements = await GeminiService.refineGuestBatch(currentBatch, refinementFields, refinementMode);
+          const refinements = await GeminiService.refineGuestBatch(currentBatch, refinementFields);
           if (refinements && Array.isArray(refinements)) {
             setGuests(prev => {
               const next = [...prev];
@@ -161,7 +159,7 @@ const App: React.FC = () => {
           }
         } catch (innerError: any) {
           if (innerError.message === "API_KEY_INVALID") {
-            alert("API Sync Required.");
+            alert("Security Sync Required.");
             await handleUpdateApiKey();
             break; 
           }
@@ -169,21 +167,16 @@ const App: React.FC = () => {
         }
 
         if (i < chunks.length - 1) {
-          const delayMs = refinementMode === 'paid' ? 800 : 10000;
-          const seconds = Math.floor(delayMs / 1000);
-          for (let s = Math.max(1, seconds); s > 0; s--) {
-            setProgressMsg(`Cooling Core (${s}s)...`);
-            await new Promise(r => setTimeout(r, 1000));
-          }
+          setProgressMsg(`Processing Intel (2s)...`);
+          await new Promise(r => setTimeout(r, 2000));
         }
       }
     } catch (error: any) {
       console.error("AI Cycle Error:", error);
-      alert("Refinement interrupted.");
+      alert("Refinement cycle interrupted.");
     } finally {
       setIsProcessing(false);
       setProgressMsg("");
-      setShowRefineOptions(false);
     }
   };
 
@@ -287,24 +280,12 @@ const App: React.FC = () => {
           
           {guests.length > 0 && (
             <div className="flex gap-1 ml-1">
-              <div className="relative">
-                <button 
-                  onClick={() => setShowRefineOptions(!showRefineOptions)}
-                  className={`px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm transition-all flex items-center gap-1 ${refinementMode === 'paid' ? 'bg-indigo-700' : 'bg-indigo-600'} text-white hover:scale-105 active:scale-95`}
-                >
-                  {refinementMode === 'paid' ? '💎 DIAMOND AI' : '✨ AI REFINE'}
-                </button>
-                {showRefineOptions && (
-                  <div className="absolute top-full right-0 mt-2 w-56 bg-white/95 dark:bg-stone-900/95 backdrop-blur-2xl rounded-xl shadow-2xl border border-slate-200 dark:border-stone-800 p-4 z-[1100] animate-in fade-in zoom-in-95">
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 px-1">Logic Precision</p>
-                    <div className="grid grid-cols-2 gap-1.5 mb-3 bg-slate-50 dark:bg-stone-800 p-1.5 rounded-lg border border-slate-100 dark:border-stone-700">
-                      <button onClick={() => setRefinementMode('free')} className={`py-1.5 text-[8px] font-black rounded-md ${refinementMode === 'free' ? 'bg-white dark:bg-stone-600 shadow-md text-indigo-600' : 'text-slate-500'}`}>Standard</button>
-                      <button onClick={() => setRefinementMode('paid')} className={`py-1.5 text-[8px] font-black rounded-md ${refinementMode === 'paid' ? 'bg-indigo-600 shadow-md text-white' : 'text-slate-500'}`}>Diamond</button>
-                    </div>
-                    <button onClick={handleAIRefine} className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[8px] font-black uppercase py-2.5 rounded-lg shadow-lg transition-all active:scale-95">Load Intel</button>
-                  </div>
-                )}
-              </div>
+              <button 
+                onClick={handleAIRefine}
+                className={`px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm transition-all flex items-center gap-1 bg-indigo-700 text-white hover:scale-105 active:scale-95`}
+              >
+                💎 DIAMOND AI REFINE
+              </button>
               <button onClick={() => triggerPrint('inroom')} className="bg-sky-600 text-white px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm hover:bg-sky-500">🎁 In Room</button>
               <button onClick={() => triggerPrint('greeter')} className="bg-amber-500 text-slate-900 px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm hover:bg-amber-400">👋 Greeter</button>
               <button onClick={() => triggerPrint('main')} className="bg-slate-900 dark:bg-stone-700 text-white px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">🖨️ Arrivals</button>
@@ -340,8 +321,8 @@ const App: React.FC = () => {
                 <span className="text-4xl">📄</span>
               </div>
               <h2 className="heading-font text-4xl font-black mb-1 text-slate-900 dark:text-white uppercase tracking-tighter">Gilpin Arrivals Hub</h2>
-              <p className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.5em] max-w-sm">Secure Extraction Engine v3.98 Gold</p>
-              <div className="px-8 py-3 bg-[#c5a065] text-slate-950 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl transform transition-all hover:scale-105 active:scale-95">Initiate Load</div>
+              <p className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.5em] max-w-sm">Secure Extraction Engine v3.99 Diamond Gold</p>
+              <div className="px-8 py-3 bg-[#c5a065] text-slate-950 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl transform transition-all hover:scale-105 active:scale-95">Initiate Extraction</div>
               <input id="file-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
             </div>
           </div>
@@ -360,7 +341,7 @@ const App: React.FC = () => {
                     <th className="w-[280px] p-2.5">Facilities</th>
                     <th className="w-[80px] p-2.5 text-center">ETA</th>
                     <th className="p-2.5">Notes & Refinement</th>
-                    <th className="w-[260px] p-2.5 text-purple-400">Concierge Intel (Diamond)</th>
+                    <th className="w-[260px] p-2.5 text-purple-400">Concierge Strategy (Diamond)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -381,7 +362,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* GOLDEN PRINT ENGINE V3.98 - MAXIMUM DENSITY OPTIMIZATION */}
+        {/* GOLDEN PRINT ENGINE V3.99 - MAXIMUM DENSITY OPTIMIZATION */}
         <div className="hidden print:block w-full font-sans leading-tight">
             <div className="flex justify-between items-end border-b-2 border-[#c5a065] pb-1.5 mb-3">
                 <div className="flex items-center gap-3">
@@ -481,7 +462,7 @@ const App: React.FC = () => {
             )}
 
             <div className="fixed bottom-0 left-0 w-full text-center text-[5.5pt] font-black uppercase text-slate-400 py-3 tracking-[0.4em]">
-                GILPIN HOTEL & LAKE HOUSE • V3.98 GOLDEN • {new Date().toLocaleString()} • {arrivalDateStr.toUpperCase()}
+                GILPIN HOTEL & LAKE HOUSE • V3.99 GOLDEN • {new Date().toLocaleString()} • {arrivalDateStr.toUpperCase()}
             </div>
         </div>
       </main>
@@ -542,11 +523,11 @@ const App: React.FC = () => {
         <div className="fixed inset-0 bg-slate-950/99 backdrop-blur-3xl z-[5000] flex flex-col items-center justify-center text-white text-center p-12 animate-in fade-in duration-1000 overflow-hidden">
           <div className="relative mb-20">
             <div className={`w-32 h-32 bg-gradient-to-br from-[#c5a065] to-amber-100 shadow-[0_0_120px_rgba(197,160,101,0.3)] rounded-full animate-pulse flex items-center justify-center text-[5rem]`}>
-              {refinementMode === 'paid' ? '💎' : '⏳'}
+              💎
             </div>
             <div className="absolute inset-0 border-4 border-white/5 rounded-full animate-ping opacity-10"></div>
           </div>
-          <h2 className="heading-font text-6xl font-black mb-8 tracking-tighter uppercase leading-none text-white">Refining...</h2>
+          <h2 className="heading-font text-6xl font-black mb-8 tracking-tighter uppercase leading-none text-white">Diamond Refinement</h2>
           <p className="text-[#c5a065] font-black uppercase tracking-[0.6em] text-[15px] mb-12 animate-pulse whitespace-pre-wrap max-w-xl leading-relaxed">{progressMsg}</p>
           <div className="w-[450px] h-[3px] bg-slate-800/40 rounded-full overflow-hidden shadow-2xl">
             <div className="h-full bg-gradient-to-r from-transparent via-[#c5a065] to-transparent animate-[shimmer_2.5s_infinite] w-full" style={{ backgroundSize: '200% 100%' }}></div>

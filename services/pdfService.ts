@@ -106,6 +106,7 @@ export class PDFService {
   private static parseBlock(block: any, arrivalDate: Date | null, flags: Flag[]): Guest {
     const rawText = block.lines.map((l: any) => l.items.map((i: any) => i.str).join(" ")).join("\n");
     const singleLineText = rawText.replace(/\s+/g, " ");
+    const scanLower = singleLineText.toLowerCase();
     const headerLineItems = block.lines[0].items;
     
     let room = "Unassigned";
@@ -156,6 +157,36 @@ export class PDFService {
     const rateCodeMatch = singleLineText.match(packageRegex);
     const rateCode = rateCodeMatch ? rateCodeMatch[1].toUpperCase() : "";
 
+    // ULTIMATE STAY DURATION LOGIC: Date delta calculation
+    let duration = "1";
+    if (arrivalDate) {
+        const firstLineRaw = block.lines[0].items.map((i: any) => i.str).join(" ");
+        const firstLineDates = firstLineRaw.match(/\d{2}\/\d{2}\/\d{2,4}/g) || [];
+        
+        if (firstLineDates.length > 0) {
+            // Find a date that is clearly after the arrival date
+            for (const dStr of firstLineDates) {
+                const parts = dStr.split('/');
+                const d = parseInt(parts[0]);
+                const m = parseInt(parts[1]);
+                let y = parseInt(parts[2]);
+                if (y < 100) y += 2000;
+                
+                const checkDate = new Date(y, m - 1, d);
+                checkDate.setHours(0,0,0,0);
+                
+                if (checkDate > arrivalDate) {
+                    const diffTime = checkDate.getTime() - arrivalDate.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays > 0 && diffDays < 15) {
+                        duration = diffDays.toString();
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     let car = "";
     const plateRegex = /\b([A-Z]{2}\d{2}\s?[A-Z]{3}|[A-Z]{1,2}\d{1,4}\s?[A-Z]{0,3}|[A-Z]{1,3}\s?\d{1,4}[A-Z]?)\b/i;
     const carBlacklist = /^(BB\d?|APR\d?|MIN|RO|MAG|LH|FOC|COMP|UNSURE|TBD|202\d|P\.O\.NR)$/i;
@@ -175,17 +206,16 @@ export class PDFService {
       ll = "Yes";
     }
 
-    // STRICT WHITELISTED IN ROOM ITEMS - ULTIMATE REFINEMENT
+    // STRICT WHITELISTED IN ROOM ITEMS
     const inRoomWhitelist = [
       "champagne", "champ", "flowers", "spa hamper", "bollinger", 
       "prosecco", "card with a specific message", "card", 
-      "minimoon package", "magical escape", "chocolates", "fruit plate"
+      "minimoon", "magical escape", "chocolates", "itinerary"
     ];
     const inRoomMarkers = ["In Room on Arrival:", "In-Room:", "IN ROOM:", "In Room Spa Hamper:", "Billing:", "Traces:"];
     let rawInRoomItems: string[] = [];
     
-    // Automatic package triggers: Match the "In Room" expectations from provided PDFs
-    if (rateCode === "MIN" || rateCode === "MAGESC" || singleLineText.toLowerCase().includes("minimoon") || singleLineText.toLowerCase().includes("magical escape")) {
+    if (rateCode === "MIN" || rateCode === "MAGESC" || scanLower.includes("minimoon") || scanLower.includes("magical escape")) {
         rawInRoomItems.push("Champagne", "Itinerary");
     }
 
@@ -202,9 +232,6 @@ export class PDFService {
     });
 
     let notesList: string[] = [];
-    const scanLower = singleLineText.toLowerCase();
-
-    // Occasion extraction - stop at internal P.O.Nr markers to replicate Greeter PDF cleanliness
     const occSection = this.extractSection(singleLineText, "Occasion:", ["P.O.Nr:", "Traces:", "Booking Notes:", "Facility Bookings:"]);
     const combinedOcc = occSection.replace(/None|NDR|^\d+$/i, "").trim();
     if(combinedOcc.length > 2) notesList.push(`🎉 ${combinedOcc}`);
@@ -248,7 +275,7 @@ export class PDFService {
       car,
       ll,
       eta,
-      duration: rateCode,
+      duration,
       facilities,
       prefillNotes: Array.from(new Set(notesList)).join("\n"),
       inRoomItems: inRoomStr,
