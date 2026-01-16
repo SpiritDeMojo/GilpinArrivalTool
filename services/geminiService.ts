@@ -20,39 +20,43 @@ export class GeminiService {
     const modelName = 'gemini-3-pro-preview';
 
     const fieldInstructions: Record<RefinementField, string> = {
-      notes: "CONCIERGE SUMMARY: Max 2 lines. Filter all internal noise (P.O.Nr, trace dates, system IDs). Focus on setup needs, milestones, and high-value 'hidden' intel (e.g. SPICE DUPLICATION, recovery stay). NO MARKDOWN.",
-      facilities: "FORMAT: 'Icon Name (Time)'. Max 3 items. Icons: 🌶️ Spice, 🍴 Source, 💆‍♀️ ESPA, 🍱 Bento, 🍵 Afternoon Tea, ♨️ Spa. High density text.",
-      inRoomItems: "STRICT HK SETUP: List only Physical items like Champagne, Flowers, Spa Hamper, Bollinger, Prosecco, or Itinerary. If package is MIN/MAGESC, ensure 'Champagne • Itinerary' is present.",
-      preferences: "ARRIVAL TACTIC: A tactical tip for the greeter team based on guest DNA (e.g., 'Confirm the crab allergy immediately', 'Warmly mention the 50th birthday hamper').",
-      packages: "Human-readable translation of rate codes (e.g., 'Bed & Breakfast', 'Magical Escape').",
-      history: "LOYALTY SUMMARY: Precise stay count and behavior (e.g., 'Regular Guest - 12th Stay')."
+      notes: "OUTPUT: 'Notes / Occasion' column content. MISSION: Combine occasion, housekeeping specifics, and internal alerts. CRITICAL: Detect hidden booking issues (e.g., 'Noticed a SPICE DUPLICATION' or 'Source Conflict Check'). Include VIP status icons (⭐). Filter out P.O.Nr and billing email addresses. Use bullet points (•) for multiple items. NO MARKDOWN.",
+      facilities: "OUTPUT: 'Facilities' column content. FORMAT: 'Icon Name (DD.MM.YY @ HHMM)'. Use: 🌶️ Spice, 🍴 Source, 💆‍♀️ ESPA, 🍱 Bento, 🍵 Afternoon Tea, ♨️ Spa. Maximum 4 items, prioritizing the most immediate bookings.",
+      inRoomItems: "OUTPUT: 'Housekeeping Setup Specification'. STRICT: List only physical items for room setup (e.g., 'In-Room Spa Hamper • Bottle of Champagne • Balloons'). If 'MIN' or 'MAGESC' package detected, ensure 'Champagne • Itinerary' is specified.",
+      preferences: "OUTPUT: 'Concierge Strategy' (Tactical Greeting). MISSION: Provide a 1-sentence instruction for the front-of-house team. Examples: 'Warn of the biterness in peppermint tea if ordered', 'Discreetly confirm Room 55 request', 'Confirm the 88th birthday card is present'.",
+      packages: "Human-readable translation of the RateCode. (e.g., 'BB_1' -> 'Bed & Breakfast', 'MAGESC' -> 'Magical Escape').",
+      history: "LOYALTY: Summarize stay count and behavior (e.g., 'Regular - 5th stay', 'New Guest')."
     };
 
     const activeInstructions = fields.map(f => fieldInstructions[f] || "").join("\n    ");
 
     const systemInstruction = `You are the Gilpin Hotel Diamond Intelligence Engine. 
-     Gilpin is a world-class 5-star Relais & Châteaux hotel. Excellence is mandatory.
+     Gilpin is a world-class 5-star Relais & Châteaux hotel. Your outputs must match the 'Arrivals List' and 'Guest Greeter' PDF samples perfectly.
      
-     MISSION: Generate ultra-refined intel for the Arrivals List. 
-     MATCH OUTPUTS TO PROVIDED SAMPLES:
-     1. Strictly PLAIN TEXT only (No **bold**, No _italics_).
-     2. Identify 'Hidden' intel: detected duplicate bookings (e.g. SPICE DUPLICATION), past stay complaints, or specific room move bans.
-     3. Remove all P.O.Nr, billing traces like 'send bill to email', and system IDs.
-     4. Target high-density readability for 7.5pt-8pt font table printouts.
+     MISSION: Transform raw PMS traces into clean, professional, and actionable hospitality intelligence.
+     
+     GOLD STANDARDS:
+     1. STICK TO PLAIN TEXT: Do not use bold (**) or italics (_). Use standard characters and emojis.
+     2. TRACE CLEANUP: Stripping '8 Day Check', 'Checked: KW', P.O.Nr, and billing instructions is mandatory.
+     3. HIDDEN INTEL: You MUST cross-reference all trace text to find system conflicts. If a guest has two Spice bookings for the same time, or mentions a 'Spa Lodge price' for a 'Spa Suite', highlight this as a 'Conflict Check'.
+     4. GUEST DNA: Capture the spirit of the guest notes (e.g., 'Wife struggles with mobility', '88th Birthday', 'L is Vegan').
+     5. DENSITY: Your output must be concise enough to fit in a standard table cell (7.5pt font) without excessive wrapping.
     
-    Return a JSON array of objects strictly matching input batch count.`;
+    Return a JSON array of objects strictly matching the input batch count.`;
 
     const guestDataPayload = guests.map((g, i) => 
-      `GUEST #${i+1}: ${g.name} (Room: ${g.room})\nRAW_INTEL: "${g.rawHtml}"\nEXTRACTED_NOTES: "${g.prefillNotes}"`
+      `GUEST #${i+1}: ${g.name} (Room: ${g.room})
+      RAW_DATA: "${g.rawHtml}"
+      CURRENT_PARSED_NOTES: "${g.prefillNotes}"`
     ).join("\n\n---\n\n");
 
     try {
       const response = await ai.models.generateContent({
         model: modelName,
-        contents: `RETIREVE GILPIN INTELLIGENCE:\n\n${guestDataPayload}\n\nREFINEMENT SPECS:\n${activeInstructions}`,
+        contents: `GILPIN OPERATIONAL ANALYSIS:\n\n${guestDataPayload}\n\nTARGET EXTRACTION STRATEGY:\n${activeInstructions}`,
         config: {
           systemInstruction,
-          thinkingConfig: { thinkingBudget: 24000 },
+          thinkingConfig: { thinkingBudget: 32768 },
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.ARRAY,

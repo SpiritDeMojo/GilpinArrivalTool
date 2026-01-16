@@ -6,6 +6,7 @@ import { ExcelService } from './services/excelService';
 import { DEFAULT_FLAGS } from './constants';
 import Dashboard from './components/Dashboard';
 import GuestRow from './components/GuestRow';
+import SOPModal from './components/SOPModal';
 
 const BATCH_SIZE = 8;
 const GILPIN_LOGO_URL = "https://i.ibb.co/nsfDhDSs/Gilpin-logo.png";
@@ -27,6 +28,7 @@ const App: React.FC = () => {
   
   const [isSticky, setIsSticky] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSopOpen, setIsSopOpen] = useState(false);
 
   const refinementFields: RefinementField[] = ['notes', 'facilities', 'inRoomItems', 'preferences', 'packages', 'history'];
 
@@ -271,7 +273,9 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setIsSopOpen(true)} className="p-1.5 bg-slate-100 dark:bg-stone-800 rounded-full border border-slate-200 dark:border-stone-700 shadow-sm text-sm hover:scale-110 active:scale-95 transition-transform font-bold text-[#c5a065]">?</button>
+          
           <label className="switch">
             <input type="checkbox" id="theme-switch" checked={isDark} onChange={(e) => setIsDark(e.target.checked)} />
             <span className="slider"></span>
@@ -325,6 +329,13 @@ const App: React.FC = () => {
               <div className="px-8 py-3 bg-[#c5a065] text-slate-950 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl transform transition-all hover:scale-105 active:scale-95">Initiate Extraction</div>
               <input id="file-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
             </div>
+            
+            <button 
+              onClick={() => setIsSopOpen(true)}
+              className="mt-6 text-[9px] font-black uppercase tracking-[0.4em] text-slate-400 hover:text-[#c5a065] transition-colors"
+            >
+              View System SOP / Guidelines
+            </button>
           </div>
         ) : (
           <div className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200 dark:border-stone-800 overflow-hidden print:hidden mt-2 animate-in fade-in slide-in-from-bottom-2 duration-700">
@@ -534,6 +545,8 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      <SOPModal isOpen={isSopOpen} onClose={() => setIsSopOpen(false)} />
     </div>
   );
 };
