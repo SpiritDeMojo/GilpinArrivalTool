@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Guest, RefinementField } from "../types";
 
 const MAX_RETRIES = 2;
-const INITIAL_RETRY_DELAY = 10000; 
+const INITIAL_RETRY_DELAY = 2000;
 
 export class GeminiService {
   private static async sleep(ms: number) {
@@ -17,46 +17,86 @@ export class GeminiService {
     if (fields.length === 0 || guests.length === 0) return null;
     
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const modelName = 'gemini-3-pro-preview';
+    // Using gemini-3-pro-preview for maximum 'Diamond' tier reasoning capability
+    const modelName = 'gemini-3-pro-preview'; 
 
     const fieldInstructions: Record<RefinementField, string> = {
-      notes: "OUTPUT: 'Notes / Occasion' column content. MISSION: Combine occasion, housekeeping specifics, and internal alerts. CRITICAL: Detect hidden booking issues (e.g., 'Noticed a SPICE DUPLICATION' or 'Source Conflict Check'). Include VIP status icons (⭐). Filter out P.O.Nr and billing email addresses. Use bullet points (•) for multiple items. NO MARKDOWN.",
-      facilities: "OUTPUT: 'Facilities' column content. FORMAT: 'Icon Name (DD.MM.YY @ HHMM)'. Use: 🌶️ Spice, 🍴 Source, 💆‍♀️ ESPA, 🍱 Bento, 🍵 Afternoon Tea, ♨️ Spa. Maximum 4 items, prioritizing the most immediate bookings.",
-      inRoomItems: "OUTPUT: 'Housekeeping Setup Specification'. STRICT: List only physical items for room setup (e.g., 'In-Room Spa Hamper • Bottle of Champagne • Balloons'). If 'MIN', 'MAGESC', or 'CEL_DBB_1' package detected, ensure 'Champagne' and appropriate items ('Itinerary' for MIN/MAGESC, 'Balloons' for CEL_DBB_1) are specified.",
-      preferences: "OUTPUT: 'Concierge Strategy' (Tactical Greeting). MISSION: Provide a 1-sentence instruction for the front-of-house team. Examples: 'Warn of the biterness in peppermint tea if ordered', 'Discreetly confirm Room 55 request', 'Confirm the 88th birthday card is present'.",
-      packages: "Human-readable translation of the RateCode. Mappings: 'CEL_DBB_1' -> 'Celebration Package', 'BB_1' -> 'Bed & Breakfast', 'MAGESC' -> 'Magical Escape', 'LHSS' -> 'Lake House Spa Suite'.",
-      history: "LOYALTY: Summarize stay count and behavior (e.g., 'Regular - 5th stay', 'New Guest')."
+      notes: `
+        OUTPUT: Cleaned 'Guest Notes' for the Morning Report.
+        RULES:
+        1. STRIP NOISE: Remove '8 Day Check', 'Checked: [Name]', 'Deposit Paid', 'Auth Taken', and all email addresses/phone numbers.
+        2. AUDIT: If RateCode implies 'Celebration'/'Romance' but notes are empty, output: "⚠️ AUDIT: Package booked but no traces found."
+        3. ALERTS: Flag conflicts (e.g., "Double Dinner Booking detected").
+        4. VIPs: If guest is Owner/Director, prepend '⭐ VIP:'.
+        5. FORMAT: Use bullet points (•) for distinct items. No Markdown.`,
+        
+      facilities: `
+        OUTPUT: Chronological list of F&B/Spa bookings.
+        FORMAT: "Icon Name (Day @ Time)". 
+        ICONS: 🌶️ Spice, 🍴 Source, 💆‍♀️ Spa/ESPA, 🍱 Bento, 🍵 Tea.
+        LOGIC: Combine 'Table for 2' into just the outlet name. Ignore 'Breakfast'.
+        EXAMPLE: "🍴 Source (03.01 @ 19:30) • 💆‍♀️ ESPA (04.01 @ 10:00)"`,
+        
+      inRoomItems: `
+        OUTPUT: Physical Room Prep Checklist.
+        LOGIC: 
+        - Extract concrete items: Champagne, Petals, Balloons, Chocolates, Flowers.
+        - DEDUCTIVE FILL: If RateCode is 'CEL_DBB_1', 'CEL_DBB' or 'ROMANCE', you MUST include "Bottle of Champagne" and "Balloons" even if not in traces.
+        - If 'MAGESC' (Magical Escape), ensure "Itinerary" and "Champagne" are listed.
+        - If 'LHSS', acknowledge Lake House Spa Suite setup requirements.
+        - IGNORE: 'Bed & Breakfast' or standard rate inclusions.`,
+        
+      preferences: `
+        OUTPUT: 'Reception Strategy' (One sentence).
+        MISSION: Give the receptionist a specific conversational hook or warning.
+        EXAMPLES:
+        - "Guest is a regular (5th stay); ask about their last visit in the Spa Lodge."
+        - "Babymoon: Ensure unpasteurized cheeses are removed from Welcome Plate."
+        - "Bill settled by Mother (Victoria Mills); do not ask for card."`,
+        
+      packages: `
+        OUTPUT: Human-readable Package Name.
+        MAP: 'CEL_DBB_1'='Celebration Package', 'MAGESC'='Magical Escape', 'LHSS'='Lake House Spa Suite', 'RO'='Room Only', 'BB_1'='Bed & Breakfast'.`,
+        
+      history: `
+        OUTPUT: Loyalty Status.
+        LOGIC: If L&L/Stayed Before data exists, provide summary.
+        FORMAT: "Returning Friend (Last: Jan 2024)" or "New Guest".`
     };
 
-    const activeInstructions = fields.map(f => fieldInstructions[f] || "").join("\n    ");
+    const activeInstructions = fields.map(f => fieldInstructions[f] || "").join("\n\n");
 
-    const systemInstruction = `You are the Gilpin Hotel Diamond Intelligence Engine. 
-     Gilpin is a world-class 5-star Relais & Châteaux hotel. Your outputs must match the 'Arrivals List' and 'Guest Greeter' PDF samples perfectly.
-     
-     MISSION: Transform raw PMS traces into clean, professional, and actionable hospitality intelligence.
-     
-     GOLD STANDARDS:
-     1. STICK TO PLAIN TEXT: Do not use bold (**) or italics (_). Use standard characters and emojis.
-     2. TRACE CLEANUP: Stripping '8 Day Check', 'Checked: KW', P.O.Nr, and billing instructions is mandatory.
-     3. HIDDEN INTEL: You MUST cross-reference all trace text to find system conflicts. If a guest has two Spice bookings for the same time, or mentions a 'Spa Lodge price' for a 'Spa Suite', highlight this as a 'Conflict Check'.
-     4. GUEST DNA: Capture the spirit of the guest notes (e.g., 'Wife struggles with mobility', '88th Birthday', 'L is Vegan').
-     5. DENSITY: Your output must be concise enough to fit in a standard table cell (7.5pt font) without excessive wrapping.
-    
-    Return a JSON array of objects strictly matching the input batch count.`;
+    const systemInstruction = `
+      ROLE: You are the Senior Guest Experience Strategist at Gilpin Hotel.
+      INPUT: Raw extracted text from PMS Arrival Reports (OCR).
+      OUTPUT: A structured JSON cleaning these messy notes into a "Morning Management Briefing".
+
+      CORE BEHAVIORS:
+      1. THE "SILENT UPGRADE" RULE: If text says "Guest Unaware" or "Comp Upgrade", you MUST mark this in the 'notes' field as "🚫 (SILENT UPGRADE - DO NOT MENTION)".
+      2. BILLING PROTECTION: If a note says "Mum paying" or "Voucher", mention this in 'preferences' so we don't awkwardly ask for payment.
+      3. DEDUCTION: Read between the lines. If a guest asks for "Non-feather pillows", assume allergy and note it.
+      4. STICK TO PLAIN TEXT: No bold, no italics. Standard characters and emojis only.
+      
+      Output must be a raw JSON array matching the number of input guests.`;
 
     const guestDataPayload = guests.map((g, i) => 
-      `GUEST #${i+1}: ${g.name} (Room: ${g.room})
-      RAW_DATA: "${g.rawHtml}"
-      CURRENT_PARSED_NOTES: "${g.prefillNotes}"`
-    ).join("\n\n---\n\n");
+      `--- GUEST ${i+1} ---
+       NAME: ${g.name} | ROOM: ${g.room}
+       RATE_CODE: ${g.rateCode || 'Standard'}
+       L&L_STATUS: ${g.ll || 'None'}
+       RAW_INTEL_STREAM: ${g.rawHtml}`
+    ).join("\n\n");
 
     try {
       const response = await ai.models.generateContent({
         model: modelName,
-        contents: `GILPIN OPERATIONAL ANALYSIS:\n\n${guestDataPayload}\n\nTARGET EXTRACTION STRATEGY:\n${activeInstructions}`,
+        contents: [
+          { role: 'user', parts: [{ text: `ANALYZE THIS BATCH:\n${guestDataPayload}\n\nEXTRACTION RULES:\n${activeInstructions}` }] }
+        ],
         config: {
-          systemInstruction,
-          thinkingConfig: { thinkingBudget: 32768 },
+          systemInstruction: systemInstruction,
+          // Set thinkingBudget to max for gemini-3-pro-preview to ensure the highest quality extraction
+          thinkingConfig: { thinkingBudget: 32768 }, 
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.ARRAY,
@@ -72,14 +112,16 @@ export class GeminiService {
       if (!response.text) return null;
       const parsed = JSON.parse(response.text.trim());
       return Array.isArray(parsed) ? parsed : null;
+
     } catch (error: any) {
-      const errorMessage = error?.message || "";
-      if (errorMessage.includes("401") || errorMessage.includes("API_KEY_INVALID")) throw new Error("API_KEY_INVALID");
-      if ((errorMessage.includes("429") || errorMessage.includes("quota")) && retryCount < MAX_RETRIES) {
+      console.error("Gemini API Error:", error.message);
+      const isTransient = error.message.includes("429") || error.message.includes("503");
+      if (isTransient && retryCount < MAX_RETRIES) {
         await this.sleep(INITIAL_RETRY_DELAY * (retryCount + 1));
         return this.refineGuestBatch(guests, fields, retryCount + 1);
       }
-      throw error;
+      if (error.message.includes("401") || error.message.includes("API_KEY_INVALID")) throw new Error("API_KEY_INVALID");
+      return null;
     }
   }
 }
