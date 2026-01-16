@@ -8,13 +8,12 @@ import Dashboard from './components/Dashboard';
 import GuestRow from './components/GuestRow';
 
 const BATCH_SIZE = 8;
-
-// Official Gilpin Logo Source
 const GILPIN_LOGO_URL = "https://i.ibb.co/nsfDhDSs/Gilpin-logo.png";
 
 const App: React.FC = () => {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [arrivalDateStr, setArrivalDateStr] = useState<string>("Loading...");
+  const [isOldFile, setIsOldFile] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState("");
@@ -92,15 +91,22 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsProcessing(true);
-    setProgressMsg("Scoping Intel Stream...");
+    setProgressMsg("Loading...");
     try {
       await new Promise(r => setTimeout(r, 100));
       const result = await PDFService.parse(file, flags);
       setGuests(result.guests);
       setArrivalDateStr(result.arrivalDateStr);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const fileDate = new Date(result.arrivalDateStr);
+      if (!isNaN(fileDate.getTime())) {
+        setIsOldFile(fileDate < today);
+      }
     } catch (err) {
       console.error(err);
-      alert("Error parsing PDF. Please ensure it's a valid Gilpin Arrivals list.");
+      alert("Error parsing PDF. Ensure it's a valid Gilpin Arrivals list.");
     } finally {
       setIsProcessing(false);
     }
@@ -119,8 +125,7 @@ const App: React.FC = () => {
     try {
       for (let i = 0; i < chunks.length; i++) {
         const currentBatch = chunks[i];
-        const tierLabel = refinementMode === 'paid' ? '💎 DIAMOND' : '✨ STANDARD';
-        setProgressMsg(`${tierLabel} BATCH ${i + 1}/${chunks.length}\nAnalyzing ${currentBatch.length} Records...`);
+        setProgressMsg(`Loading Segment ${i + 1}/${chunks.length}...`);
         
         try {
           const refinements = await GeminiService.refineGuestBatch(currentBatch, refinementFields, refinementMode);
@@ -132,7 +137,19 @@ const App: React.FC = () => {
                 if (refinement) {
                   const targetIndex = next.findIndex(g => g.id === guest.id);
                   if (targetIndex !== -1) {
-                    next[targetIndex] = { ...next[targetIndex], ...refinement };
+                    const original = next[targetIndex];
+                    next[targetIndex] = { ...original, ...refinement };
+                    
+                    if (refinement.inRoomItems && refinement.inRoomItems.length > 2) {
+                        const inRoomPrefix = "🎁 IN ROOM:";
+                        if (!next[targetIndex].prefillNotes.includes(refinement.inRoomItems)) {
+                            if (next[targetIndex].prefillNotes.includes(inRoomPrefix)) {
+                                next[targetIndex].prefillNotes = next[targetIndex].prefillNotes.replace(new RegExp(`${inRoomPrefix}.*`, 'g'), `${inRoomPrefix} ${refinement.inRoomItems}`);
+                            } else {
+                                next[targetIndex].prefillNotes += `\n${inRoomPrefix} ${refinement.inRoomItems}`;
+                            }
+                        }
+                    }
                   }
                 }
               });
@@ -141,7 +158,7 @@ const App: React.FC = () => {
           }
         } catch (innerError: any) {
           if (innerError.message === "API_KEY_INVALID") {
-            alert("API Key issue detected. Please re-link your key.");
+            alert("API Sync Required.");
             await handleUpdateApiKey();
             break; 
           }
@@ -149,17 +166,17 @@ const App: React.FC = () => {
         }
 
         if (i < chunks.length - 1) {
-          const delayMs = refinementMode === 'paid' ? 2000 : 15000;
+          const delayMs = refinementMode === 'paid' ? 1500 : 15000;
           const seconds = Math.floor(delayMs / 1000);
           for (let s = seconds; s > 0; s--) {
-            setProgressMsg(`Quota Cooling (${s}s)...\nUp Next: Batch ${i + 2}/${chunks.length}`);
+            setProgressMsg(`Cooling down (${s}s)...`);
             await new Promise(r => setTimeout(r, 1000));
           }
         }
       }
     } catch (error: any) {
-      console.error("Batch refinement error:", error);
-      alert("Intelligence cycle interrupted.");
+      console.error("Refinement error:", error);
+      alert("Loading interrupted.");
     } finally {
       setIsProcessing(false);
       setProgressMsg("");
@@ -210,7 +227,7 @@ const App: React.FC = () => {
     setFlags(prev => prev.filter(f => f.id !== id));
   };
 
-  const getStatsValues = () => {
+  const stats = (() => {
     const total = guests.length;
     const mainHotel = guests.filter(g => {
       const parts = g.room.split(' ');
@@ -225,9 +242,8 @@ const App: React.FC = () => {
     const vips = guests.filter(g => g.prefillNotes.includes('⭐') || g.prefillNotes.includes('VIP')).length;
     const allergies = guests.filter(g => g.prefillNotes.includes('⚠️') || g.prefillNotes.includes('🥛') || g.prefillNotes.includes('🥜') || g.prefillNotes.includes('🍞') || g.prefillNotes.includes('🧀')).length;
     const returns = guests.filter(g => g.ll.toLowerCase().includes('yes')).length;
-
     return { total, mainHotel, lakeHouse, vips, allergies, returns };
-  };
+  })();
 
   const filteredGuests = guests.filter(g => {
     if (activeFilter === 'all') return true;
@@ -246,13 +262,11 @@ const App: React.FC = () => {
     setTimeout(() => window.print(), 200);
   };
 
-  const stats = getStatsValues();
-
   return (
     <div className="min-h-screen transition-all duration-300">
       <nav className="navbar no-print">
         <div className="nav-left flex items-center h-full">
-          <div className="nav-logo-bubble" onClick={() => window.location.reload()} title="Reset System">
+          <div className="nav-logo-bubble" onClick={() => window.location.reload()}>
             <img src={GILPIN_LOGO_URL} alt="Gilpin" className="nav-logo-img" />
           </div>
           <div className="nav-text-container ml-2">
@@ -261,81 +275,89 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label className="switch">
-              <input type="checkbox" checked={isDark} onChange={(e) => setIsDark(e.target.checked)} />
-              <span className="slider"></span>
-            </label>
-          </div>
-
-          <button onClick={() => setIsSettingsOpen(true)} className="p-1 bg-white/50 dark:bg-stone-800/50 rounded-full border border-slate-200 dark:border-stone-700 shadow-sm text-sm">⚙️</button>
+        <div className="flex items-center gap-3">
+          <label className="switch">
+            <input type="checkbox" checked={isDark} onChange={(e) => setIsDark(e.target.checked)} />
+            <span className="slider"></span>
+          </label>
+          <button onClick={() => setIsSettingsOpen(true)} className="p-1.5 bg-slate-100 dark:bg-stone-800 rounded-full border border-slate-200 dark:border-stone-700 shadow-sm text-sm">⚙️</button>
           
           {guests.length > 0 && (
             <div className="flex gap-1 ml-1">
               <div className="relative">
                 <button 
                   onClick={() => setShowRefineOptions(!showRefineOptions)}
-                  className={`px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm transition-all flex items-center gap-1 ${refinementMode === 'paid' ? 'bg-indigo-700' : 'bg-indigo-600'} text-white`}
+                  className={`px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm transition-all flex items-center gap-1 ${refinementMode === 'paid' ? 'bg-indigo-700' : 'bg-indigo-600'} text-white hover:scale-105 active:scale-95`}
                 >
-                  {refinementMode === 'paid' ? '💎 DIAMOND' : '✨ AI REFINE'}
+                  {refinementMode === 'paid' ? '💎 DIAMOND AI' : '✨ AI REFINE'}
                 </button>
                 {showRefineOptions && (
-                  <div className="absolute top-full right-0 mt-1 w-48 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md rounded-lg shadow-2xl border border-slate-200 dark:border-stone-800 p-3 z-[1100] animate-in fade-in zoom-in-95">
-                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1 px-1 border-b border-slate-100 dark:border-slate-800 pb-1">Refinement Tier</p>
-                    <div className="grid grid-cols-2 gap-1 mb-2 bg-slate-50/50 dark:bg-stone-800/50 p-1 rounded-md">
-                      <button onClick={() => setRefinementMode('free')} className={`py-1 text-[7px] font-black rounded ${refinementMode === 'free' ? 'bg-white dark:bg-stone-700 shadow-sm text-indigo-600' : 'text-slate-500'}`}>Standard</button>
-                      <button onClick={() => setRefinementMode('paid')} className={`py-1 text-[7px] font-black rounded ${refinementMode === 'paid' ? 'bg-indigo-600 shadow-sm text-white' : 'text-slate-500'}`}>Diamond</button>
+                  <div className="absolute top-full right-0 mt-2 w-56 bg-white/95 dark:bg-stone-900/95 backdrop-blur-2xl rounded-xl shadow-2xl border border-slate-200 dark:border-stone-800 p-4 z-[1100] animate-in fade-in zoom-in-95">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 px-1">Intel precision</p>
+                    <div className="grid grid-cols-2 gap-1.5 mb-3 bg-slate-50 dark:bg-stone-800 p-1.5 rounded-lg border border-slate-100 dark:border-stone-700">
+                      <button onClick={() => setRefinementMode('free')} className={`py-1.5 text-[8px] font-black rounded-md ${refinementMode === 'free' ? 'bg-white dark:bg-stone-600 shadow-md text-indigo-600' : 'text-slate-500'}`}>Standard</button>
+                      <button onClick={() => setRefinementMode('paid')} className={`py-1.5 text-[8px] font-black rounded-md ${refinementMode === 'paid' ? 'bg-indigo-600 shadow-md text-white' : 'text-slate-500'}`}>Diamond</button>
                     </div>
-                    <p className="text-[6px] text-slate-400 leading-tight mb-2 px-1">
-                      {refinementMode === 'paid' ? 'Diamond uses the Premium Pro model for deep DNA inference.' : 'Standard uses the Flash model for rapid factual extraction.'}
-                    </p>
-                    <button onClick={handleAIRefine} className="w-full mt-1.5 bg-indigo-600 text-white text-[7.5px] font-black uppercase py-2 rounded shadow-md">Initiate Analysis</button>
+                    <button onClick={handleAIRefine} className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[8px] font-black uppercase py-2.5 rounded-lg shadow-lg transition-all active:scale-95">Load Intel</button>
                   </div>
                 )}
               </div>
-              <button onClick={() => triggerPrint('inroom')} className="bg-sky-600 text-white px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">🎁 In Room</button>
-              <button onClick={() => triggerPrint('greeter')} className="bg-amber-500 text-slate-900 px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">👋 Greeter</button>
-              <button onClick={() => triggerPrint('main')} className="bg-slate-950 dark:bg-stone-800 text-white px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">🖨️ Arrivals</button>
-              <button onClick={() => ExcelService.export(guests)} className="bg-emerald-600 text-white px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">⬇️ Excel</button>
-              <button onClick={addManual} className="bg-slate-100/80 dark:bg-stone-700/80 text-slate-800 dark:text-white px-3 py-1 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">➕ Add</button>
+              <button onClick={() => triggerPrint('inroom')} className="bg-sky-600 text-white px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm hover:bg-sky-500">🎁 In Room</button>
+              <button onClick={() => triggerPrint('greeter')} className="bg-amber-500 text-slate-900 px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm hover:bg-amber-400">👋 Greeter</button>
+              <button onClick={() => triggerPrint('main')} className="bg-slate-900 dark:bg-stone-700 text-white px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">🖨️ Arrivals</button>
+              <button onClick={() => ExcelService.export(guests)} className="bg-emerald-600 text-white px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm">⬇️ Excel</button>
+              <button onClick={addManual} className="bg-slate-100 dark:bg-stone-800 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-md text-[7.5px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-200">➕ Add</button>
             </div>
           )}
         </div>
       </nav>
 
+      {isOldFile && guests.length > 0 && (
+        <div className="fixed top-[50px] left-0 w-full bg-rose-600 text-white text-center py-2 z-[950] font-black uppercase tracking-[0.4em] text-[10px] no-print animate-pulse">
+          ⚠️ SECURITY WARNING: CURRENTLY VIEWING HISTORICAL LIST ({arrivalDateStr})
+        </div>
+      )}
+
       {guests.length > 0 && (
-        <div className={`dashboard-container no-print ${isSticky ? 'sticky' : ''}`}>
+        <div className={`dashboard-container no-print ${isSticky ? 'sticky shadow-xl' : ''} ${isOldFile ? 'mt-8' : ''}`}>
           <Dashboard guests={guests} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
         </div>
       )}
 
       <main className="max-w-[1920px] mx-auto p-2">
         {guests.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[85vh]">
-            <div id="drop-zone" className="p-10 border-2 border-dashed border-slate-300 dark:border-stone-800 rounded-[2rem] bg-white/40 dark:bg-stone-900/40 backdrop-blur-xl flex flex-col items-center gap-4 cursor-pointer hover:border-[#c5a065] transition-all shadow-xl" onClick={() => (document.getElementById('file-upload') as HTMLInputElement).click()}>
-                <h2 className="heading-font text-3xl font-black mb-1 dynamic-text uppercase text-slate-900 dark:text-white">Upload Arrivals PDF</h2>
-                <p className="text-slate-500 dark:text-slate-400 text-[9px] font-black uppercase tracking-widest">Secure Intelligence Protocol V3.72 Stable</p>
-                <div className="w-12 h-0.5 bg-amber-400 rounded-full opacity-60"></div>
-                <input id="file-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
+          <div className="flex flex-col items-center justify-center min-h-[85vh] p-4 text-center">
+            <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_50%,rgba(197,160,101,0.1),transparent_70%)] opacity-40"></div>
+            <div 
+              id="drop-zone" 
+              className="group relative p-20 border-2 border-dashed border-slate-300 dark:border-stone-800 rounded-[3rem] bg-white/30 dark:bg-stone-900/30 backdrop-blur-3xl flex flex-col items-center gap-8 cursor-pointer hover:border-[#c5a065] transition-all duration-500 shadow-2xl w-full max-w-2xl overflow-hidden"
+              onClick={() => (document.getElementById('file-upload') as HTMLInputElement).click()}
+            >
+              <div className="w-20 h-20 rounded-full bg-white dark:bg-stone-800 flex items-center justify-center shadow-lg mb-2 transition-transform group-hover:scale-110">
+                <span className="text-4xl">📄</span>
+              </div>
+              <h2 className="heading-font text-4xl font-black mb-1 text-slate-900 dark:text-white uppercase tracking-tighter">Gilpin Arrivals Hub</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.5em] max-w-sm">Secure extraction stream v3.95 golden</p>
+              <div className="px-8 py-3 bg-[#c5a065] text-slate-950 rounded-full font-black text-[10px] uppercase tracking-widest shadow-xl transform transition-all hover:scale-105 active:scale-95">Load File</div>
+              <input id="file-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
             </div>
           </div>
         ) : (
-          <div className="bg-white/90 dark:bg-stone-900/90 backdrop-blur-md rounded-lg shadow-lg border border-slate-200 dark:border-stone-800 overflow-hidden print:hidden mt-1">
+          <div className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200 dark:border-stone-800 overflow-hidden print:hidden mt-2 animate-in fade-in slide-in-from-bottom-2 duration-700">
             <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse table-fixed min-w-[1850px]">
+              <table className="w-full text-left border-collapse table-fixed min-w-[1950px]">
                 <thead>
-                  <tr className="bg-slate-950 text-slate-400 uppercase text-[7.5px] font-black tracking-widest border-b border-slate-800">
-                    <th className="w-[30px] p-1.5"></th>
-                    <th className="w-[100px] p-1.5">Room</th>
-                    <th className="w-[220px] p-1.5">Guest Name</th>
-                    <th className="w-[50px] p-1.5 text-center">Stay</th>
-                    <th className="w-[100px] p-1.5">Car Reg</th>
-                    <th className="w-[50px] p-1.5 text-center">L&L</th>
-                    <th className="w-[240px] p-1.5">Facilities</th>
-                    <th className="w-[60px] p-1.5 text-center">ETA</th>
-                    <th className="p-1.5">Notes & Strategy</th>
-                    <th className="w-[220px] p-1.5">Inferred DNA</th>
+                  <tr className="bg-slate-950 text-slate-500 uppercase text-[8px] font-black tracking-[0.2em] border-b border-slate-800">
+                    <th className="w-[40px] p-2.5 text-center"></th>
+                    <th className="w-[110px] p-2.5">Room</th>
+                    <th className="w-[240px] p-2.5">Guest Identity</th>
+                    <th className="w-[70px] p-2.5 text-center">Stay</th>
+                    <th className="w-[120px] p-2.5">Vehicle</th>
+                    <th className="w-[70px] p-2.5 text-center">L&L</th>
+                    <th className="w-[280px] p-2.5">Facilities</th>
+                    <th className="w-[80px] p-2.5 text-center">ETA</th>
+                    <th className="p-2.5">Notes & Extraction</th>
+                    <th className="w-[260px] p-2.5 text-purple-400">Guest DNA Profile</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -356,151 +378,156 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* PRINT ENGINE */}
-        <div className="hidden print:block w-full">
+        {/* GOLDEN PRINT ENGINE V3.95 REFINED */}
+        <div className="hidden print:block w-full font-sans">
             <div className="flex justify-between items-end border-b-2 border-[#c5a065] pb-2 mb-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                     <img src={GILPIN_LOGO_URL} alt="Gilpin" className="h-12" />
                     <div>
-                        <h1 className="text-xl font-black heading-font uppercase tracking-tighter text-slate-950">
-                          {printMode === 'main' ? 'Arrivals List' : printMode === 'greeter' ? 'Guest Greeter' : 'In-Room Requirements'}
+                        <h1 className="text-2xl font-black heading-font uppercase tracking-tighter text-slate-950 leading-none mb-1">
+                          {printMode === 'main' ? 'ARRIVALS LIST' : printMode === 'greeter' ? 'GUEST GREETER' : 'HK SETUP LIST'}
                         </h1>
-                        <div className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{arrivalDateStr}</div>
+                        <div className="text-[12px] font-black uppercase tracking-[0.4em] text-[#c5a065]">{arrivalDateStr.toUpperCase()}</div>
                     </div>
                 </div>
                 <div className="flex gap-2 items-center mb-1">
-                   <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">Total</span><span className="text-[7pt] font-bold">{stats.total}</span></div>
-                   <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">Main</span><span className="text-[7pt] font-bold">{stats.mainHotel}</span></div>
-                   <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">Lake</span><span className="text-[7pt] font-bold">{stats.lakeHouse}</span></div>
-                   <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">Return</span><span className="text-[7pt] font-bold">{stats.returns}</span></div>
-                   <div className="border border-slate-300 rounded px-2 py-0.5 flex flex-col items-center"><span className="text-[5pt] font-black uppercase text-slate-400">VIP</span><span className="text-[7pt] font-bold">{stats.vips}</span></div>
+                   <div className="border border-slate-950 rounded px-3 py-1 flex flex-col items-center min-w-[40pt]"><span className="text-[6pt] font-black uppercase text-slate-400 leading-none">Total</span><span className="text-[10pt] font-black leading-none mt-1">{stats.total}</span></div>
+                   <div className="border border-slate-950 rounded px-3 py-1 flex flex-col items-center min-w-[40pt]"><span className="text-[6pt] font-black uppercase text-slate-400 leading-none">Main</span><span className="text-[10pt] font-black leading-none mt-1">{stats.mainHotel}</span></div>
+                   <div className="border border-slate-950 rounded px-3 py-1 flex flex-col items-center min-w-[40pt]"><span className="text-[6pt] font-black uppercase text-slate-400 leading-none">Returns</span><span className="text-[10pt] font-black leading-none mt-1">{stats.returns}</span></div>
                 </div>
             </div>
 
-            <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-900 uppercase text-[6pt] font-black tracking-widest text-left">
-                  {printMode === 'main' && (
-                    <>
-                      <th className="p-1 w-[40pt]">Room</th>
-                      <th className="p-1 w-[120pt]">Guest Name</th>
-                      <th className="p-1 w-[25pt] text-center">Stay</th>
-                      <th className="p-1 w-[60pt]">Car Reg</th>
-                      <th className="p-1 w-[30pt] text-center">L&L</th>
-                      <th className="p-1 w-[150pt]">Facilities</th>
-                      <th className="p-1 w-[40pt] text-center">ETA</th>
-                      <th className="p-1">Notes</th>
-                      <th className="p-1 w-[90pt]">DNA</th>
-                    </>
-                  )}
-                  {printMode === 'greeter' && (
-                    <>
-                      <th className="p-3 w-[50pt] text-center">Time</th>
-                      <th className="p-3 w-[50pt]">Room</th>
-                      <th className="p-3 w-[150pt]">Guest Name</th>
-                      <th className="p-3 w-[80pt]">Car Reg</th>
-                      <th className="p-3">Notes</th>
-                    </>
-                  )}
-                  {printMode === 'inroom' && (
-                    <>
-                      <th className="p-4 w-[80pt] border-b-2 border-slate-200">Room</th>
-                      <th className="p-4 w-[180pt] border-b-2 border-slate-200">Guest Name</th>
-                      <th className="p-4 border-b-2 border-slate-200">Requirements / Setup</th>
-                    </>
-                  )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {filteredGuests
-                    .filter(g => {
-                      if (printMode !== 'inroom') return true;
-                      const hasItems = (g.inRoomItems && g.inRoomItems.length > 2);
-                      const hasNotes = g.prefillNotes.toLowerCase().includes('in room') || g.prefillNotes.toLowerCase().includes('setup');
-                      return hasItems || hasNotes;
-                    })
-                    .map(g => (
-                    <tr key={g.id} className="text-[7pt] border-b border-slate-100">
-                      {printMode === 'main' && (
-                        <>
-                          <td className="p-1 font-bold">{g.room}</td>
-                          <td className="p-1 font-bold">{g.name}</td>
-                          <td className="p-1 text-center font-bold text-slate-500">{g.duration}</td>
-                          <td className="p-1 font-mono">{g.car}</td>
-                          <td className="p-1 text-center">{g.ll}</td>
-                          <td className="p-1 text-[6pt] leading-tight">{g.facilities.replace(/\n/g, ' • ')}</td>
-                          <td className="p-1 text-center font-black">{g.eta}</td>
-                          <td className="p-1 text-[6pt] italic text-slate-800">{g.prefillNotes.replace(/\n/g, ' • ')}</td>
-                          <td className="p-1 text-[6pt] font-bold text-purple-950">{g.preferences}</td>
-                        </>
-                      )}
-                      {printMode === 'greeter' && (
-                        <>
-                          <td className="p-3 text-center font-black text-lg">{g.eta || '--:--'}</td>
-                          <td className="p-3 font-black text-base">{g.room}</td>
-                          <td className="p-3 font-black text-base">{g.name}</td>
-                          <td className="p-3 font-mono font-bold text-base">{g.car}</td>
-                          <td className="p-3 text-[9pt] italic font-bold leading-tight">{g.prefillNotes.replace(/\n/g, ' • ')}</td>
-                        </>
-                      )}
-                      {printMode === 'inroom' && (
-                        <>
-                          <td className="p-5 font-black text-2xl border-r-2 border-[#c5a065] bg-slate-50/30">{g.room}</td>
-                          <td className="p-5 font-black text-xl">{g.name}</td>
-                          <td className="p-5 text-[#c5a065] font-black italic text-xl leading-relaxed">
-                            {g.inRoomItems || g.prefillNotes.split('\n').filter(n => n.toLowerCase().includes('in room')).join(' • ') || 'CHECK GUEST NOTES'}
-                          </td>
-                        </>
-                      )}
+            {printMode === 'main' && (
+              <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-900 uppercase text-[8pt] font-black tracking-widest text-left border-b-2 border-slate-950">
+                        <th className="p-2 w-[55pt]">Room</th>
+                        <th className="p-2 w-[140pt]">Guest Name</th>
+                        <th className="p-2 w-[35pt] text-center">Stay</th>
+                        <th className="p-2 w-[80pt]">Car Reg</th>
+                        <th className="p-2 w-[40pt] text-center">L&L</th>
+                        <th className="p-2 w-[180pt]">Facilities</th>
+                        <th className="p-2 w-[55pt] text-center">ETA</th>
+                        <th className="p-2">Notes / Occasion</th>
                     </tr>
-                  ))}
-                </tbody>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {filteredGuests.map(g => (
+                      <tr key={g.id} className="text-[8.5pt] border-b border-slate-200 break-inside-avoid">
+                          <td className="p-2 font-black text-[#c5a065] uppercase">{g.room}</td>
+                          <td className="p-2 font-black uppercase leading-tight">{g.name}</td>
+                          <td className="p-2 text-center font-bold text-slate-500">{g.duration}</td>
+                          <td className="p-2 font-mono font-black text-indigo-700 uppercase tracking-tight">{g.car}</td>
+                          <td className="p-2 text-center font-black">{g.ll}</td>
+                          <td className="p-2 text-[7.5pt] leading-tight font-medium whitespace-pre-line">{g.facilities}</td>
+                          <td className="p-2 text-center font-black">{g.eta || 'N/A'}</td>
+                          <td className="p-2 text-[8pt] italic text-slate-800 leading-snug whitespace-pre-line">{g.prefillNotes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
               </table>
-              <div className="fixed bottom-0 left-0 w-full text-center text-[5pt] font-black uppercase text-slate-400 py-2">
-                Gilpin Hotel & Lake House • Diamond Intel V3.72 • {new Date().toLocaleString()}
+            )}
+
+            {printMode === 'greeter' && (
+              <div className="w-full border-t border-slate-950">
+                <div className="grid grid-cols-[70pt_90pt_220pt_110pt_1fr] bg-slate-50 font-black uppercase text-[9pt] tracking-widest p-2 border-b-2 border-slate-950">
+                  <div>Time</div>
+                  <div>Room</div>
+                  <div>Guest Name</div>
+                  <div>Car Reg</div>
+                  <div>Notes / Occasion</div>
+                </div>
+                {filteredGuests.map(g => (
+                  <div key={g.id} className="grid grid-cols-[70pt_90pt_220pt_110pt_1fr] p-4 border-b border-slate-200 break-inside-avoid items-center text-[10pt]">
+                    <div className="font-black text-slate-950 text-xl">{g.eta || 'N/A'}</div>
+                    <div className="font-black text-slate-950 text-xl uppercase leading-none">
+                        {g.room.split(' ')[0]}
+                        <div className="text-[7.5pt] text-slate-400 tracking-wider font-bold mt-0.5">{g.room.split(' ').slice(1).join(' ')}</div>
+                    </div>
+                    <div className="font-black text-slate-950 text-lg uppercase leading-tight pr-4">{g.name}</div>
+                    <div className="font-mono font-black text-indigo-700 tracking-wider uppercase text-base">{g.car}</div>
+                    <div className="text-[10pt] font-medium leading-snug text-slate-800 whitespace-pre-line">{g.prefillNotes}</div>
+                  </div>
+                ))}
               </div>
+            )}
+
+            {printMode === 'inroom' && (
+              <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-900 uppercase text-[10pt] font-black tracking-widest text-left border-b-2 border-slate-950">
+                        <th className="p-6 w-[120pt] text-center bg-slate-100">Room</th>
+                        <th className="p-6 w-[200pt]">Guest Name</th>
+                        <th className="p-6 bg-white">Housekeeping Requirements</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-300">
+                    {filteredGuests
+                      .filter(g => g.inRoomItems && g.inRoomItems.trim().length > 1)
+                      .map(g => (
+                      <tr key={g.id} className="border-b border-slate-200 break-inside-avoid">
+                          <td className="p-10 font-black text-7xl text-center bg-slate-100 border-r-4 border-[#c5a065]">{g.room.split(' ')[0]}</td>
+                          <td className="p-10 font-black text-3xl uppercase leading-tight">{g.name}</td>
+                          <td className="p-10 text-[#c5a065] font-black italic text-4xl leading-relaxed whitespace-pre-line">
+                            {g.inRoomItems}
+                          </td>
+                      </tr>
+                    ))}
+                  </tbody>
+              </table>
+            )}
+
+            <div className="fixed bottom-0 left-0 w-full text-center text-[7pt] font-black uppercase text-slate-400 py-6 tracking-[0.4em]">
+                GILPIN HOTEL & LAKE HOUSE • V3.95 GOLDEN • {new Date().toLocaleString()} • {arrivalDateStr.toUpperCase()}
+            </div>
         </div>
       </main>
 
       {isSettingsOpen && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-3xl z-[4000] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-stone-900 w-full max-w-2xl rounded-xl shadow-2xl border border-[#c5a065]/40 p-8 transform transition-all animate-in zoom-in-95 max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <div className="flex justify-between items-center mb-8">
-              <div className="flex items-center gap-4">
-                <span className="text-3xl">⚙️</span>
-                <h2 className="heading-font text-2xl font-black text-slate-900 dark:text-white uppercase">System Config</h2>
+        <div className="fixed inset-0 bg-slate-950/99 backdrop-blur-3xl z-[4000] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-stone-900 w-full max-w-2xl rounded-[3rem] shadow-2xl border border-[#c5a065]/60 p-12 transform transition-all animate-in zoom-in-95 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex justify-between items-center mb-10">
+              <div className="flex items-center gap-6">
+                <span className="text-4xl">⚙️</span>
+                <h2 className="heading-font text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">System Logic</h2>
               </div>
-              <button onClick={() => setIsSettingsOpen(false)} className="bg-slate-100 dark:bg-stone-800 text-slate-500 hover:text-rose-500 w-8 h-8 rounded-full flex items-center justify-center font-bold text-2xl transition-all">×</button>
+              <button onClick={() => setIsSettingsOpen(false)} className="bg-slate-100 dark:bg-stone-800 text-slate-500 hover:text-rose-500 w-12 h-12 rounded-full flex items-center justify-center font-bold text-3xl transition-all shadow-xl">×</button>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
               <section>
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c5a065] mb-4">Core Uplink</h3>
-                <div className="bg-slate-50 dark:bg-stone-800/60 p-4 rounded-lg border border-slate-100 dark:border-stone-800 shadow-inner">
-                  <button onClick={handleUpdateApiKey} className="w-full bg-slate-950 dark:bg-[#c5a065] text-white dark:text-slate-950 text-[9px] font-black uppercase py-3 rounded-md shadow mb-4">🔑 Sync Token</button>
-                  <p className="text-[9px] text-slate-400 italic text-center px-2">Link Gemini Pro key for high-throughput extraction.</p>
+                <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-[#c5a065] mb-6 flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#c5a065] animate-pulse"></div>
+                    AI Intel Sync
+                </h3>
+                <div className="bg-slate-50 dark:bg-stone-800/80 p-8 rounded-3xl border border-slate-100 dark:border-stone-800 shadow-inner">
+                  <button onClick={handleUpdateApiKey} className="w-full bg-slate-950 dark:bg-[#c5a065] text-white dark:text-slate-950 text-[11px] font-black uppercase tracking-[0.2em] py-5 rounded-2xl shadow-2xl hover:scale-105 active:scale-95 mb-6 transition-all">🔑 Sync AI Link</button>
+                  <p className="text-[11px] text-slate-400 italic text-center px-4 leading-relaxed">Mandatory for Diamond reasoning tiers.</p>
                 </div>
               </section>
 
               <section>
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#c5a065] mb-4">Logic Patches</h3>
-                <div className="space-y-1.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-1.5">
+                <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-[#c5a065] mb-6 flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#c5a065] animate-pulse"></div>
+                    Logic Patch Console
+                </h3>
+                <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-3">
                   {flags.map(flag => (
-                    <div key={flag.id} className="flex items-center justify-between p-2 bg-white dark:bg-stone-800/40 rounded-md border border-slate-100 dark:border-slate-800">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{flag.emoji}</span>
-                        <p className="font-black text-slate-900 dark:text-white text-[10px] uppercase">{flag.name}</p>
+                    <div key={flag.id} className="flex items-center justify-between p-4 bg-white dark:bg-stone-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-[#c5a065] transition-all">
+                      <div className="flex items-center gap-4">
+                        <span className="text-3xl">{flag.emoji}</span>
+                        <p className="font-black text-slate-900 dark:text-white text-[12px] uppercase tracking-widest">{flag.name}</p>
                       </div>
-                      <button onClick={() => removeFlag(flag.id)} className="text-rose-400 hover:text-rose-600 font-bold p-1 text-base">×</button>
+                      <button onClick={() => removeFlag(flag.id)} className="text-rose-400 hover:text-rose-600 font-bold p-2 text-2xl transition-colors">×</button>
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 bg-slate-50 dark:bg-stone-800/60 p-4 rounded-lg">
-                  <div className="grid grid-cols-4 gap-2 mb-2">
-                    <input type="text" placeholder="✨" className="p-2 bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-700 rounded text-center text-slate-900 dark:text-white text-base font-black" value={newFlag.emoji} onChange={e => setNewFlag({...newFlag, emoji: e.target.value})} />
-                    <input type="text" placeholder="Rule Name" className="col-span-3 p-2 bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-700 rounded text-[10px] font-black text-slate-900 dark:text-white uppercase" value={newFlag.name} onChange={e => setNewFlag({...newFlag, name: e.target.value})} />
+                <div className="mt-8 bg-slate-50 dark:bg-stone-800/80 p-6 rounded-3xl border border-slate-100 dark:border-stone-800">
+                  <div className="grid grid-cols-4 gap-4 mb-4">
+                    <input type="text" placeholder="✨" className="p-4 bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-700 rounded-2xl text-center text-slate-900 dark:text-white text-2xl font-black shadow-inner" value={newFlag.emoji} onChange={e => setNewFlag({...newFlag, emoji: e.target.value})} />
+                    <input type="text" placeholder="PATCH ID" className="col-span-3 p-4 bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-700 rounded-2xl text-[12px] font-black text-slate-900 dark:text-white uppercase tracking-widest shadow-inner" value={newFlag.name} onChange={e => setNewFlag({...newFlag, name: e.target.value})} />
                   </div>
-                  <button onClick={addFlag} className="w-full bg-[#c5a065] text-slate-950 font-black uppercase text-[9px] py-3 rounded-md shadow">Add Logic</button>
+                  <button onClick={addFlag} className="w-full bg-[#c5a065] hover:bg-amber-400 text-slate-950 font-black uppercase text-[11px] tracking-[0.3em] py-4 rounded-2xl shadow-2xl transition-all active:scale-95">Add logic rule</button>
                 </div>
               </section>
             </div>
@@ -509,18 +536,17 @@ const App: React.FC = () => {
       )}
 
       {isProcessing && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-[5000] flex flex-col items-center justify-center text-white text-center p-12 animate-in fade-in duration-500 overflow-hidden">
-          <div className="relative mb-12">
-            <div className={`w-32 h-32 bg-gradient-to-br ${refinementMode === 'paid' ? 'from-indigo-400 to-indigo-950' : 'from-[#c5a065] to-yellow-100'} rounded-full animate-pulse flex items-center justify-center text-[5rem] shadow-[0_0_80px_rgba(197,160,101,0.3)]`}>
-              {refinementMode === 'paid' ? '💎' : '🤖'}
+        <div className="fixed inset-0 bg-slate-950/99 backdrop-blur-3xl z-[5000] flex flex-col items-center justify-center text-white text-center p-12 animate-in fade-in duration-1000 overflow-hidden">
+          <div className="relative mb-20">
+            <div className={`w-32 h-32 bg-gradient-to-br from-[#c5a065] to-amber-100 shadow-[0_0_120px_rgba(197,160,101,0.3)] rounded-full animate-pulse flex items-center justify-center text-[5rem]`}>
+              {refinementMode === 'paid' ? '💎' : '⏳'}
             </div>
+            <div className="absolute inset-0 border-4 border-white/5 rounded-full animate-ping opacity-10"></div>
           </div>
-          <h2 className="heading-font text-4xl font-black mb-4 tracking-tighter uppercase leading-none">
-            {refinementMode === 'paid' ? 'Diamond Intel' : 'Extraction Hub'}
-          </h2>
-          <p className="text-[#c5a065] font-black uppercase tracking-[0.4em] text-[10px] mb-10 animate-pulse whitespace-pre-wrap max-w-md">{progressMsg}</p>
-          <div className="w-[300px] h-[2px] bg-slate-800/60 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-transparent via-[#c5a065] to-transparent animate-[shimmer_2s_infinite] w-full" style={{ backgroundSize: '200% 100%' }}></div>
+          <h2 className="heading-font text-6xl font-black mb-8 tracking-tighter uppercase leading-none text-white">Loading...</h2>
+          <p className="text-[#c5a065] font-black uppercase tracking-[0.6em] text-[15px] mb-12 animate-pulse whitespace-pre-wrap max-w-xl leading-relaxed">{progressMsg}</p>
+          <div className="w-[450px] h-[3px] bg-slate-800/40 rounded-full overflow-hidden shadow-2xl">
+            <div className="h-full bg-gradient-to-r from-transparent via-[#c5a065] to-transparent animate-[shimmer_2.5s_infinite] w-full" style={{ backgroundSize: '200% 100%' }}></div>
           </div>
         </div>
       )}

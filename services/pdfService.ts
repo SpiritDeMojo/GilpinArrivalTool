@@ -106,20 +106,37 @@ export class PDFService {
   private static parseBlock(block: any, arrivalDate: Date | null, flags: Flag[]): Guest {
     const rawText = block.lines.map((l: any) => l.items.map((i: any) => i.str).join(" ")).join("\n");
     const singleLineText = rawText.replace(/\s+/g, " ");
-    const headerLine = block.lines[0].items;
+    const headerLineItems = block.lines[0].items;
     
     let room = "Unassigned";
-    const roomItem = headerLine.find((i: any) => (i.str.match(/^\d{1,3}\.\s+[A-Za-z]+/) || i.str.match(/Lake House|Lodge/i)));
-    if (roomItem) {
+    const roomItemIndex = headerLineItems.findIndex((i: any) => (i.str.match(/^\d{1,3}\.\s+[A-Za-z]+/) || i.str.match(/Lake House|Lodge|House/i)));
+    let roomItem = null;
+    if (roomItemIndex !== -1) {
+      roomItem = headerLineItems[roomItemIndex];
       room = roomItem.str.trim();
       const m = room.match(/(\d{1,3})\.\s*(.*)/);
       if (m) room = `${m[1]} ${m[2].toUpperCase()}`;
       else room = room.toUpperCase();
     }
 
+    let eta = "N/A";
+    if (roomItemIndex !== -1) {
+        for (let i = roomItemIndex + 1; i < Math.min(roomItemIndex + 5, headerLineItems.length); i++) {
+            const str = headerLineItems[i].str.trim();
+            if (str.match(/^\d{4}$/) || str.match(/^\d{2}:\d{2}$/)) {
+                eta = str.length === 4 ? `${str.substring(0,2)}:${str.substring(2,4)}` : str;
+                break;
+            }
+        }
+    }
+    if (eta === "N/A" || eta === "00:00") {
+        const noteEta = singleLineText.match(/ETA:?\s*(\d{2}:?\d{2})/i);
+        if (noteEta) eta = noteEta[1].includes(':') ? noteEta[1] : `${noteEta[1].substring(0,2)}:${noteEta[1].substring(2,4)}`;
+    }
+
     let nameRaw = "";
     let foundId = false;
-    for (const item of headerLine) {
+    for (const item of headerLineItems) {
       if (item.str === block.id) { foundId = true; continue; }
       if (foundId) {
         if (item.str === roomItem?.str) break;
@@ -142,30 +159,11 @@ export class PDFService {
     let car = "";
     const plateRegex = /\b([A-Z]{2}\d{2}\s?[A-Z]{3}|[A-Z]{1,2}\d{1,4}\s?[A-Z]{0,3}|[A-Z]{1,3}\s?\d{1,4}[A-Z]?)\b/i;
     const carBlacklist = /^(BB\d?|APR\d?|MIN|RO|MAG|LH|FOC|COMP|UNSURE|TBD|202\d|P\.O\.NR)$/i;
-
-    for (let i = headerLine.length - 1; i >= 0; i--) {
-      const str = headerLine[i].str.trim();
+    for (let i = headerLineItems.length - 1; i >= 0; i--) {
+      const str = headerLineItems[i].str.trim();
       if (str.length >= 3 && str.match(plateRegex) && !str.match(carBlacklist)) {
         car = str.toUpperCase();
         break;
-      }
-    }
-
-    let duration = "1";
-    if (arrivalDate) {
-      const dates = singleLineText.match(/\d{2}\/\d{2}\/\d{2,4}/g);
-      if (dates) {
-        for (const dStr of dates) {
-          const m = dStr.match(/(\d{2})\/(\d{2})\/(\d{2,4})/);
-          if (m) {
-            const y = m[3].length === 2 ? '20' + m[3] : m[3];
-            const depDate = new Date(parseInt(y), parseInt(m[2]) - 1, parseInt(m[1]));
-            if (depDate > arrivalDate) {
-              const diff = Math.ceil((depDate.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60 * 24));
-              if (diff > 0 && diff < 30) { duration = diff.toString(); break; }
-            }
-          }
-        }
       }
     }
 
@@ -177,41 +175,38 @@ export class PDFService {
       ll = "Yes";
     }
 
+    // STRICT WHITELISTED IN ROOM ITEMS
+    const inRoomWhitelist = [
+      "champagne", "champ", "flowers", "spa hamper", "bollinger", 
+      "prosecco", "card with a specific message", "card", 
+      "minimoon package", "magical escape"
+    ];
+    const inRoomMarkers = ["In Room on Arrival:", "In-Room:", "IN ROOM:", "In Room Spa Hamper:", "Billing:", "Traces:"];
+    let rawInRoomItems: string[] = [];
+    
+    // Automatic package triggers
+    if (rateCode === "MIN" || rateCode === "MAGESC" || singleLineText.match(/minimoon/i) || singleLineText.match(/magical escape/i)) {
+        rawInRoomItems.push("Champagne", "Itinerary");
+    }
+
+    inRoomMarkers.forEach(marker => {
+      const extracted = this.extractSection(singleLineText, marker, ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Facility Bookings:", "Req. Vip", "Page"]);
+      if (extracted && extracted.length > 2) {
+        const parts = extracted.split(/,|•|\/|\|/).map(p => p.trim()).filter(p => p.length > 2);
+        parts.forEach(part => {
+            if (inRoomWhitelist.some(w => part.toLowerCase().includes(w))) {
+                rawInRoomItems.push(part);
+            }
+        });
+      }
+    });
+
     let notesList: string[] = [];
     const scanLower = singleLineText.toLowerCase();
 
-    // Occasions
-    const occSection = this.extractSection(singleLineText, "Occasion:", ["Traces:", "Booking Notes:", "Facility Bookings:"]);
-    const occ2Section = this.extractSection(singleLineText, "Special Occasion:", ["ETA:", "Billing:", "HK Notes:"]);
-    const combinedOcc = [occSection, occ2Section]
-      .filter(o => o && !o.match(/None|NDR|P\.O\.NR|P\.O\.|^\d+$|N\/A/i))
-      .join(" / ");
+    const occSection = this.extractSection(singleLineText, "Occasion:", ["P.O.Nr:", "Traces:", "Booking Notes:", "Facility Bookings:"]);
+    const combinedOcc = occSection.replace(/None|NDR|^\d+$/i, "").trim();
     if(combinedOcc.length > 2) notesList.push(`🎉 ${combinedOcc}`);
-
-    // In Room Capture - High priority as per v3.72
-    const inRoomRegex = /(?:In Room on Arrival|In-Room|In Room Spa Hamper|IN ROOM|Billing):?\s*([^•\n\r|ID:|Req.]+)/gi;
-    let match;
-    let inRoomParts = [];
-    const blacklist = /Paul is paying|send bill|Check:|EW|KW|Agent:|Checked:/i;
-    
-    while ((match = inRoomRegex.exec(singleLineText)) !== null) {
-      const val = match[1].trim();
-      if (val.length > 2 && !blacklist.test(val)) {
-        inRoomParts.push(val);
-      }
-    }
-    
-    // Explicitly check for "Flowers" mentioned in billing or in room setup
-    if (scanLower.includes("flowers") && !inRoomParts.some(p => p.toLowerCase().includes("flowers"))) {
-        if (scanLower.match(/billing:.*?flowers/i) || scanLower.match(/in room.*?flowers/i)) {
-            inRoomParts.push("Flowers");
-        }
-    }
-
-    let inRoomItems = inRoomParts.join(" • ");
-    if (inRoomItems) {
-        notesList.push(`🎁 IN ROOM: ${inRoomItems}`);
-    }
 
     const hkRaw = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Billing:", "Booking Notes:"]);
     if(hkRaw && !hkRaw.match(/Booking\.com/i)) notesList.push(`🏠 ${hkRaw}`);
@@ -219,31 +214,31 @@ export class PDFService {
     const guestRaw = this.extractSection(singleLineText, "Guest Notes:", ["HK Notes:", "Billing:", "Unit:", "Booking Notes:"]);
     if(guestRaw) notesList.push(`👤 ${guestRaw}`);
 
-    const bookingRaw = this.extractSection(singleLineText, "Booking Notes:", ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Facility Bookings:"]);
-    if(bookingRaw) notesList.push(`📝 ${bookingRaw}`);
-
     flags.forEach(f => {
       const match = f.keys.some(k => {
         const keyLower = k.toLowerCase();
         const regex = new RegExp(`\\b${keyLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-        
-        // Safety logic to prevent false positives for "Pets" on room names or category text
-        if ((keyLower === "cat" || keyLower === "pet") && (room.toLowerCase().includes("catbells") || scanLower.includes("category"))) {
+        if ((keyLower === "cat" || keyLower === "pet" || keyLower === "dog") && (room.toLowerCase().includes("catbells") || scanLower.includes("category"))) {
           return false;
         }
-        
         return regex.test(scanLower);
       });
-      if (match) {
-        notesList.push(`${f.emoji} ${f.name}`);
-      }
+      if (match) notesList.push(`${f.emoji} ${f.name}`);
     });
 
-    if (rateCode === "COMP") notesList.push("⭐ OWNER/COMP");
-    if (scanLower.includes("staff")) notesList.push("🔵 STAFF STAY");
+    let inRoomStr = Array.from(new Set(rawInRoomItems)).join(" • ");
+    if (inRoomStr) notesList.push(`🎁 IN ROOM: ${inRoomStr}`);
 
     const facilitiesRaw = this.extractSection(singleLineText, "Facility Bookings:", ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Booking Notes:"]);
-    const facilities = facilitiesRaw.split('/').map(f => f.trim()).filter(f => f.length > 5).join("\n");
+    const facilities = facilitiesRaw.split('/').map(f => f.trim()).filter(f => f.length > 5).map(f => {
+        let fText = f;
+        if (f.toLowerCase().includes("spice")) fText = "🌶️ " + f;
+        else if (f.toLowerCase().includes("source")) fText = "🍴 " + f;
+        else if (f.toLowerCase().includes("spa") || f.toLowerCase().includes("massage") || f.toLowerCase().includes("facial")) fText = "💆‍♀️ " + f;
+        else if (f.toLowerCase().includes("bento")) fText = "🍱 " + f;
+        else if (f.toLowerCase().includes("hot-tub") || f.toLowerCase().includes("pool")) fText = "♨️ " + f;
+        return fText;
+    }).join("\n");
 
     return {
       id: block.id,
@@ -251,11 +246,11 @@ export class PDFService {
       name,
       car,
       ll,
-      eta: singleLineText.match(/ETA:?\s*(\d{2}:\d{2})/i)?.[1] || "", 
-      duration: rateCode ? `${duration}\n(${rateCode})` : duration,
+      eta,
+      duration: rateCode,
       facilities,
       prefillNotes: Array.from(new Set(notesList)).join("\n"),
-      inRoomItems: inRoomItems,
+      inRoomItems: inRoomStr,
       preferences: "",
       packageName: rateCode,
       rateCode,

@@ -19,51 +19,43 @@ export class GeminiService {
     
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
     const isDiamond = mode === 'paid';
-    
-    // Tiered model selection
-    // Diamond (Paid): Pro model with reasoning capabilities
-    // Standard (Free): Flash model for cost-effective speed
-    const model = isDiamond ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+    const modelName = isDiamond ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
 
     const fieldInstructions: Record<RefinementField, string> = {
       notes: isDiamond 
-        ? "Analyze all notes deeply. Identify specific 'In Room' requirements vs 'Strategy' vs 'Factual History'. Highlight mobility issues, past complaints, or specific anniversaries mentioned in the raw stream."
-        : "Extract key HK and Guest notes. List birthdays and anniversaries from the text.",
-      facilities: "Summarize all restaurant and spa bookings with exact times and locations (Spice, Source, ESPA).",
-      inRoomItems: "IN-ROOM SETUP: Identify exactly what needs to be placed in the room (e.g., hampers, flowers, specific milk, extra towels, celebratory items). Specifically look for markers like 'In Room on Arrival:' or 'Billing:'. This is HIGH PRIORITY for housekeeping.",
+        ? "Extract specific setup requirements (flowers, champagne, specific messages for cards) from all traces. Define a concise concierge strategy. NOTE: Ignore 'P.O.Nr' fields completely as they are internal IDs, not occasions."
+        : "Provide a clean, luxury-standard summary of housekeeping and guest notes.",
+      facilities: "Extract and list restaurant (🌶️ Spice, 🍴 Source) and spa (💆‍♀️ ESPA) bookings with times. Use a bulleted list with emojis.",
+      inRoomItems: "STRICT HOUSEKEEPING SETUP: Identify items: Champagne, Flowers, Spa Hamper, Bollinger, Prosecco, Chocolates, Fruit, or Cards with messages. IMPORTANT: Minimoon (MIN) and Magical Escape (MAGESC) ALWAYS include 'Champagne • Itinerary'. Output as 'Item1 • Item2'.",
       preferences: isDiamond
-        ? "GUEST DNA: Infer behavioral traits. Do they value privacy? Are they high-maintenance? Did they have a previous bad experience mentioned in history? Provide a 'How to Handle' strategy summary."
-        : "List stated preferences like bed configuration or room requests.",
-      packages: "Turn shorthand rate codes into guest-friendly package names (e.g. BB_2 -> 2 Night B&B).",
-      history: isDiamond
-        ? "LOYALTY PROFILE: Summarize stay frequency and total value. Highlight if they are 'Friends of Gilpin' or returning to resolve a previous issue."
-        : "Count previous stays and label as New/Return."
+        ? "GUEST DNA: Infer behavioral traits. Are they celebratory? High-profile? Returning to resolve a previous issue? Define concierge greeting strategy."
+        : "List stated preferences like bed setup or dietary needs.",
+      packages: "Convert rate codes like BB_1, LHBB, MIN, MAGESC into human-friendly package names.",
+      history: "LOYALTY PROFILE: Summarize stay count and status (Regular vs New Guest)."
     };
 
     const activeInstructions = fields.map(f => fieldInstructions[f] || "").join("\n    ");
 
-    const systemInstruction = `You are the Gilpin Hotel Diamond Intelligence Engine. 
-    Gilpin is a 5-star Relais & Châteaux property. Accuracy and luxury tone are critical.
+    const systemInstruction = `You are the Gilpin Hotel Golden Standard Intelligence Engine. 
+    Luxury standards apply. Accuracy is mandatory. Filter out all operational noise like 'send bill to email' or internal system IDs.
     
     ${isDiamond 
-      ? "DIAMOND MODE (PREMIUM): Provide high-fidelity extraction and behavioral inference. This mode is for complex strategy development. Use full thinking capacity." 
-      : "STANDARD MODE (FREE): Provide clean, factual extractions for daily operational efficiency."}
+      ? "DIAMOND MODE: Conduct high-fidelity reasoning (Guest DNA) and ensure setup accuracy." 
+      : "STANDARD MODE: Provide factual extractions for daily operations."}
     
-    Output: A clean JSON array of objects mapping to each guest in the provided batch. 
-    Formatting: Professional hospitality tone. No filler.`;
+    Output Format: Clean JSON array of objects strictly matching input guest count.`;
 
     const guestDataPayload = guests.map((g, i) => 
-      `GUEST #${i+1}: ${g.name} (Room: ${g.room})\nRAW_DATA: "${g.rawHtml}"\nEXISTING_NOTES: "${g.prefillNotes}"`
+      `GUEST #${i+1}: ${g.name} (Room: ${g.room})\nRAW_TEXT: "${g.rawHtml}"\nCURRENT_PRESET: "${g.prefillNotes}"`
     ).join("\n\n---\n\n");
 
     try {
       const response = await ai.models.generateContent({
-        model: model,
-        contents: `REFINE THE FOLLOWING ${guests.length} GUESTS DATA:\n\n${guestDataPayload}\n\nTARGET EXTRACTION FIELDS:\n${activeInstructions}`,
+        model: modelName,
+        contents: `PROCESS GUEST BATCH DATA FOR GOLDEN STANDARD:\n\n${guestDataPayload}\n\nEXTRACTION TARGETS:\n${activeInstructions}`,
         config: {
           systemInstruction,
-          // Only enable thinking budget for Diamond mode with Pro model
-          ...(isDiamond ? { thinkingConfig: { thinkingBudget: 8000 } } : {}),
+          ...(isDiamond ? { thinkingConfig: { thinkingBudget: 24000 } } : {}),
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.ARRAY,
@@ -81,9 +73,7 @@ export class GeminiService {
       return Array.isArray(parsed) ? parsed : null;
     } catch (error: any) {
       const errorMessage = error?.message || "";
-      if (errorMessage.includes("401") || errorMessage.includes("API_KEY_INVALID")) {
-        throw new Error("API_KEY_INVALID");
-      }
+      if (errorMessage.includes("401") || errorMessage.includes("API_KEY_INVALID")) throw new Error("API_KEY_INVALID");
       if ((errorMessage.includes("429") || errorMessage.includes("quota")) && retryCount < MAX_RETRIES) {
         await this.sleep(INITIAL_RETRY_DELAY * (retryCount + 1));
         return this.refineGuestBatch(guests, fields, mode, retryCount + 1);
