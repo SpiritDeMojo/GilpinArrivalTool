@@ -8,7 +8,7 @@ import Dashboard from './components/Dashboard';
 import GuestRow from './components/GuestRow';
 import SOPModal from './components/SOPModal';
 
-const BATCH_SIZE = 6; // Reduced batch size to stay within quota
+const BATCH_SIZE = 6;
 const GILPIN_LOGO_URL = "https://i.ibb.co/nsfDhDSs/Gilpin-logo.png";
 
 const App: React.FC = () => {
@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [progressMsg, setProgressMsg] = useState("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [printMode, setPrintMode] = useState<PrintMode>('main');
+  const [printTime, setPrintTime] = useState("");
   
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -27,7 +28,6 @@ const App: React.FC = () => {
   });
   
   const [isSticky, setIsSticky] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSopOpen, setIsSopOpen] = useState(false);
 
   const refinementFields: RefinementField[] = ['notes', 'facilities', 'inRoomItems', 'preferences', 'packages', 'history'];
@@ -63,27 +63,12 @@ const App: React.FC = () => {
     localStorage.setItem('theme', theme);
   }, [isDark]);
 
-  useEffect(() => {
-    localStorage.setItem('custom_flags', JSON.stringify(flags));
-  }, [flags]);
-
   const toggleExpand = useCallback((id: string) => {
     setExpandedRows(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
-  }, []);
-
-  const handleUpdateApiKey = useCallback(async () => {
-    try {
-      const aistudio = (window as any).aistudio;
-      if (aistudio && typeof aistudio.openSelectKey === 'function') {
-        await aistudio.openSelectKey();
-      }
-    } catch (err) {
-      console.error("Failed to open key selection dialog:", err);
-    }
   }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,15 +141,6 @@ const App: React.FC = () => {
             });
           }
         } catch (innerError: any) {
-          if (innerError.message === "API_KEY_INVALID") {
-            alert("Security Sync Required: Please select a valid Gemini API Key.");
-            await handleUpdateApiKey();
-            break; 
-          }
-          if (innerError.message === "QUOTA_EXHAUSTED") {
-            alert("Rate Limit Alert: The AI is busy. Please wait 60 seconds and try again, or switch to a Paid API Key for faster processing.");
-            break;
-          }
           throw innerError;
         }
 
@@ -239,14 +215,41 @@ const App: React.FC = () => {
   });
 
   const triggerPrint = (mode: PrintMode) => {
+    setPrintTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     setPrintMode(mode);
     setTimeout(() => window.print(), 200);
   };
 
-  // Stack calculation
   const NAV_HEIGHT = 64;
   const ALERT_HEIGHT = 32;
   const dashboardTop = isOldFile ? NAV_HEIGHT + ALERT_HEIGHT : NAV_HEIGHT;
+
+  // Render the Universal Header for Print
+  const renderPrintHeader = () => (
+    <div className="print-header-grid">
+      <div className="flex items-center gap-3">
+        <img src={GILPIN_LOGO_URL} alt="Logo" className="h-10" />
+        <div className="flex flex-col">
+          <span className="font-black heading-font text-lg leading-none uppercase">Gilpin Hotel</span>
+          <span className="text-[7pt] font-black tracking-widest text-[#c5a065]">ARRIVALS: {arrivalDateStr.toUpperCase()}</span>
+        </div>
+      </div>
+      
+      <div className="print-stat-pills">
+        <div className="print-stat-pill"><span>ROOMS:</span><span>{stats.total}</span></div>
+        <div className="print-stat-pill"><span>MAIN:</span><span>{stats.mainHotel}</span></div>
+        <div className="print-stat-pill"><span>LAKE:</span><span>{stats.lakeHouse}</span></div>
+        <div className="print-stat-pill"><span>RETURNS:</span><span>{stats.returns}</span></div>
+        <div className="print-stat-pill"><span>VIPS:</span><span>{stats.vips}</span></div>
+        <div className="print-stat-pill"><span>ALERTS:</span><span>{stats.allergies}</span></div>
+      </div>
+
+      <div className="text-right">
+        <div className="text-[6pt] font-black uppercase text-slate-400">Printed At</div>
+        <div className="text-[10pt] font-black">{printTime}</div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen transition-all duration-500 font-sans selection:bg-[#c5a065]/30">
@@ -263,22 +266,14 @@ const App: React.FC = () => {
 
         <div className="flex items-center gap-4">
           <button onClick={() => setIsSopOpen(true)} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-stone-800 border border-slate-200 dark:border-stone-700 shadow-sm text-sm hover:scale-110 active:scale-95 transition-all flex items-center justify-center font-bold text-[#c5a065]">?</button>
-          
           <label className="switch">
             <input type="checkbox" id="theme-switch" checked={isDark} onChange={(e) => setIsDark(e.target.checked)} />
             <span className="slider"></span>
           </label>
-          <button onClick={() => setIsSettingsOpen(true)} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-stone-800 border border-slate-200 dark:border-stone-700 shadow-sm text-sm hover:scale-110 active:scale-95 transition-all flex items-center justify-center">⚙️</button>
-          
           {guests.length > 0 && (
             <div className="flex gap-2 ml-4">
-              <button 
-                onClick={handleAIRefine}
-                className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-lg transition-all flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:scale-105 active:scale-95 hover:shadow-indigo-500/20"
-              >
-                <span className="text-sm">✨</span> GEMINI AI REFINE
-              </button>
-              <button onClick={() => triggerPrint('inroom')} className="bg-sky-600/90 backdrop-blur-md text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm hover:bg-sky-500 transition-all">🎁 Delivery</button>
+              <button onClick={handleAIRefine} className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-lg transition-all flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:scale-105 active:scale-95">✨ AI REFINE</button>
+              <button onClick={() => triggerPrint('inroom')} className="bg-sky-600 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm hover:bg-sky-500 transition-all">🎁 Delivery</button>
               <button onClick={() => triggerPrint('greeter')} className="bg-amber-500 text-slate-950 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm hover:bg-amber-400 transition-all">👋 Greeter</button>
               <button onClick={() => triggerPrint('main')} className="bg-slate-950 dark:bg-stone-800 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-800 transition-all">🖨️ Arrivals</button>
               <button onClick={() => ExcelService.export(guests)} className="bg-emerald-600 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm transition-all hover:bg-emerald-500">⬇️ Excel</button>
@@ -295,14 +290,8 @@ const App: React.FC = () => {
       )}
 
       {guests.length > 0 && (
-        <div 
-          className="dashboard-outer-wrapper no-print relative transition-all duration-500" 
-          style={{ height: '72px', marginTop: isOldFile ? ALERT_HEIGHT + 'px' : '0' }}
-        >
-          <div 
-            className={`dashboard-container no-print ${isSticky ? 'sticky' : ''}`}
-            style={isSticky ? { top: dashboardTop + 'px' } : {}}
-          >
+        <div className="dashboard-outer-wrapper no-print relative transition-all duration-500" style={{ height: '72px', marginTop: isOldFile ? ALERT_HEIGHT + 'px' : '0' }}>
+          <div className={`dashboard-container no-print ${isSticky ? 'sticky' : ''}`} style={isSticky ? { top: dashboardTop + 'px' } : {}}>
             <Dashboard guests={guests} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
           </div>
         </div>
@@ -311,16 +300,8 @@ const App: React.FC = () => {
       <main className="max-w-[1920px] mx-auto p-4">
         {guests.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[85vh] p-4 text-center">
-            <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_40%,rgba(197,160,101,0.12),transparent_60%)]"></div>
-            <div 
-              id="drop-zone" 
-              className="group relative p-32 border-2 border-dashed border-slate-200 dark:border-stone-800 rounded-[4rem] bg-white/20 dark:bg-stone-900/20 backdrop-blur-3xl flex flex-col items-center gap-12 cursor-pointer hover:border-[#c5a065] transition-all duration-700 shadow-2xl w-full max-w-4xl overflow-hidden"
-              onClick={() => (document.getElementById('file-upload') as HTMLInputElement).click()}
-            >
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-1000 pointer-events-none">
-                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-500 via-red-500 to-yellow-500 blur-[120px]"></div>
-              </div>
-              <div className="w-24 h-24 rounded-full bg-white dark:bg-stone-800 flex items-center justify-center shadow-2xl mb-2 transition-all duration-500 group-hover:scale-110 group-hover:shadow-[#c5a065]/20">
+            <div id="drop-zone" className="group relative p-32 border-2 border-dashed border-slate-200 dark:border-stone-800 rounded-[4rem] bg-white/20 dark:bg-stone-900/20 backdrop-blur-3xl flex flex-col items-center gap-12 cursor-pointer hover:border-[#c5a065] transition-all duration-700 shadow-2xl w-full max-w-4xl overflow-hidden" onClick={() => (document.getElementById('file-upload') as HTMLInputElement).click()}>
+              <div className="w-24 h-24 rounded-full bg-white dark:bg-stone-800 flex items-center justify-center shadow-2xl mb-2 transition-all duration-500 group-hover:scale-110">
                 <span className="text-6xl drop-shadow-sm">📄</span>
               </div>
               <div className="space-y-4">
@@ -329,16 +310,10 @@ const App: React.FC = () => {
               </div>
               <input id="file-upload" type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
             </div>
-            
-            <button 
-              onClick={() => setIsSopOpen(true)}
-              className="mt-12 text-[10px] font-black uppercase tracking-[0.6em] text-slate-400 hover:text-[#c5a065] transition-colors"
-            >
-              View System SOP / Guidelines
-            </button>
+            <button onClick={() => setIsSopOpen(true)} className="mt-12 text-[10px] font-black uppercase tracking-[0.6em] text-slate-400 hover:text-[#c5a065] transition-colors">View System SOP / Guidelines</button>
           </div>
         ) : (
-          <div className="bg-white/30 dark:bg-stone-900/30 backdrop-blur-3xl rounded-[2rem] shadow-2xl border border-white/50 dark:border-stone-800/50 overflow-hidden print:hidden mt-4 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+          <div className="bg-white/30 dark:bg-stone-900/30 backdrop-blur-3xl rounded-[2rem] shadow-2xl border border-white/50 dark:border-stone-800/50 overflow-hidden print:hidden mt-4">
             <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-left border-collapse table-fixed min-w-[2000px]">
                 <thead>
@@ -357,15 +332,7 @@ const App: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/30">
                   {filteredGuests.map((guest) => (
-                    <GuestRow
-                      key={guest.id}
-                      guest={guest}
-                      isEditMode={true}
-                      onUpdate={(updates) => updateGuest(guest.id, updates)}
-                      onDelete={() => deleteGuest(guest.id)}
-                      isExpanded={expandedRows.has(guest.id)}
-                      onToggleExpand={() => toggleExpand(guest.id)}
-                    />
+                    <GuestRow key={guest.id} guest={guest} isEditMode={true} onUpdate={(updates) => updateGuest(guest.id, updates)} onDelete={() => deleteGuest(guest.id)} isExpanded={expandedRows.has(guest.id)} onToggleExpand={() => toggleExpand(guest.id)} />
                   ))}
                 </tbody>
               </table>
@@ -373,46 +340,113 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* PRINT ENGINE */}
-        <div className="hidden print:block w-full font-sans leading-tight">
-            <div className="flex justify-between items-end border-b-4 border-[#c5a065] pb-2 mb-4">
-                <div className="flex items-center gap-4">
-                    <img src={GILPIN_LOGO_URL} alt="Gilpin" className="h-12" />
-                    <div>
-                        <h1 className="text-3xl font-black heading-font uppercase tracking-tighter text-slate-950 leading-none mb-1">
-                          {printMode === 'main' ? 'ARRIVALS LIST' : printMode === 'greeter' ? 'GUEST GREETER' : 'RECEPTION & BAR DELIVERY'}
-                        </h1>
-                        <div className="text-[10px] font-black uppercase tracking-[0.5em] text-[#c5a065]">{arrivalDateStr.toUpperCase()}</div>
-                    </div>
-                </div>
-                <div className="flex gap-3 items-center mb-1">
-                   <div className="border-2 border-slate-950 rounded-xl px-4 py-1 flex flex-col items-center min-w-[45pt]"><span className="text-[7pt] font-black uppercase text-slate-400 leading-none">Total</span><span className="text-[12pt] font-black leading-none mt-1">{stats.total}</span></div>
-                   <div className="border-2 border-slate-950 rounded-xl px-4 py-1 flex flex-col items-center min-w-[45pt]"><span className="text-[7pt] font-black uppercase text-slate-400 leading-none">Main</span><span className="text-[12pt] font-black leading-none mt-1">{stats.mainHotel}</span></div>
-                   <div className="border-2 border-slate-950 rounded-xl px-4 py-1 flex flex-col items-center min-w-[45pt]"><span className="text-[7pt] font-black uppercase text-slate-400 leading-none">Lake</span><span className="text-[12pt] font-black leading-none mt-1">{stats.lakeHouse}</span></div>
-                </div>
-            </div>
+        {/* --- RESTRUCTURED PRINT ENGINE --- */}
+        <div className="hidden print:block w-full font-sans text-slate-900 leading-tight">
+            {renderPrintHeader()}
 
-            <div className="fixed bottom-0 left-0 w-full text-center text-[7pt] font-black uppercase text-slate-400 py-6 tracking-[0.6em]">
-                GILPIN HOTEL • GEMINI AI • {new Date().toLocaleString()}
+            {printMode === 'main' && (
+              <table className="w-full border-collapse text-[8.5pt]">
+                  <thead>
+                    <tr className="bg-slate-50 uppercase font-black tracking-wider text-left border-b-2 border-slate-900">
+                        <th className="p-1.5 w-[40pt]">Room</th>
+                        <th className="p-1.5 w-[140pt]">Guest Name</th>
+                        <th className="p-1.5 w-[25pt] text-center">Stay</th>
+                        <th className="p-1.5 w-[75pt]">Car Reg</th>
+                        <th className="p-1.5 w-[30pt] text-center">L&L</th>
+                        <th className="p-1.5 w-[160pt]">Facilities</th>
+                        <th className="p-1.5 w-[40pt] text-center">ETA</th>
+                        <th className="p-1.5">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredGuests.map(g => (
+                      <tr key={g.id} className="border-b border-slate-200 break-inside-avoid">
+                          <td className="p-1.5 font-black text-[#c5a065] uppercase">{g.room}</td>
+                          <td className="p-1.5 font-black uppercase">{g.name}</td>
+                          <td className="p-1.5 text-center font-bold">{g.duration}</td>
+                          <td className="p-1.5 font-mono font-black text-indigo-700 uppercase">{g.car}</td>
+                          <td className="p-1.5 text-center font-black">{g.ll}</td>
+                          <td className="p-1.5 text-[7.5pt] leading-tight font-medium whitespace-pre-line">{g.facilities}</td>
+                          <td className="p-1.5 text-center font-black">{g.eta}</td>
+                          <td className="p-1.5 text-[7.5pt] italic text-slate-700 leading-snug whitespace-pre-line">{g.prefillNotes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+              </table>
+            )}
+
+            {printMode === 'greeter' && (
+              <div className="w-full">
+                <div className="greeter-table-header">
+                  <div>Room</div>
+                  <div>Guest Identity</div>
+                  <div>Stay</div>
+                  <div>Car Registration</div>
+                  <div>L&L</div>
+                  <div>ETA</div>
+                  <div>Gemini Strategy</div>
+                </div>
+                {filteredGuests.map(g => {
+                  const roomParts = g.room.split(' ');
+                  return (
+                    <div key={g.id} className="greeter-table-row">
+                      <div className="flex flex-col">
+                        <span className="greeter-room">{roomParts[0]}</span>
+                        <span className="greeter-room-name">{roomParts.slice(1).join(' ')}</span>
+                      </div>
+                      <div className="font-black text-[10pt] uppercase tracking-tight">{g.name}</div>
+                      <div className="font-bold">{g.duration} Nts</div>
+                      <div className="greeter-car uppercase">{g.car}</div>
+                      <div className="font-black text-center">{g.ll}</div>
+                      <div className="font-black text-[11pt]">{g.eta === 'N/A' ? '' : g.eta}</div>
+                      <div className="greeter-strategy whitespace-pre-line leading-tight">
+                        {g.preferences || g.prefillNotes.split('•')[0] || "No specific strategy."}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {printMode === 'inroom' && (
+              <div className="w-full">
+                <div className="grid grid-cols-[80pt_180pt_1fr] bg-slate-50 font-black uppercase text-[9pt] tracking-widest p-3 border-b-2 border-slate-900 mb-2">
+                    <div className="text-center">Room</div>
+                    <div>Guest</div>
+                    <div>Housekeeping / Bar Setup List</div>
+                </div>
+                {filteredGuests.filter(g => g.inRoomItems && g.inRoomItems.trim().length > 1).map(g => (
+                  <div key={g.id} className="grid grid-cols-[80pt_180pt_1fr] p-6 border-b border-slate-200 break-inside-avoid items-center min-h-[100pt]">
+                      <div className="font-black text-6xl text-center text-[#c5a065] border-r-4 border-slate-100">{g.room.split(' ')[0]}</div>
+                      <div className="px-6">
+                        <div className="font-black text-xl uppercase leading-tight">{g.name}</div>
+                        <div className="text-[8pt] text-slate-400 uppercase font-black mt-1">{g.room}</div>
+                      </div>
+                      <div className="px-6 text-2xl font-black italic leading-snug text-slate-800 whitespace-pre-line border-l-4 border-[#c5a065]">
+                        {g.inRoomItems.split('•').map(item => `• ${item.trim()}`).join('\n')}
+                      </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="fixed bottom-0 left-0 w-full text-center text-[5pt] font-black uppercase text-slate-300 py-2 tracking-[0.5em]">
+                GILPIN HOTEL • INTELLIGENCE HUB • REPRODUCTION STRICTLY FOR HOTEL USE
             </div>
         </div>
       </main>
 
-      {/* GEMINI REFINEMENT SCREEN */}
+      {/* REFINED PROCESSING OVERLAY (LOGO PULSE) */}
       {isProcessing && (
-        <div className="fixed inset-0 bg-slate-950/99 backdrop-blur-3xl z-[5000] flex flex-col items-center justify-center text-white text-center p-16 animate-in fade-in duration-1000 overflow-hidden">
-          <div className="flex items-center justify-center relative mb-28">
-            <div className="gemini-orb-v4"></div>
-            <div className="gemini-core-v4">
-                <img src={GILPIN_LOGO_URL} alt="Gilpin" className="w-14 h-14 grayscale brightness-150" />
+        <div className="fixed inset-0 bg-slate-950/98 backdrop-blur-3xl z-[5000] flex flex-col items-center justify-center text-white text-center p-16 animate-in fade-in duration-1000 overflow-hidden">
+          <div className="loading-container mb-24">
+            <div className="loading-g-circle">
+                <img src={GILPIN_LOGO_URL} alt="Gilpin" className="loading-logo" />
             </div>
           </div>
-          
-          <div className="space-y-4 max-w-2xl">
-            <h2 className="heading-font text-3xl font-black tracking-tighter uppercase leading-none text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-red-400 to-yellow-400 drop-shadow-xl">Reasoning</h2>
-            <p className="text-[#c5a065] font-black uppercase tracking-[0.5em] text-[10px] animate-pulse h-10 flex items-center justify-center">
-                {progressMsg}
-            </p>
+          <div className="space-y-4 max-w-2xl relative z-10">
+            <h2 className="heading-font text-3xl font-black tracking-tighter uppercase leading-none text-transparent bg-clip-text bg-gradient-to-r from-[#c5a065] via-white to-[#c5a065] drop-shadow-xl">Reasoning</h2>
+            <p className="text-[#c5a065] font-black uppercase tracking-[0.5em] text-[10px] animate-pulse h-10 flex items-center justify-center">{progressMsg}</p>
           </div>
         </div>
       )}
