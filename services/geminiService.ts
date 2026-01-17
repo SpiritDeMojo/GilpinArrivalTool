@@ -1,8 +1,7 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Guest, RefinementField } from "../types";
 
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 1;
 const INITIAL_RETRY_DELAY = 2000;
 
 export class GeminiService {
@@ -18,16 +17,17 @@ export class GeminiService {
     if (fields.length === 0 || guests.length === 0) return null;
     
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const modelName = 'gemini-3-pro-preview'; 
+    // Use Flash for extraction tasks to avoid the tight 429 limits of Pro Thinking models
+    const modelName = 'gemini-3-flash-preview'; 
 
-    // Fixed: Escaped backticks inside the systemInstruction string to prevent them from being parsed as Javascript code.
     const systemInstruction = `
 **ROLE:** Gilpin Hotel Guest Intelligence Unit (GIU).
 **MISSION:** Transform raw OCR arrival data into precise, spreadsheet-ready JSON. You are the final safety net ensuring every detail matches the Gilpin "Diamond" standard.
 
 ### 1. DEDUCTIVE AUDIT PROTOCOLS (Critical)
-* **Celebration Audit:** IF RateCode is 'CEL_DBB_1' or 'MAGESC' or 'ROMANCE':
+* **Celebration Audit:** IF RateCode is 'CEL_DBB_1' or 'MAGESC' or 'MIN':
     * You MUST ensure 'Champagne' and 'Balloons' are listed in inRoomItems.
+    * IF RateCode is 'MAGESC' OR 'MIN' then In rooms must be 'Champagne' and 'Itinerary'
     * IF MISSING in raw data, auto-add as: "⚠️ AUDIT: Champagne & Balloons [Package Inclusion]".
 * **The "Silent" Rule:** IF text contains "Guest Unaware" or "Secret":
     * ADD \`🤫 SILENT UPGRADE\` to the notes string.
@@ -43,7 +43,7 @@ export class GeminiService {
 * **RULES:** 
     - Strip all "8 Day Check", "Checked: [Name]", and contact details.
     - Consolidate items. If an occasion is found, prepend with 🎉.
-    - If physical items are found (Champagne, Hamper), include in the 🎁 section.
+    - If physical items are found (Champagne, Hamper, Itinerary), include in the 🎁 section.
 
 **B. inRoomItems (Housekeeping Spec)**
 * **USE:** This is the primary field for the "Housekeeping Setup" printout.
@@ -51,12 +51,12 @@ export class GeminiService {
 * **RULES:** Include package items (Champagne, Balloons, Flowers, Dog Bed, Robes).
 
 **C. facilities (The Booking Schedule)**
-* **FORMAT:** "Icon Outlet (Day @ Time)".
-* **ICONS:** 💆 (Spa), 🌶️ (Spice), 🍴 (Source), 🍵 (Tea).
+* **FORMAT:** "Icon Outlet (Booking Details e.g Massage for 2 , Table for 2)(Date @ Time)".
+* **ICONS:** 💆 (Spa Treatments), 🌶️ (Spice), 🍴 (Source), 🍵 (Afternoon Tea), 🍱 (Bento), ♨️ (Spa Facilities).
 
 **D. preferences (Front Desk Alerts)**
 * **FORMAT:** High-priority tactical greeting or status (e.g., "VIP Arrival", "Allergy Alert", "Discreet Anniversary").
-
+       * Suggested strategies  for check-in
 **E. packages (Human-Readable)**
 * Map codes to full names (e.g., CEL_DBB_1 -> Celebration Package).
 
@@ -65,13 +65,13 @@ export class GeminiService {
 
 ### 3. OUTPUT REQUIREMENTS
 Return a raw JSON array of objects. No markdown. No explanations. Every object must contain all requested fields.
+
 `;
 
     const guestDataPayload = guests.map((g, i) => 
       `--- GUEST ${i+1} ---
        NAME: ${g.name} | ROOM: ${g.room}
        RATE_CODE: ${g.rateCode || 'Standard'}
-       OFFLINE_INTEL: ${g.prefillNotes}
        RAW_OCR_STREAM: ${g.rawHtml}`
     ).join("\n\n");
 
@@ -79,20 +79,19 @@ Return a raw JSON array of objects. No markdown. No explanations. Every object m
       const response = await ai.models.generateContent({
         model: modelName,
         contents: [
-          { role: 'user', parts: [{ text: `AUDIT AND REFINE THIS SEGMENT FOR THE MORNING BRIEFING:\n${guestDataPayload}` }] }
+          { role: 'user', parts: [{ text: `REFINE THIS SEGMENT:\n${guestDataPayload}` }] }
         ],
         config: {
           systemInstruction: systemInstruction,
-          thinkingConfig: { thinkingBudget: 32768 }, 
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
-                notes: { type: Type.STRING, description: "The master printout string with emojis." },
+                notes: { type: Type.STRING },
                 facilities: { type: Type.STRING },
-                inRoomItems: { type: Type.STRING, description: "Physical setup list for Housekeeping." },
+                inRoomItems: { type: Type.STRING },
                 preferences: { type: Type.STRING },
                 packages: { type: Type.STRING },
                 history: { type: Type.STRING }
@@ -108,13 +107,24 @@ Return a raw JSON array of objects. No markdown. No explanations. Every object m
       return Array.isArray(parsed) ? parsed : null;
 
     } catch (error: any) {
-      console.error("GIU Engine Fault:", error.message);
+      const errStr = JSON.stringify(error).toUpperCase();
+      const msgStr = (error.message || "").toUpperCase();
+      
+      // Robust detection of Quota/Rate Limit errors
+      if (errStr.includes("429") || errStr.includes("RESOURCE_EXHAUSTED") || msgStr.includes("429") || msgStr.includes("RESOURCE_EXHAUSTED")) {
+        throw new Error("QUOTA_EXHAUSTED");
+      }
+
       if (retryCount < MAX_RETRIES) {
         await this.sleep(INITIAL_RETRY_DELAY * (retryCount + 1));
         return this.refineGuestBatch(guests, fields, retryCount + 1);
       }
-      if (error.message.includes("401")) throw new Error("API_KEY_INVALID");
-      return null;
+      
+      if (errStr.includes("401") || msgStr.includes("401") || msgStr.includes("API_KEY_INVALID")) {
+        throw new Error("API_KEY_INVALID");
+      }
+      
+      throw error;
     }
   }
 }

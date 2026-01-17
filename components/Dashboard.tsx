@@ -25,25 +25,25 @@ const Dashboard: React.FC<DashboardProps> = ({ guests, activeFilter, onFilterCha
     const returns = guests.filter(g => g.ll.toLowerCase().includes('yes')).length;
 
     return [
-      { id: 'all' as FilterType, label: 'Arrivals', val: total, accent: 'pill-accent-1' },
-      { id: 'main' as FilterType, label: 'Main Hotel', val: mainHotel, accent: 'pill-accent-2' },
-      { id: 'lake' as FilterType, label: 'Lake House', val: lakeHouse, accent: 'pill-accent-3' },
-      { id: 'return' as FilterType, label: 'Returns', val: returns, accent: 'pill-accent-4' },
-      { id: 'vip' as FilterType, label: 'VIPs', val: vips, accent: 'pill-accent-5' },
-      { id: 'allergy' as FilterType, label: 'Allergies', val: allergies, accent: 'pill-accent-6' },
+      { id: 'all' as FilterType, label: 'Arrivals', val: total, color: 'text-slate-950 dark:text-white' },
+      { id: 'main' as FilterType, label: 'Main', val: mainHotel, color: 'text-blue-600 dark:text-blue-400' },
+      { id: 'lake' as FilterType, label: 'Lake House', val: lakeHouse, color: 'text-emerald-600 dark:text-emerald-400' },
+      { id: 'return' as FilterType, label: 'Returns', val: returns, color: 'text-indigo-600 dark:text-indigo-400' },
+      { id: 'vip' as FilterType, label: 'VIPs', val: vips, color: 'text-[#c5a065]' },
+      { id: 'allergy' as FilterType, label: 'Allergies', val: allergies, color: 'text-rose-600 dark:text-rose-400' },
     ];
   };
 
   return (
-    <div className="dashboard-strip">
+    <div className="dashboard-strip px-6">
       {getStats().map(stat => (
         <div
           key={stat.id}
           onClick={() => onFilterChange(stat.id)}
-          className={`stat-pill ${stat.accent} ${activeFilter === stat.id ? 'active' : ''}`}
+          className={`stat-pill group ${activeFilter === stat.id ? 'active' : ''}`}
         >
-          <span className="sp-label">{stat.label}</span>
-          <span className="sp-val">{stat.val}</span>
+          <span className="sp-label transition-colors group-hover:text-slate-950 dark:group-hover:text-white">{stat.label}</span>
+          <span className={`sp-val ${stat.color} transition-transform group-hover:scale-110`}>{stat.val}</span>
         </div>
       ))}
     </div>

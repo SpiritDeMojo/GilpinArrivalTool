@@ -206,12 +206,12 @@ export class PDFService {
     let inRoomItemsList: string[] = [];
 
     // 1. SILENT CHECK
-    if (scanLower.includes("guest unaware") || scanLower.includes("comp upgrade") || scanLower.includes("secret")) {
+    if (scanLower.includes("guest unaware") || scanLower.includes("comp upgrade") || scanLower.includes("Secret")) {
         auditAlerts.push("🤫 SILENT UPGRADE");
     }
 
     // 2. CELEBRATION AUDIT
-    const celebrationPkgs = ["CEL_DBB_1", "MAGESC", "CEL_DBB"];
+    const celebrationPkgs = ["CEL_DBB_1", "MAGESC", "MIN"];
     const hasCelebrationPkg = celebrationPkgs.includes(rateCode) || scanLower.includes("minimoon") || scanLower.includes("magical escape");
     
     // Whitelist for Physical Items

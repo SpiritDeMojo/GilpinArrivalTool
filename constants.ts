@@ -12,15 +12,15 @@ export const ROOM_MAP: RoomMapping = {
 };
 
 export const DEFAULT_FLAGS: Flag[] = [
-  { id: 1, name: "VIP", emoji: "⭐", keys: ["VIP", "Director", "Showround", "Owner", "Chairman", "High Profile"] },
+  { id: 1, name: "VIP", emoji: "⭐", keys: ["VIP", "Director", "Celebrity", "Owner", "Chairman", "High Profile"] },
   { id: 2, name: "Oat Milk", emoji: "🥛", keys: ["oat milk", "carton of oat"] },
   { id: 3, name: "Soya Milk", emoji: "🥛", keys: ["soya milk"] },
   { id: 4, name: "Nut Allergy", emoji: "🥜", keys: ["nut free", "no nut", "anaphylaxis", "peanut", "nut allergy"] },
   { id: 5, name: "Gluten Free", emoji: "🍞", keys: ["gluten free", "gf", "coeliac", "celiac"] },
   { id: 6, name: "Dairy Free", emoji: "🧀", keys: ["dairy free", "lactose", "no dairy", "milk allergy"] },
-  { id: 7, name: "Pets", emoji: "🐾", keys: ["dog", "cat", "pet", "canine", "puppy", "greyhound", "cockapoo", "labrador", "retriever"] },
+  { id: 7, name: "Pets", emoji: "🐾", keys: ["dog", "cat", "pet in room", "canine", "puppy", "greyhound", "cockapoo", "labrador", "retriever"] },
   { id: 9, name: "Comp Stay", emoji: "🟢", keys: ["comp stay", "complimentary", "foc", "upgrade", "unaware"] },
-  { id: 10, name: "Prev Issue", emoji: "🚩", keys: ["complaint", "recovery", "issue", "dissatisfied", "previous problem", "recovery stay"] },
-  { id: 11, name: "Occasion", emoji: "🎉", keys: ["birthday", "anniversary", "honeymoon", "proposal", "engagement", "celebration", "babymoon"] },
+  { id: 10, name: "Prev Issue", emoji: "🚩", keys: ["complaint", "PGI", "issue", "dissatisfied", "previous problem", ] },
+  { id: 11, name: "Occasion", emoji: "🎉", keys: ["birthday", "anniversary", "honeymoon", "proposal", "engagement", "babymoon"] },
   { id: 12, name: "Voucher", emoji: "🎫", keys: ["voucher", "redeem", "gift certificate"] }
 ];
