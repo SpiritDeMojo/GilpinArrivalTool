@@ -153,11 +153,11 @@ export class PDFService {
       .replace(/\s+/g, ' ')
       .trim();
 
-    const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB1|LHBB2|LHBB|RO|CEL_DBB_1|LHSS)\b/i;
+    const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB1|LHBB2|LHBB3|LHBB|LHAPR1|LHAPR2|LHAPR3|RO|CEL_DBB_1)\b/i;
     const rateCodeMatch = singleLineText.match(packageRegex);
     const rateCode = rateCodeMatch ? rateCodeMatch[1].toUpperCase() : "";
 
-    // Duration extraction: Difference between Departure date and Arrival date
+    // Duration extraction
     let duration = "1";
     if (arrivalDate) {
         const firstLineRaw = block.lines[0].items.map((i: any) => i.str).join(" ");
@@ -192,6 +192,7 @@ export class PDFService {
       }
     }
 
+    // 4. LOYALTY TRUTH
     let ll = "No";
     const historyMatch = singleLineText.match(/Stayed\s*(\d+)\s*times/i) || singleLineText.match(/Been Before:\s*Yes\s*\(?x\s*(\d+)\)?/i);
     if (historyMatch) {
@@ -200,70 +201,100 @@ export class PDFService {
       ll = "Yes";
     }
 
-    // STRICT WHITELISTED IN ROOM ITEMS
-    const inRoomWhitelist = [
-      "champagne", "champ", "flowers", "spa hamper", "bollinger", 
-      "prosecco", "card with a specific message", "card", 
-      "minimoon", "magical escape", "chocolates", "itinerary", "balloons"
-    ];
-    const inRoomMarkers = ["In Room on Arrival:", "In-Room:", "IN ROOM:", "In Room Spa Hamper:", "Billing:", "Traces:"];
-    let rawInRoomItems: string[] = [];
+    // --- AUDIT PROTOCOLS ---
+    let auditAlerts: string[] = [];
+    let inRoomItemsList: string[] = [];
+
+    // 1. SILENT CHECK
+    if (scanLower.includes("guest unaware") || scanLower.includes("comp upgrade") || scanLower.includes("secret")) {
+        auditAlerts.push("🤫 SILENT UPGRADE");
+    }
+
+    // 2. CELEBRATION AUDIT
+    const celebrationPkgs = ["CEL_DBB_1", "MAGESC", "CEL_DBB"];
+    const hasCelebrationPkg = celebrationPkgs.includes(rateCode) || scanLower.includes("minimoon") || scanLower.includes("magical escape");
     
-    // Automatic injection for specific packages
-    if (rateCode === "MIN" || rateCode === "MAGESC" || scanLower.includes("minimoon") || scanLower.includes("magical escape")) {
-        rawInRoomItems.push("Champagne", "Itinerary");
-    }
-    if (rateCode === "CEL_DBB_1") {
-        rawInRoomItems.push("Champagne", "Balloons");
-    }
+    // Whitelist for Physical Items
+    const inRoomWhitelist = ["champagne", "champ", "flowers", "hamper", "bollinger", "prosecco", "card", "chocolates", "itinerary", "balloons", "rose", "hamper"];
+    const inRoomMarkers = ["In Room on Arrival:", "In-Room:", "IN ROOM:", "Billing:", "Traces:"];
 
     inRoomMarkers.forEach(marker => {
       const extracted = this.extractSection(singleLineText, marker, ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Facility Bookings:", "Req. Vip", "Page", "P.O.Nr"]);
       if (extracted && extracted.length > 2) {
-        const parts = extracted.split(/,|•|\/|\||&/).map(p => p.trim()).filter(p => p.length > 2);
-        parts.forEach(part => {
-            if (inRoomWhitelist.some(w => part.toLowerCase().includes(w))) {
-                rawInRoomItems.push(part.replace(/🎁|IN ROOM:/g, "").trim());
+        extracted.split(/,|•|\/|\||&/).forEach(part => {
+            const p = part.trim();
+            if (inRoomWhitelist.some(w => p.toLowerCase().includes(w))) {
+                inRoomItemsList.push(p.replace(/🎁|IN ROOM:/g, "").trim());
             }
         });
       }
     });
 
-    let notesList: string[] = [];
-    const occSection = this.extractSection(singleLineText, "Occasion:", ["P.O.Nr:", "Traces:", "Booking Notes:", "Facility Bookings:"]);
-    const combinedOcc = occSection.replace(/None|NDR|^\d+$/i, "").trim();
-    if(combinedOcc.length > 2) notesList.push(`🎉 ${combinedOcc}`);
+    if (hasCelebrationPkg) {
+        const needsAudit = !inRoomItemsList.some(item => item.toLowerCase().includes("champagne")) || 
+                           (rateCode === "CEL_DBB_1" && !inRoomItemsList.some(item => item.toLowerCase().includes("balloons")));
+        
+        if (needsAudit) {
+            if (rateCode === "CEL_DBB_1") {
+                inRoomItemsList.push("Champagne", "Balloons [AUDIT ADDED]");
+            } else {
+                inRoomItemsList.push("Champagne", "Itinerary [AUDIT ADDED]");
+            }
+        }
+    }
 
-    const hkRaw = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Billing:", "Booking Notes:", "P.O.Nr"]);
-    if(hkRaw && !hkRaw.match(/Booking\.com/i)) notesList.push(`🏠 ${hkRaw}`);
+    // 3. BILLING PROTECTION
+    if (scanLower.includes("voucher") || scanLower.includes("mother paying") || scanLower.includes("daughter paying") || scanLower.includes("gift")) {
+        auditAlerts.push("💳 BILLING ALERT (Voucher/Gift)");
+    }
+
+    // --- FIELD-SPECIFIC FORMATTING ---
+
+    // A. `notes` Master String
+    let noteParts: string[] = [];
     
-    const guestRaw = this.extractSection(singleLineText, "Guest Notes:", ["HK Notes:", "Billing:", "Unit:", "Booking Notes:", "P.O.Nr"]);
-    if(guestRaw) notesList.push(`👤 ${guestRaw}`);
+    // 🎉 [Occasion]
+    const occSection = this.extractSection(singleLineText, "Occasion:", ["P.O.Nr:", "Traces:", "Booking Notes:", "Facility Bookings:"]).replace(/None|NDR|^\d+$/i, "").trim();
+    if (occSection.length > 2) noteParts.push(`🎉 ${occSection}`);
 
+    // 🏠 [Clean Booking Notes]
+    const cleanNotes = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Billing:", "Booking Notes:"])
+                       .replace(/8 Day Check|Deposit Paid|Auth Taken|@[a-zA-Z.]+/gi, "")
+                       .trim();
+    if (cleanNotes.length > 2) noteParts.push(`🏠 ${cleanNotes}`);
+
+    // 🎁 IN ROOM
+    if (inRoomItemsList.length > 0) {
+        noteParts.push(`🎁 IN ROOM: ${Array.from(new Set(inRoomItemsList)).join(", ")}`);
+    }
+
+    // 👤 [Personal Details]
+    const personal = this.extractSection(singleLineText, "Guest Notes:", ["HK Notes:", "Billing:", "Unit:", "Booking Notes:"]).trim();
+    if (personal.length > 2) noteParts.push(`👤 ${personal}`);
+
+    // [Audit / Billing Alerts]
+    auditAlerts.forEach(a => noteParts.push(a));
+
+    // Flags mapping (Maintain previous features)
     flags.forEach(f => {
       const match = f.keys.some(k => {
         const keyLower = k.toLowerCase();
         const regex = new RegExp(`\\b${keyLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-        if ((keyLower === "cat" || keyLower === "pet" || keyLower === "dog") && (room.toLowerCase().includes("catbells") || scanLower.includes("category"))) {
-          return false;
-        }
+        if ((keyLower === "cat" || keyLower === "pet" || keyLower === "dog") && (room.toLowerCase().includes("catbells") || scanLower.includes("category"))) return false;
         return regex.test(scanLower);
       });
-      if (match) notesList.push(`${f.emoji} ${f.name}`);
+      if (match) noteParts.push(`${f.emoji} ${f.name}`);
     });
 
-    let inRoomStr = Array.from(new Set(rawInRoomItems)).join(" • ");
-    if (inRoomStr) notesList.push(`🎁 IN ROOM: ${inRoomStr}`);
-
+    // C. `facilities` Formatting
     const facilitiesRaw = this.extractSection(singleLineText, "Facility Bookings:", ["HK Notes:", "Guest Notes:", "Unit:", "Billing:", "Booking Notes:", "P.O.Nr"]);
     const facilities = facilitiesRaw.split('/').map(f => f.trim()).filter(f => f.length > 5).map(f => {
-        let fText = f;
-        if (f.toLowerCase().includes("spice")) fText = "🌶️ " + f;
-        else if (f.toLowerCase().includes("source")) fText = "🍴 " + f;
-        else if (f.toLowerCase().includes("spa") || f.toLowerCase().includes("massage") || f.toLowerCase().includes("facial")) fText = "💆‍♀️ " + f;
-        else if (f.toLowerCase().includes("bento")) fText = "🍱 " + f;
-        else if (f.toLowerCase().includes("hot-tub") || f.toLowerCase().includes("pool") || f.toLowerCase().includes("mud")) fText = "♨️ " + f;
-        return fText;
+        const fl = f.toLowerCase();
+        if (fl.includes("spice")) return "🌶️ Spice (" + f.replace(/Spice:?\s*/i, "").trim() + ")";
+        if (fl.includes("source")) return "🍴 Source (" + f.replace(/Source:?\s*/i, "").trim() + ")";
+        if (fl.includes("spa") || fl.includes("massage") || fl.includes("facial") || fl.includes("espresso")) return "💆 Spa (" + f.replace(/Spa:?\s*|Massage:?\s*|Facial:?\s*/i, "").trim() + ")";
+        if (fl.includes("tea")) return "🍵 Tea (" + f.replace(/Afternoon Tea:?\s*/i, "").trim() + ")";
+        return f;
     }).join("\n");
 
     return {
@@ -275,8 +306,8 @@ export class PDFService {
       eta,
       duration,
       facilities,
-      prefillNotes: Array.from(new Set(notesList)).join("\n"),
-      inRoomItems: inRoomStr,
+      prefillNotes: noteParts.join(" • "),
+      inRoomItems: Array.from(new Set(inRoomItemsList)).join(" • "),
       preferences: "",
       packageName: rateCode,
       rateCode,

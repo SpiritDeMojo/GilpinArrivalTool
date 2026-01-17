@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Guest, FilterType, Flag, PrintMode, RefinementField } from './types';
 import { PDFService } from './services/pdfService';
 import { GeminiService } from './services/geminiService';
@@ -141,18 +142,16 @@ const App: React.FC = () => {
                   const targetIndex = next.findIndex(g => g.id === guest.id);
                   if (targetIndex !== -1) {
                     const original = next[targetIndex];
-                    next[targetIndex] = { ...original, ...refinement };
-                    
-                    if (refinement.inRoomItems && refinement.inRoomItems.length > 2) {
-                        const inRoomPrefix = "🎁 IN ROOM:";
-                        if (!next[targetIndex].prefillNotes.includes(refinement.inRoomItems)) {
-                            if (next[targetIndex].prefillNotes.includes(inRoomPrefix)) {
-                                next[targetIndex].prefillNotes = next[targetIndex].prefillNotes.replace(new RegExp(`${inRoomPrefix}.*`, 'g'), `${inRoomPrefix} ${refinement.inRoomItems}`);
-                            } else {
-                                next[targetIndex].prefillNotes += `\n${inRoomPrefix} ${refinement.inRoomItems}`;
-                            }
-                        }
-                    }
+                    // Correctly map AI fields to the Guest interface
+                    next[targetIndex] = { 
+                      ...original, 
+                      prefillNotes: refinement.notes || original.prefillNotes,
+                      facilities: refinement.facilities || original.facilities,
+                      inRoomItems: refinement.inRoomItems || original.inRoomItems,
+                      preferences: refinement.preferences || original.preferences,
+                      packageName: refinement.packages || original.packageName,
+                      ll: refinement.history || original.ll
+                    };
                   }
                 }
               });
@@ -508,7 +507,7 @@ const App: React.FC = () => {
                 </h3>
                 <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-3">
                   {flags.map(flag => (
-                    <div key={flag.id} className="flex items-center justify-between p-4 bg-white dark:bg-stone-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-[#c5a065] transition-all">
+                    <div key={flag.id} className="flex items-center justify-between p-4 bg-white dark:bg-stone-800/60 rounded-2xl border border-slate-100 dark:border-stone-800 hover:border-[#c5a065] transition-all">
                       <div className="flex items-center gap-4">
                         <span className="text-3xl">{flag.emoji}</span>
                         <p className="font-black text-slate-900 dark:text-white text-[12px] uppercase tracking-widest">{flag.name}</p>
