@@ -31,6 +31,8 @@ export class GeminiService {
     * IF MISSING in raw data, auto-add as: "⚠️ AUDIT: Champagne & Balloons [Package Inclusion]".
 * **The "Silent" Rule:** IF text contains "Guest Unaware" or "Secret":
     * ADD \`🤫 SILENT UPGRADE\` to the notes string.
+* **Pride of Britain Rule:** IF RateCode is 'POB_STAFF' or text contains "Pride of Britain":
+    * ADD \`⭐ VIP (Pride of Britain Staff)\` to the notes string. This is extremely high priority.
 * **Billing Protection:** IF "Voucher", "Gift", or "Third Party Paying" is detected:
     * ADD \`💳 BILLING ALERT\` to the notes string to protect the guest experience.
 * **Loyalty Truth:** Cross-reference "Stayed Before" with "Previous Stays". Output formatted as "Yes (xN)".
@@ -58,7 +60,7 @@ export class GeminiService {
 * **FORMAT:** High-priority tactical greeting or status (e.g., "VIP Arrival", "Allergy Alert", "Discreet Anniversary").
        * Suggested strategies  for check-in
 **E. packages (Human-Readable)**
-* Map codes to full names (e.g., CEL_DBB_1 -> Celebration Package).
+* Map codes to full names (e.g., CEL_DBB_1 -> Celebration Package, BB_1_WIN -> Winter Offer 1 Night, POB_STAFF -> Pride of Britain Staff).
 
 **F. history (Loyalty Status)**
 * STRICT FORMAT: "Yes (x[Count])" or "No".

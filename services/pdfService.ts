@@ -153,7 +153,7 @@ export class PDFService {
       .replace(/\s+/g, ' ')
       .trim();
 
-    const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB1|LHBB2|LHBB3|LHBB|LHAPR1|LHAPR2|LHAPR3|RO|CEL_DBB_1)\b/i;
+    const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|BB_1_WIN|BB_2_WIN|BB_3_WIN|COMP|LHAPR|LHMAG|LHBB1|LHBB2|LHBB3|LHBB|LHAPR1|LHAPR2|LHAPR3|RO|CEL_DBB_1|POB_STAFF)\b/i;
     const rateCodeMatch = singleLineText.match(packageRegex);
     const rateCode = rateCodeMatch ? rateCodeMatch[1].toUpperCase() : "";
 
@@ -246,6 +246,11 @@ export class PDFService {
     // 3. BILLING PROTECTION
     if (scanLower.includes("voucher") || scanLower.includes("mother paying") || scanLower.includes("daughter paying") || scanLower.includes("gift")) {
         auditAlerts.push("💳 BILLING ALERT (Voucher/Gift)");
+    }
+
+    // 4. PRIDE OF BRITAIN AUDIT
+    if (rateCode === "POB_STAFF" || scanLower.includes("pride of britain")) {
+        auditAlerts.push("⭐ VIP (Pride of Britain Staff)");
     }
 
     // --- FIELD-SPECIFIC FORMATTING ---

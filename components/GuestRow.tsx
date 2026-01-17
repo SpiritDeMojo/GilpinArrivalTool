@@ -16,7 +16,7 @@ const highlightRaw = (text: string) => {
   
   // High-level metadata badges
   html = html.replace(/(\d{5})/g, '<span class="hl-badge hl-id">ID: $1</span>');
-  html = html.replace(/\b(BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|MIN|MAGESC|COMP|LHAPR|LHMAG|LHBB1|LHBB2|LHBB|RO|CEL_DBB_1)\b/g, '<span class="hl-badge hl-ro">$1</span>');
+  html = html.replace(/\b(BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|BB_1_WIN|BB_2_WIN|BB_3_WIN|MIN|MAGESC|COMP|LHAPR|LHMAG|LHBB1|LHBB2|LHBB|RO|CEL_DBB_1|POB_STAFF)\b/g, '<span class="hl-badge hl-ro">$1</span>');
   html = html.replace(/\b(Spice|Source|ESPA|Bento|Aromatherapy|Massage|Facial|Spa)\b/gi, '<span class="hl-badge hl-ctx-teal">$1</span>');
   html = html.replace(/\b([A-Z]{2}[0-9]{2}\s?[A-Z]{3}|[A-Z][0-9]{1,4}\s?[A-Z]{0,3}|[A-Z]{3}\s?[0-9]{1,3}[A-Z])\b/gi, (match) => {
     // Basic filter for car plates vs room codes
@@ -123,7 +123,7 @@ const GuestRow: React.FC<GuestRowProps> = ({
         <td className="p-1 align-top">
           <ResizableTextArea field="facilities" value={guest.facilities} onUpdate={onUpdate} className="leading-snug text-slate-700 dark:text-slate-400" />
         </td>
-        <td className="p-1 align-top">
+        <td className="p-1 align-top text-center">
           <ResizableTextArea field="eta" value={guest.eta} center onUpdate={onUpdate} className="font-black text-slate-950 dark:text-white text-base" />
         </td>
         <td className="p-1 align-top">

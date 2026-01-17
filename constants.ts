@@ -12,7 +12,7 @@ export const ROOM_MAP: RoomMapping = {
 };
 
 export const DEFAULT_FLAGS: Flag[] = [
-  { id: 1, name: "VIP", emoji: "⭐", keys: ["VIP", "Director", "Celebrity", "Owner", "Chairman", "High Profile"] },
+  { id: 1, name: "VIP", emoji: "⭐", keys: ["VIP", "Director", "Celebrity", "Owner", "Chairman", "High Profile", "Pride of Britain", "POB_STAFF", "POB"] },
   { id: 2, name: "Oat Milk", emoji: "🥛", keys: ["oat milk", "carton of oat"] },
   { id: 3, name: "Soya Milk", emoji: "🥛", keys: ["soya milk"] },
   { id: 4, name: "Nut Allergy", emoji: "🥜", keys: ["nut free", "no nut", "anaphylaxis", "peanut", "nut allergy"] },
