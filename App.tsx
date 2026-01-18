@@ -424,11 +424,11 @@ const App: React.FC = () => {
                   <th className="p-4">Room</th>
                   <th className="p-4">Guest Identity</th>
                   <th className="p-4">Assets Required</th>
-                  <th className="p-4">Dietary/Silent Protocols</th>
+                  <th className="p-4">Dietary</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredGuests.filter(g => g.inRoomItems || g.prefillNotes.match(/Oat|Soya|Nut|Gluten|Dairy|Unaware|SILENT/i)).map(g => (
+                {filteredGuests.filter(g => g.inRoomItems || g.prefillNotes.match(/Oat|Soya|Nut|Gluten|Dairy/i)).map(g => (
                   <tr key={g.id} className="border-b-4 border-black">
                     <td className="p-6 font-black text-6xl text-center">{g.room.split(' ')[0]}</td>
                     <td className="p-6"><span className="font-black text-2xl uppercase">{g.name}</span><br/><span className="text-xl text-gray-500 font-bold">{g.packageName}</span></td>
