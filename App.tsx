@@ -29,7 +29,7 @@ function encode(bytes: Uint8Array) {
 }
 
 async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
+  const dataInt16 = new Int16Array(data.buffer, data.byteOffset, data.byteLength / 2);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
   for (let channel = 0; channel < numChannels; channel++) {
@@ -61,13 +61,22 @@ const App: React.FC = () => {
 
   // Live Assistant States
   const [isLiveActive, setIsLiveActive] = useState(false);
+  const [isMicEnabled, setIsMicEnabled] = useState(false);
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
+  const [interimInput, setInterimInput] = useState("");
+  const [interimOutput, setInterimOutput] = useState("");
   const [textMsg, setTextMsg] = useState("");
+  
   const sessionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const micEnabledRef = useRef(false);
   const nextStartTimeRef = useRef(0);
   const sourcesRef = useRef(new Set<AudioBufferSourceNode>());
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    micEnabledRef.current = isMicEnabled;
+  }, [isMicEnabled]);
 
   const stickyTopOffset = isOldFile ? NAV_HEIGHT + ALERT_HEIGHT : NAV_HEIGHT;
   const mainPaddingTop = isOldFile ? NAV_HEIGHT + ALERT_HEIGHT : NAV_HEIGHT;
@@ -82,7 +91,7 @@ const App: React.FC = () => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [transcriptions]);
+  }, [transcriptions, interimInput, interimOutput]);
 
   const [flags] = useState<Flag[]>(() => {
     const saved = localStorage.getItem('custom_flags');
@@ -166,6 +175,7 @@ const App: React.FC = () => {
     if (isLiveActive) {
       if (sessionRef.current) sessionRef.current.close();
       setIsLiveActive(false);
+      setIsMicEnabled(false);
       return;
     }
     setIsProcessing(true);
@@ -206,6 +216,7 @@ ASSETS: ${g.inRoomItems}`;
             const source = inputCtx.createMediaStreamSource(stream);
             const processor = inputCtx.createScriptProcessor(4096, 1, 1);
             processor.onaudioprocess = (e) => {
+              if (!micEnabledRef.current) return;
               const inputData = e.inputBuffer.getChannelData(0);
               const int16 = new Int16Array(inputData.length);
               for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
@@ -219,6 +230,7 @@ ASSETS: ${g.inRoomItems}`;
           onmessage: async (msg: LiveServerMessage) => {
             const audioData = msg.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (audioData) {
+              await outputCtx.resume();
               nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
               const buffer = await decodeAudioData(decode(audioData), outputCtx, 24000, 1);
               const source = outputCtx.createBufferSource();
@@ -229,20 +241,31 @@ ASSETS: ${g.inRoomItems}`;
               sourcesRef.current.add(source);
               source.onended = () => sourcesRef.current.delete(source);
             }
-            if (msg.serverContent?.inputTranscription) currentInput += msg.serverContent.inputTranscription.text;
-            if (msg.serverContent?.outputTranscription) currentOutput += msg.serverContent.outputTranscription.text;
+            
+            if (msg.serverContent?.inputTranscription) {
+              const text = msg.serverContent.inputTranscription.text;
+              currentInput += text;
+              setInterimInput(currentInput);
+            }
+            if (msg.serverContent?.outputTranscription) {
+              const text = msg.serverContent.outputTranscription.text;
+              currentOutput += text;
+              setInterimOutput(currentOutput);
+            }
+            
             if (msg.serverContent?.turnComplete) {
               if (currentInput) setTranscriptions(p => [...p, { text: currentInput, role: 'user' }]);
               if (currentOutput) setTranscriptions(p => [...p, { text: currentOutput, role: 'model' }]);
               currentInput = ""; currentOutput = "";
+              setInterimInput(""); setInterimOutput("");
             }
             if (msg.serverContent?.interrupted) {
               sourcesRef.current.forEach(s => s.stop()); sourcesRef.current.clear();
               nextStartTimeRef.current = 0;
             }
           },
-          onclose: () => setIsLiveActive(false),
-          onerror: () => setIsLiveActive(false),
+          onclose: () => { setIsLiveActive(false); setIsMicEnabled(false); },
+          onerror: () => { setIsLiveActive(false); setIsMicEnabled(false); },
         },
         config: {
           responseModalities: [Modality.AUDIO],
@@ -268,9 +291,9 @@ APP CAPABILITIES & FEATURES:
 5. Glassmorphism Dashboard: Real-time filtering for Main Hotel vs Lake House, VIPs, and Returns.
 
 YOUR TASKS:
-- Answer specific queries about guests (e.g., "Who is in room 7?", "What are the car regs for the Lake House?").
-- Provide insights (e.g., "Which rooms have celebrations today?", "Any POB staff arriving?").
-- Summarize operational tasks (e.g., "How many oat milks do we need in the Lake House?").
+- Answer specific queries about guests.
+- Provide insights.
+- Summarize operational tasks.
 
 Keep responses concise, accurate, and aligned with the high standards of Gilpin hospitality.`
         }
@@ -340,12 +363,12 @@ Keep responses concise, accurate, and aligned with the high standards of Gilpin 
               <button onClick={() => ExcelService.export(guests)} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">⬇️ Excel</button>
               <button onClick={addManual} className="bg-[#c5a065] text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">➕ Add</button>
               
-              {/* ROBOT ICON MOVED TO NAV BAR */}
               <button 
                 onClick={startLiveAssistant} 
-                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)] scale-110' : 'bg-slate-900 hover:bg-black'} shadow-lg active:scale-90`}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.4)] scale-110' : 'bg-slate-900 hover:bg-black'} shadow-lg active:scale-90`}
               >
-                <span className="text-xl leading-none">{isLiveActive ? '🎙️' : '🤖'}</span>
+                <span className="text-xl leading-none">{isLiveActive ? (isMicEnabled ? '🎙️' : '🤖') : '🤖'}</span>
+                {isMicEnabled && <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping"></div>}
               </button>
             </div>
           )}
@@ -409,102 +432,16 @@ Keep responses concise, accurate, and aligned with the high standards of Gilpin 
         )}
       </main>
 
-      {/* TRIPLE PRINT ARCHITECTURE */}
-      <div className="print-only">
-        {printMode === 'main' && (
-          <div className="p-10">
-            <div className="flex justify-between items-end border-b-4 border-black pb-4 mb-6">
-              <h1 className="heading-font text-4xl font-black uppercase">Master Arrival List</h1>
-              <span className="text-xl font-bold uppercase">{arrivalDateStr}</span>
-            </div>
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-black text-white text-[10pt] uppercase font-bold text-left">
-                  <th className="p-2">Room</th>
-                  <th className="p-2">Identity</th>
-                  <th className="p-2 text-center">Nts</th>
-                  <th className="p-2">Vehicle</th>
-                  <th className="p-2 text-center">L&L</th>
-                  <th className="p-2 text-center">ETA</th>
-                  <th className="p-2">Strategic Intelligence</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGuests.map(g => (
-                  <tr key={g.id} className="border-b border-gray-300">
-                    <td className="p-2 font-black text-lg">{g.room}</td>
-                    <td className="p-2"><span className="font-bold text-lg">{g.name}</span> <br/><span className="text-[8pt] text-gray-600 font-bold uppercase">{g.packageName}</span></td>
-                    <td className="p-2 text-center font-bold">{g.duration}</td>
-                    <td className="p-2 font-mono font-bold">{g.car}</td>
-                    <td className="p-2 text-center font-bold">{g.ll}</td>
-                    <td className="p-2 text-center font-black text-lg">{g.eta}</td>
-                    <td className="p-2 text-[9pt] italic leading-tight">{g.prefillNotes} <br/> <span className="font-bold text-indigo-800">{g.preferences}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {printMode === 'greeter' && (
-          <div className="p-10 greeter-view">
-            <h1 className="heading-font text-4xl font-black uppercase mb-12 text-center border-b-8 border-black pb-6">Daily Arrivals Greeter Sheet - {arrivalDateStr}</h1>
-            <div className="grid grid-cols-1 gap-12">
-              {filteredGuests.map(g => (
-                <div key={g.id} className="flex items-center gap-16 border-b-4 border-black pb-8 page-break-inside-avoid">
-                  <div className="g-r-num text-center min-w-[200pt]">{g.room.split(' ')[0]}</div>
-                  <div className="flex-1">
-                    <div className="g-name">{g.name}</div>
-                    <div className="g-meta mt-4 flex gap-12">
-                      <span className="font-black">ETA: {g.eta}</span>
-                      <span className="font-mono bg-black text-red px-4 py-1">REG: {g.car || 'NONE'}</span>
-                      <span className="font-bold text-gray-500 uppercase">{g.ll === 'Yes' ? 'RETURN GUEST' : 'FIRST TIME'}</span>
-                    </div>
-                    <div className="text-2xl italic mt-4 text-gray-700 font-medium">{g.prefillNotes}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {printMode === 'inroom' && (
-          <div className="p-10">
-            <h1 className="heading-font text-5xl font-black uppercase mb-10 border-b-8 border-black pb-4">In-Room Assets & Dietary Audit</h1>
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-black text-white text-[14pt] uppercase text-left">
-                  <th className="p-4">Room</th>
-                  <th className="p-4">Guest Identity</th>
-                  <th className="p-4">Assets Required</th>
-                  <th className="p-4">Dietary</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGuests.filter(g => g.inRoomItems || g.prefillNotes.match(/Oat|Soya|Nut|Gluten|Dairy/i)).map(g => (
-                  <tr key={g.id} className="border-b-4 border-black">
-                    <td className="p-6 font-black text-6xl text-center">{g.room.split(' ')[0]}</td>
-                    <td className="p-6"><span className="font-black text-2xl uppercase">{g.name}</span><br/><span className="text-xl text-gray-500 font-bold">{g.packageName}</span></td>
-                    <td className="p-6 font-black text-2xl text-indigo-700">{g.inRoomItems || "NO SPECIFIC ASSETS"}</td>
-                    <td className="p-6 text-xl italic font-bold text-rose-800">{g.prefillNotes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
       {/* CHAT INTERFACE ANCHORED TOP-RIGHT */}
       {isLiveActive && (
         <div className="fixed top-[82px] right-10 no-print z-[2000] pointer-events-none animate-in slide-in-from-top-4 duration-300">
           <div className="bg-white dark:bg-stone-900 shadow-2xl border border-[#c5a065] p-5 rounded-[2.5rem] w-80 max-h-[600px] flex flex-col pointer-events-auto">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
-                <p className="text-[10px] font-black uppercase text-[#c5a065] tracking-widest">Gilpin Tactical Feed</p>
+                <div className={`w-2 h-2 rounded-full ${isMicEnabled ? 'bg-rose-500 animate-pulse' : 'bg-slate-400'}`}></div>
+                <p className="text-[10px] font-black uppercase text-[#c5a065] tracking-widest">Tactical Feed</p>
               </div>
-              <button onClick={() => { if (sessionRef.current) sessionRef.current.close(); setIsLiveActive(false); }} className="text-slate-400 hover:text-slate-600 font-black text-xs">×</button>
+              <button onClick={() => { if (sessionRef.current) sessionRef.current.close(); setIsLiveActive(false); setIsMicEnabled(false); }} className="text-slate-400 hover:text-slate-600 font-black text-xs">×</button>
             </div>
             
             <div ref={chatScrollRef} className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1 py-1 mb-3">
@@ -513,33 +450,49 @@ Keep responses concise, accurate, and aligned with the high standards of Gilpin 
                   <div className={`p-3 text-[11px] leading-snug font-medium shadow-sm rounded-2xl ${t.role === 'user' ? 'bg-[#c5a065] text-white rounded-br-none' : 'bg-slate-100 dark:bg-stone-800 text-slate-800 dark:text-white rounded-bl-none border border-slate-200 dark:border-stone-700'}`}>{t.text}</div>
                 </div>
               ))}
-              {transcriptions.length === 0 && (
-                <p className="text-[10px] text-slate-400 italic text-center py-4">"Ready to analyze arrivals. Ask me anything."</p>
+              
+              {interimInput && (
+                <div className="flex flex-col items-end opacity-70">
+                  <div className="p-3 text-[11px] leading-snug font-medium bg-[#c5a065]/50 text-white rounded-2xl rounded-br-none italic">{interimInput}...</div>
+                </div>
+              )}
+              {interimOutput && (
+                <div className="flex flex-col items-start opacity-70">
+                  <div className="p-3 text-[11px] leading-snug font-medium bg-slate-100 dark:bg-stone-800 text-slate-500 rounded-2xl rounded-bl-none border border-slate-200 dark:border-stone-700 italic">{interimOutput}...</div>
+                </div>
+              )}
+
+              {transcriptions.length === 0 && !interimInput && !interimOutput && (
+                <p className="text-[10px] text-slate-400 italic text-center py-4">"Operational Feed Active. Toggle Mic to speak."</p>
               )}
             </div>
 
-            <div className="flex gap-2 p-1 bg-slate-50 dark:bg-stone-800/50 rounded-2xl border border-slate-200 dark:border-stone-700">
+            <div className="flex gap-2 p-1 bg-slate-50 dark:bg-stone-800/50 rounded-2xl border border-slate-200 dark:border-stone-700 items-center">
+              <button 
+                onClick={() => setIsMicEnabled(!isMicEnabled)}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${isMicEnabled ? 'bg-rose-500 text-white shadow-lg animate-pulse' : 'bg-slate-200 dark:bg-stone-700 text-slate-500'}`}
+              >
+                <span className="text-sm">{isMicEnabled ? '🎙️' : '🔇'}</span>
+              </button>
               <input 
                 type="text"
                 value={textMsg}
                 onChange={(e) => setTextMsg(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendText()}
                 placeholder="Type command..."
-                className="flex-1 bg-transparent border-none px-3 py-2 text-[11px] outline-none text-slate-900 dark:text-white"
+                className="flex-1 bg-transparent border-none px-2 py-2 text-[11px] outline-none text-slate-900 dark:text-white"
               />
               <button 
                 onClick={handleSendText}
-                className="bg-[#c5a065] text-white px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-[#b08d54] transition-colors"
+                className="bg-[#c5a065] text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-[#b08d54] transition-colors"
               >
                 Send
               </button>
             </div>
-            <p className="text-[8px] text-slate-400 text-center mt-2 uppercase tracking-widest font-black">Voice System Operational</p>
           </div>
         </div>
       )}
 
-      {/* LOADING HUB */}
       {isProcessing && (
         <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-[5000] flex flex-col items-center justify-center text-white text-center p-12 animate-in fade-in duration-500">
           <div className="loading-hub mb-12">
