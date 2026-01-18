@@ -1,5 +1,7 @@
 {
   "name": "Gilpin Arrivals Ultimate",
   "description": "The ultimate information extraction tool for Gilpin Hotel arrivals. It merges advanced PDF parsing, customizable flags, and AI-driven content refinement to process complex hospitality data into clean, actionable arrival lists.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

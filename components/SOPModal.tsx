@@ -9,91 +9,148 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/99 backdrop-blur-3xl z-[5000] flex items-center justify-center p-8 animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-stone-900 w-full max-w-5xl rounded-[3.5rem] shadow-2xl border border-[#c5a065]/50 overflow-hidden flex flex-col max-h-[92vh] transform transition-all animate-in zoom-in-95">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[5000] flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div className="bg-white dark:bg-[#0f1115] w-full max-w-5xl rounded-[2.5rem] shadow-2xl border border-[#c5a065]/40 overflow-hidden flex flex-col max-h-[90vh] transform transition-all animate-in zoom-in-95">
+        
         {/* Header */}
-        <div className="p-10 border-b border-slate-100 dark:border-stone-800 flex justify-between items-center bg-slate-50/50 dark:bg-stone-800/40">
+        <div className="px-10 py-6 border-b border-[#c5a065]/20 flex justify-between items-center bg-slate-50/50 dark:bg-stone-900/50">
           <div>
-            <h2 className="heading-font text-4xl font-black text-slate-950 dark:text-white uppercase tracking-tighter">System Operations Manual</h2>
-            <p className="text-[11px] font-black uppercase tracking-[0.5em] text-[#c5a065] mt-2">Intelligence Hub • Technical Guide & Usage</p>
+            <h2 className="heading-font text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Operational Guide</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#c5a065] mt-1">Intelligence Hub • User Manual & System Architecture</p>
           </div>
-          <button onClick={onClose} className="w-14 h-14 rounded-full bg-white dark:bg-stone-800 shadow-xl flex items-center justify-center text-3xl font-bold hover:text-rose-500 transition-all active:scale-90 border border-slate-100 dark:border-stone-700">×</button>
+          <button 
+            onClick={onClose} 
+            className="w-10 h-10 rounded-full bg-white dark:bg-stone-800 shadow-lg flex items-center justify-center text-xl font-black text-slate-500 dark:text-slate-400 hover:text-rose-600 transition-all active:scale-90 border border-slate-200 dark:border-stone-700"
+          >×</button>
         </div>
 
         {/* Content */}
-        <div className="p-10 overflow-y-auto custom-scrollbar flex-1 space-y-12">
+        <div className="p-10 overflow-y-auto custom-scrollbar flex-1 space-y-12 bg-white dark:bg-[#0f1115]">
           
-          {/* How the App Works */}
+          {/* Core Feature Architecture */}
           <section className="space-y-6">
-            <h4 className="text-[14px] font-black uppercase tracking-[0.3em] text-slate-950 dark:text-white border-b border-slate-100 pb-2">Technical Workflow</h4>
+            <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">Core System Features</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🧬</span>
+                  <h6 className="font-black text-[11px] uppercase tracking-wider dark:text-white">Intelligence Parsing</h6>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Automatically extracts and categorizes complex data from PDF arrival lists, identifying room assignments, guest history (L&L), and specific stay requirements with high precision.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">✨</span>
+                  <h6 className="font-black text-[11px] uppercase tracking-wider dark:text-white">Gemini Strategy Engine</h6>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Highlights critical guest notes and internal strategies, including "Comp Upgrade: Guest Unaware," dietary alerts, and VIP statuses using advanced LLM reasoning.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🖨️</span>
+                  <h6 className="font-black text-[11px] uppercase tracking-wider dark:text-white">Multi-View Output</h6>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Generates specialized, dynamic printouts for different departments, including Greeter Lists for arrival teams and Delivery Lists for Housekeeping assets.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🎛️</span>
+                  <h6 className="font-black text-[11px] uppercase tracking-wider dark:text-white">Operational Control</h6>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Features a "Diamond Theme" UI with Ivory/Obsidian modes and a glassmorphism dashboard for real-time filtering of Main Hotel and Lake House guests.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col gap-4 md:col-span-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🛡️</span>
+                  <h6 className="font-black text-[11px] uppercase tracking-wider dark:text-white">Data Integrity</h6>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Maintains a "Source of Truth" by integrating an AI Assistant and sophisticated regex filtering to accurately capture vehicle registrations while excluding internal noise and rate codes.
+                </p>
+              </div>
+
+            </div>
+          </section>
+
+          {/* Step-by-Step Instructions */}
+          <section className="space-y-6">
+            <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">Operational Workflow</h4>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-slate-50 dark:bg-stone-800/50 p-6 rounded-2xl border border-slate-100 dark:border-stone-700">
-                <div className="text-xl mb-2 font-black">1. Upload</div>
-                <p className="text-[11px] text-slate-500 leading-relaxed uppercase font-bold">PDF Ingestion</p>
-                <p className="text-[12px] text-slate-500 leading-relaxed mt-2">Drag and drop the standard Arrivals PDF. The system performs OCR to map guest IDs, rooms, and raw notes into the live grid.</p>
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-xs">1</div>
+                <h5 className="font-bold text-[11px] dark:text-white uppercase tracking-wider">Ingestion</h5>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Drop the Arrival PDF into the hub. The parser instantly builds the room matrix.
+                </p>
               </div>
-              <div className="bg-slate-50 dark:bg-stone-800/50 p-6 rounded-2xl border border-slate-100 dark:border-stone-700">
-                <div className="text-xl mb-2 font-black">2. AI Audit</div>
-                <p className="text-[11px] text-slate-500 leading-relaxed uppercase font-bold">Gemini Intelligence</p>
-                <p className="text-[12px] text-slate-500 leading-relaxed mt-2">Click "AI Refine" to activate Gemini. The model cleans notes, identifies billing alerts, and flags package inclusions automatically.</p>
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-full bg-[#c5a065] text-white flex items-center justify-center font-black text-xs">2</div>
+                <h5 className="font-bold text-[11px] dark:text-white uppercase tracking-wider">AI Audit</h5>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Trigger <strong>✨ AI Audit</strong> to refine raw data into actionable tactical notes.
+                </p>
               </div>
-              <div className="bg-slate-50 dark:bg-stone-800/50 p-6 rounded-2xl border border-slate-100 dark:border-stone-700">
-                <div className="text-xl mb-2 font-black">3. Manage</div>
-                <p className="text-[11px] text-slate-500 leading-relaxed uppercase font-bold">Grid Interaction</p>
-                <p className="text-[12px] text-slate-500 leading-relaxed mt-2">Use the Dashboard to filter by VIP, Allergy, or Room Type. Edit any cell directly to manually override or add specific details.</p>
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs">3</div>
+                <h5 className="font-bold text-[11px] dark:text-white uppercase tracking-wider">Review</h5>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Adjust ETAs or vehicle info in the live table. Verify "Booking Stream" for raw context.
+                </p>
               </div>
-              <div className="bg-slate-50 dark:bg-stone-800/50 p-6 rounded-2xl border border-slate-100 dark:border-stone-700">
-                <div className="text-xl mb-2 font-black">4. Output</div>
-                <p className="text-[11px] text-slate-500 leading-relaxed uppercase font-bold">Reporting Suite</p>
-                <p className="text-[12px] text-slate-500 leading-relaxed mt-2">Generate print-ready Greeter lists, Housekeeping Delivery sheets, or Export a master Excel file for the Front Desk.</p>
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-xs">4</div>
+                <h5 className="font-bold text-[11px] dark:text-white uppercase tracking-wider">Deploy</h5>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Print specialized sheets or export to Excel for the Reception Host Desk.
+                </p>
               </div>
             </div>
           </section>
 
-          {/* Icon Guide */}
+          {/* Logic Protocols (Existing) */}
           <section className="space-y-6">
-            <h3 className="font-black uppercase tracking-[0.4em] text-[10px] text-[#c5a065]">Data & Visual Alerts Quick-Reference</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 bg-slate-50 dark:bg-stone-800/40 border border-slate-100 dark:border-stone-800 rounded-2xl">
-                <div className="text-2xl mb-2">🤫</div>
-                <div className="font-black text-[9px] uppercase mb-1 text-amber-600">Silent Upgrade</div>
-                <p className="text-[9px] text-slate-500">System detected "Guest Unaware" or "Secret" markers in the raw stream. High priority for discreet handling.</p>
-              </div>
-              <div className="p-5 bg-slate-50 dark:bg-stone-800/40 border border-slate-100 dark:border-stone-800 rounded-2xl">
-                <div className="text-2xl mb-2">🚨</div>
-                <div className="font-black text-[9px] uppercase mb-1 text-rose-600">PGI / Alert</div>
-                <p className="text-[9px] text-slate-500">Previous Guest Issue or Complaint history found. Indicates a need for heightened attention during arrival.</p>
-              </div>
-              <div className="p-5 bg-slate-50 dark:bg-stone-800/40 border border-slate-100 dark:border-stone-800 rounded-2xl">
-                <div className="text-2xl mb-2">🎁</div>
-                <div className="font-black text-[9px] uppercase mb-1 text-blue-600">In-Room Setup</div>
-                <p className="text-[9px] text-slate-500">Physical assets detected in the package or HK notes (Champagne, Flowers, Balloons) that require setup.</p>
-              </div>
-              <div className="p-5 bg-slate-50 dark:bg-stone-800/40 border border-slate-100 dark:border-stone-800 rounded-2xl">
-                <div className="text-2xl mb-2">🥛 / 🥜</div>
-                <div className="font-black text-[9px] uppercase mb-1 text-emerald-600">Dietary / Allergy</div>
-                <p className="text-[9px] text-slate-500">System detected allergy keywords. Cross-referenced and verified against the dietary master flags.</p>
-              </div>
+            <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">Automated Audit Protocols</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { e: "🎉", t: "Celebrations", d: "Flags CEL/MAG packages missing assets." },
+                { e: "🤫", t: "Comp Upgrades", d: "Flags 'Guest Unaware'  upgrades." },
+                { e: "⭐", t: "VIP Status", d: "Priority mapping for POB staff and owners." },
+                { e: "💳", t: "Billing Guard", d: "Detects vouchers to hide bills from guests." }
+              ].map(item => (
+                <div key={item.t} className="p-4 border border-[#c5a065]/20 rounded-3xl bg-[#c5a065]/5">
+                  <span className="text-xl block mb-2">{item.e}</span>
+                  <div className="font-black text-[9px] uppercase tracking-wide text-slate-900 dark:text-slate-100 mb-1">{item.t}</div>
+                  <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-tight">{item.d}</p>
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* System Constraints */}
-          <section className="space-y-4">
-             <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-slate-950 dark:text-white">Integration Details</h4>
-             <div className="bg-slate-50 dark:bg-stone-800/40 p-6 rounded-2xl text-[12px] text-slate-500 leading-relaxed border border-slate-100 dark:border-stone-800">
-               <ul className="list-disc pl-5 space-y-2">
-                 <li><strong>Data Persistence:</strong> Edits are stored in the current session memory. Refreshing the browser will clear the grid. Export to Excel frequently to save progress.</li>
-                 <li><strong>AI Rate Limits:</strong> The "AI Refine" process runs in batches to ensure stability. If the system stalls, wait for the cooldown phase to complete.</li>
-                 <li><strong>Print Calibration:</strong> All print outputs (Arrivals, Greeter, In-Room) are calibrated for A4 Portrait. Use the system print dialog for final scaling.</li>
-               </ul>
-             </div>
-          </section>
+          <div className="bg-slate-950 text-white p-8 rounded-[3rem] text-center shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(white 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+            <p className="text-[12px] font-medium leading-relaxed italic relative z-10 max-w-2xl mx-auto">
+              "Efficiency is the silent partner of luxury. This hub is the final safety net ensuring every detail matches the Gilpin standard."
+            </p>
+          </div>
 
         </div>
 
         {/* Footer */}
-        <div className="p-8 bg-slate-950 flex justify-center">
-           <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-600">Gilpin Hotel • Intelligence Hub Operation Standard</p>
+        <div className="py-5 bg-slate-100 dark:bg-black/40 flex justify-center border-t border-slate-200 dark:border-stone-800/40">
+           <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 dark:text-slate-500">Gilpin Hotel & Lake House • GIU Ultimate Protocol</p>
         </div>
       </div>
     </div>
