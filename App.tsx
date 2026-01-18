@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { Guest, FilterType, Flag, PrintMode, RefinementField } from './types';
@@ -63,6 +62,7 @@ const App: React.FC = () => {
   // Live Assistant States
   const [isLiveActive, setIsLiveActive] = useState(false);
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
+  const [textMsg, setTextMsg] = useState("");
   const sessionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef(0);
@@ -155,6 +155,13 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSendText = () => {
+    if (!textMsg || !sessionRef.current) return;
+    sessionRef.current.sendRealtimeInput({ text: textMsg });
+    setTranscriptions(p => [...p, { text: textMsg, role: 'user' }]);
+    setTextMsg("");
+  };
+
   const startLiveAssistant = async () => {
     if (isLiveActive) {
       if (sessionRef.current) sessionRef.current.close();
@@ -165,9 +172,28 @@ const App: React.FC = () => {
     setProgressMsg("INITIALIZING AI ASSISTANT...");
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const guestsBrief = guests.map(g => `${g.room}: ${g.name} (${g.packageName}) - ${g.prefillNotes}`).join('\n');
+      
+      const guestsBrief = guests.map(g => {
+        const rNum = parseInt(g.room.split(' ')[0]);
+        const location = (rNum >= 51 && rNum <= 60) ? 'Lake House' : 'Main Hotel';
+        return `[ROOM ${g.room}] (${location})
+NAME: ${g.name}
+PACKAGE: ${g.packageName || 'Standard'}
+ETA: ${g.eta}
+CAR: ${g.car || 'Not recorded'}
+RETURN GUEST: ${g.ll}
+INTEL: ${g.prefillNotes}
+STRATEGY: ${g.preferences}
+FACILITIES: ${g.facilities}
+ASSETS: ${g.inRoomItems}`;
+      }).join('\n---\n');
+
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      
+      await inputCtx.resume();
+      await outputCtx.resume();
+      
       audioContextRef.current = outputCtx;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       let currentInput = "";
@@ -203,7 +229,6 @@ const App: React.FC = () => {
               sourcesRef.current.add(source);
               source.onended = () => sourcesRef.current.delete(source);
             }
-            // Corrected property names for transcription based on @google/genai guidelines
             if (msg.serverContent?.inputTranscription) currentInput += msg.serverContent.inputTranscription.text;
             if (msg.serverContent?.outputTranscription) currentOutput += msg.serverContent.outputTranscription.text;
             if (msg.serverContent?.turnComplete) {
@@ -224,7 +249,30 @@ const App: React.FC = () => {
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
           inputAudioTranscription: {},
           outputAudioTranscription: {},
-          systemInstruction: `You are the Gilpin Hotel GIU. MISSION: Tactical help with arrivals list. Data:\n${guestsBrief}\nMaintain luxury Gilpin DNA.`
+          systemInstruction: `You are the Gilpin Hotel Guest Intelligence Agent (GIU). 
+
+MISSION: Provide tactical support and deep insights for today's arrivals list. You are helpful, professional, and possess the luxury DNA of Gilpin Hotel.
+
+CURRENT DATASET:
+${guestsBrief}
+
+APP CAPABILITIES & FEATURES:
+1. Intelligence Parsing: Automatic extraction of room assignments, guest history, and car registrations from PDF.
+2. Gemini Strategy Engine: Highlights "Silent Upgrades" (unaware), VIP statuses, and dietary alerts.
+3. Operational Protocols:
+   - Celebrations: Audits CEL/MAG packages for missing Champagne/Balloons.
+   - Silent Upgrades: Detects 'Guest Unaware' secret upgrades.
+   - POB Status: Priority handling for Pride of Britain guests.
+   - Billing Guard: Flags vouchers/3rd-party to hide bills.
+4. Multi-View Printing: Master List, Greeter List (High-Vis), and Housekeeping Asset lists.
+5. Glassmorphism Dashboard: Real-time filtering for Main Hotel vs Lake House, VIPs, and Returns.
+
+YOUR TASKS:
+- Answer specific queries about guests (e.g., "Who is in room 7?", "What are the car regs for the Lake House?").
+- Provide insights (e.g., "Which rooms have celebrations today?", "Any POB staff arriving?").
+- Summarize operational tasks (e.g., "How many oat milks do we need in the Lake House?").
+
+Keep responses concise, accurate, and aligned with the high standards of Gilpin hospitality.`
         }
       });
       sessionRef.current = await sessionPromise;
@@ -277,23 +325,28 @@ const App: React.FC = () => {
               <button onClick={handleAIRefine} className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95">✨ AI Audit</button>
               
              <div className="relative group">
-  <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black">
-    🖨️ Print
-  </button>
-  
-  {/* Added pt-2 here and removed mt-2 */}
-  <div className="absolute right-0 top-full pt-2 hidden group-hover:block z-[2000]">
-    {/* This inner div holds your actual styling */}
-    <div className="bg-white dark:bg-stone-900 border border-[#c5a065]/20 shadow-2xl rounded-xl p-2 w-44">
-      <button onClick={() => triggerPrint('main')} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Master List</button>
-      <button onClick={() => triggerPrint('greeter')} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Greeter View</button>
-      <button onClick={() => triggerPrint('inroom')} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">In-Room Assets</button>
-    </div>
-    </div>
-  </div>
+                <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black">
+                  🖨️ Print
+                </button>
+                <div className="absolute right-0 top-full pt-2 hidden group-hover:block z-[2000]">
+                  <div className="bg-white dark:bg-stone-900 border border-[#c5a065]/20 shadow-2xl rounded-xl p-2 w-44">
+                    <button onClick={() => triggerPrint('main')} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Master List</button>
+                    <button onClick={() => triggerPrint('greeter')} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Greeter View</button>
+                    <button onClick={() => triggerPrint('inroom')} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">In-Room Assets</button>
+                  </div>
+                </div>
+              </div>
 
               <button onClick={() => ExcelService.export(guests)} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">⬇️ Excel</button>
               <button onClick={addManual} className="bg-[#c5a065] text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">➕ Add</button>
+              
+              {/* ROBOT ICON MOVED TO NAV BAR */}
+              <button 
+                onClick={startLiveAssistant} 
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)] scale-110' : 'bg-slate-900 hover:bg-black'} shadow-lg active:scale-90`}
+              >
+                <span className="text-xl leading-none">{isLiveActive ? '🎙️' : '🤖'}</span>
+              </button>
             </div>
           )}
           <button onClick={() => setIsSopOpen(true)} className="w-10 h-10 rounded-full border-2 border-[#c5a065]/30 flex items-center justify-center font-bold">?</button>
@@ -442,26 +495,46 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* AI ASSISTANT ORB */}
-      {guests.length > 0 && (
-        <div className="live-orb-container no-print flex flex-col items-end gap-4 pointer-events-none">
-          {isLiveActive && (
-             <div className="bg-white dark:bg-stone-900 shadow-2xl border border-[#c5a065] p-5 rounded-[2rem] w-80 max-h-[400px] flex flex-col animate-in slide-in-from-bottom-4 pointer-events-auto">
-                <div className="flex justify-between items-center mb-3">
-                  <p className="text-[10px] font-black uppercase text-[#c5a065] tracking-widest">Tactical Feed</p>
-                  <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+      {/* CHAT INTERFACE ANCHORED TOP-RIGHT */}
+      {isLiveActive && (
+        <div className="fixed top-[82px] right-10 no-print z-[2000] pointer-events-none animate-in slide-in-from-top-4 duration-300">
+          <div className="bg-white dark:bg-stone-900 shadow-2xl border border-[#c5a065] p-5 rounded-[2.5rem] w-80 max-h-[600px] flex flex-col pointer-events-auto">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+                <p className="text-[10px] font-black uppercase text-[#c5a065] tracking-widest">Gilpin Tactical Feed</p>
+              </div>
+              <button onClick={() => { if (sessionRef.current) sessionRef.current.close(); setIsLiveActive(false); }} className="text-slate-400 hover:text-slate-600 font-black text-xs">×</button>
+            </div>
+            
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1 py-1 mb-3">
+              {transcriptions.map((t, i) => (
+                <div key={i} className={`flex flex-col ${t.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div className={`p-3 text-[11px] leading-snug font-medium shadow-sm rounded-2xl ${t.role === 'user' ? 'bg-[#c5a065] text-white rounded-br-none' : 'bg-slate-100 dark:bg-stone-800 text-slate-800 dark:text-white rounded-bl-none border border-slate-200 dark:border-stone-700'}`}>{t.text}</div>
                 </div>
-                <div ref={chatScrollRef} className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1 py-1">
-                  {transcriptions.map((t, i) => (
-                    <div key={i} className={`flex flex-col ${t.role === 'user' ? 'items-end' : 'items-start'}`}>
-                      <div className={`p-3 text-[11px] leading-snug font-medium shadow-sm rounded-2xl ${t.role === 'user' ? 'bg-[#c5a065] text-white rounded-br-none' : 'bg-slate-100 dark:bg-stone-800 text-slate-800 dark:text-white rounded-bl-none border border-slate-200 dark:border-stone-700'}`}>{t.text}</div>
-                    </div>
-                  ))}
-                </div>
-             </div>
-          )}
-          <div className={`live-orb ${isLiveActive ? 'active' : ''} pointer-events-auto`} onClick={startLiveAssistant}>
-            {isLiveActive ? <span className="text-white text-3xl">🎙️</span> : <span className="text-white text-3xl">🤖</span>}
+              ))}
+              {transcriptions.length === 0 && (
+                <p className="text-[10px] text-slate-400 italic text-center py-4">"Ready to analyze arrivals. Ask me anything."</p>
+              )}
+            </div>
+
+            <div className="flex gap-2 p-1 bg-slate-50 dark:bg-stone-800/50 rounded-2xl border border-slate-200 dark:border-stone-700">
+              <input 
+                type="text"
+                value={textMsg}
+                onChange={(e) => setTextMsg(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendText()}
+                placeholder="Type command..."
+                className="flex-1 bg-transparent border-none px-3 py-2 text-[11px] outline-none text-slate-900 dark:text-white"
+              />
+              <button 
+                onClick={handleSendText}
+                className="bg-[#c5a065] text-white px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-[#b08d54] transition-colors"
+              >
+                Send
+              </button>
+            </div>
+            <p className="text-[8px] text-slate-400 text-center mt-2 uppercase tracking-widest font-black">Voice System Operational</p>
           </div>
         </div>
       )}

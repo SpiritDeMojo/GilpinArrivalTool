@@ -30,7 +30,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
           {/* Core Feature Architecture */}
           <section className="space-y-6">
             <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">Core System Features</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               
               <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col gap-4">
                 <div className="flex items-center gap-3">
@@ -39,6 +39,16 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   Automatically extracts and categorizes complex data from PDF arrival lists, identifying room assignments, guest history (L&L), and specific stay requirements with high precision.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🤖</span>
+                  <h6 className="font-black text-[11px] uppercase tracking-wider dark:text-white">AI Tactical Assistant</h6>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  A real-time "Gilpin Agent" accessible via the nav-bar. It processes voice and text to provide instant insights on vehicle registrations, ETAs, and complex guest requirements.
                 </p>
               </div>
 
@@ -72,13 +82,13 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                 </p>
               </div>
 
-              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col gap-4 md:col-span-2">
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col gap-4">
                 <div className="flex items-center gap-3">
                   <span className="text-3xl">🛡️</span>
                   <h6 className="font-black text-[11px] uppercase tracking-wider dark:text-white">Data Integrity</h6>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Maintains a "Source of Truth" by integrating an AI Assistant and sophisticated regex filtering to accurately capture vehicle registrations while excluding internal noise and rate codes.
+                  Maintains a "Source of Truth" by integrating regex filtering to accurately capture vehicle registrations while excluding internal noise and rate codes.
                 </p>
               </div>
 
@@ -100,14 +110,14 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                 <div className="w-8 h-8 rounded-full bg-[#c5a065] text-white flex items-center justify-center font-black text-xs">2</div>
                 <h5 className="font-bold text-[11px] dark:text-white uppercase tracking-wider">AI Audit</h5>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Trigger <strong>✨ AI Audit</strong> to refine raw data into actionable tactical notes.
+                  Trigger <strong>✨ AI Audit</strong> to refine raw data and activate the <strong>🤖 Tactical Agent</strong>.
                 </p>
               </div>
               <div className="space-y-3">
                 <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs">3</div>
                 <h5 className="font-bold text-[11px] dark:text-white uppercase tracking-wider">Review</h5>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Adjust ETAs or vehicle info in the live table. Verify "Booking Stream" for raw context.
+                  Adjust ETAs or vehicle info. Use the AI chat to query specific room details or stay histories.
                 </p>
               </div>
               <div className="space-y-3">
@@ -126,7 +136,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { e: "🎉", t: "Celebrations", d: "Flags CEL/MAG packages missing assets." },
-                { e: "🤫", t: "Comp Upgrades", d: "Flags 'Guest Unaware'  upgrades." },
+                { e: "🤫", t: "Comp Upgrades", d: "Flags 'Guest Unaware' upgrades." },
                 { e: "⭐", t: "VIP Status", d: "Priority mapping for POB staff and owners." },
                 { e: "💳", t: "Billing Guard", d: "Detects vouchers to hide bills from guests." }
               ].map(item => (
