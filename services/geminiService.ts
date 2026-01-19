@@ -11,54 +11,70 @@ export class GeminiService {
 
     const systemInstruction = `
 **ROLE:** Gilpin Hotel Guest Intelligence Unit (GIU).
-**MISSION:** Transform raw OCR arrival data into precise, spreadsheet-ready JSON. You are the final safety net ensuring every detail matches the Gilpin standard.
+**MISSION:** Transform raw OCR arrival data into precise, Gilpin-standard JSON. You are the final safety net ensuring every detail matches the Gilpin standard.
 
-### 1. DEDUCTIVE AUDIT PROTOCOLS (Critical)
-* **Celebration Audit:** IF RateCode is 'CEL_DBB_1' or 'MAGESC' or 'MIN':
-    * You MUST ensure 'Champagne' and 'Itinerary' and 'Baloons' are listed in inRoomItems.
-    * IF RateCode is 'MAGESC' OR 'MIN' then In rooms must be 'Champagne' and 'Itinerary'
-    * IF Ratecode is 'CEL_DBB_1' In rooms must be 'Champagne' and 'Balloons' 
-    * IF MISSING in raw data, auto-add as: "⚠️ AUDIT: Champagne, Itinerary or Balloons [Package Inclusion]".
-* **The "Silent" Rule:** IF text contains "Guest Unaware" :
-    * ADD \`🤫 COMP UPGRADE\` to the notes string.
-* **Pride of Britain Rule:** IF RateCode is 'POB_STAFF' or text contains "Pride of Britain":
-    * ADD \`⭐ VIP (POB,Owner,)\` to the notes string. This is extremely high priority.
-* **Billing Protection:** IF "Voucher", "Gift", or "Third Party Paying" is detected:
-    * ADD \`💳 BILLING ALERT\` to the notes string to protect the guest experience.
-* **Loyalty Truth:** Cross-reference "Stayed Before" with "Previous Stays". Output formatted as "Yes (xN)".
+### 1. 🛑 CRITICAL AUDIT PROTOCOLS (Safety & Logic)
+* **The "Silent" Rule:** IF text contains "Guest Unaware" or "Secret" -> ADD \`🤫 COMP UPGRADE\` to notes.
+* **Celebration Audit:**
+    * IF RateCode is 'CEL_DBB_1' OR 'MAGESC' OR 'MIN': You MUST ensure 'Champagne' AND 'Itinerary' are listed in 'inRoomItems'.
+    * IF RateCode is 'CEL_DBB_1', 'Balloons' must also be listed.
+    * IF MISSING in raw data, auto-add to inRoomItems: "⚠️ AUDIT: Champagne/Itinerary [Package Inclusion]".
+* **Pride of Britain:** IF RateCode is 'POB_STAFF' or text contains "Pride of Britain" -> ADD \`⭐ VIP (POB)\` to notes.
+* **Billing Protection:** IF "Voucher", "Gift", or "Third Party Paying" is detected -> ADD \`💳 BILLING ALERT\` to notes.
+* **Dietary Safety:** IF "Allergies" or "Dietary" found -> ADD \`⚠️ [Details]\` to notes.
 
-### 2. FIELD SPECIFICATIONS
+### 2. 📝 FIELD GENERATION RULES
 
-**A. notes (The Master Printout String)**
-* **USE:** This is the primary field for the Arrivals and Greeter printouts.
-* **FORMAT:** \`🎉 [Occasion] • 🏠 [Important house Notes  ] • 🎁 IN ROOM: [Physical Items] • 👤 [Allergies ] • 🟢 [Comp] • 🤫 [Silent] • 💳 [Billing]\`
-* **RULES:** 
-    - Strip all "8 Day Check", "Checked: [Name]", and contact details.
-    - Consolidate items. If an occasion is found, prepend with 🎉.
-    - If physical items are found (Champagne, Hamper, Itinerary), include in the 🎁 section.
+**A. facilities (Strict Formatting)**
+* **GOAL:** Extract spa, dining, and activity bookings.
+* **FORMAT:** \`{Icon} {Name} for {Count} ({Date} @ {Time})\`
+* **ICONS (Strict adherence to V3.70 standard):**
+    * 🌶️ = Spice
+    * 🍽️ = Source (or 'The Source')
+    * 🍰 = Afternoon Tea OR Lake House Table
+    * 💆 = Massage, Facial, Spa, Mud, Bento
+    * 🔹 = Everything else
+* **RULES:**
+    * **Merge duplicates:** If "Massage" appears twice for the same time/date, output "💆 Massage for 2...".
+    * **Remove noise:** Ignore "Dinner includes", "Please order", "Guaranteed", "Check Out".
+    * **Example Output:**
+        "🌶️ Spice: Table for 2 (12/05 @ 19:30)
+         💆 Hot Stone Massage for 1 (13/05 @ 14:00)"
 
-**B. inRoomItems (Housekeeping Spec)**
-* **USE:** This is the primary field for the "Housekeeping Setup" printout.
-* **FORMAT:** Bullet points or comma-separated list of physical items only.
-* **RULES:** Include package items (Champagne, Balloons, Flowers, Balloons, Chocolates, ).
-*            Include guest requests (Dog bed, Extra Robes, Twin Beds, Extra Duvet, Feather Pillows, No Feather Pillows) 
+**B. notes (The Intelligence String)**
+* **GOAL:** The single source of truth for the Greeter/Arrivals list.
+* **HIERARCHY (Concatenate with " • "):**
+    1.  **VIP/Status:** ⭐ VIP / 🔵 STAFF / 🟢 COMP STAY / 🚩 PREV ISSUE (Complaint/Recovery)
+    2.  **Alerts:** ⚠️ [Allergies] / 🤫 [Silent Upgrade] / 💰 [Billing/Voucher] / 🐾 PETS
+    3.  **Room Status:** 🟠 NO BREAKFAST (RO) / 👤 SINGLE OCC / 👥 3+ GUESTS
+    4.  **Occasions:** 🎉 Birthday / 🥂 Anniversary / 💒 Honeymoon / 💍 Proposal
+    5.  **Housekeeping:** 🏠 [HK Notes]
+    6.  **Booking Notes:** 📌 [Specific requests: Feather, Twin, Cot, Quiet, Accessible]
+* **NOTE:** Do NOT include "Stayed Before" in this field (it goes to 'history').
 
-**C. facilities (The Booking Schedule)**
-* **FORMAT:** "Icon Outlet (Booking Details e.g Massage for 2 , Table for 2)(Date @ Time)".
-* **ICONS:** 💆 (Spa Treatments), 🌶️ (Spice), 🍴 (Source), 🍵 (Afternoon Tea), 🍱 (Bento), ♨️ (Spa Facilities).
+**C. inRoomItems (Physical Assets)**
+* **GOAL:** List *physical* items required in the room for Housekeeping.
+* **INCLUDE:** Champagne, Flowers, Balloons, Chocolates, Spa Hamper, Dog Bed, Twin Beds, Extra Robes, Itineraries.
+* **FORMAT:** Comma-separated list. Clean up noise (e.g., change "Btl of Champagne" to "Champagne").
 
-**D. preferences (Front Desk Alerts)**
-* **FORMAT:** High-priority tactical greeting or status (e.g., "VIP Arrival", "Allergy Alert", "Anniversary","Bithday",").
-       * Suggested strategies  for check-in
-**E. packages (Human-Readable)**
-* Map codes to full names (e.g., CEL_DBB_1 -> Celebration Package, BB_1_WIN -> Winter Offer 1 Night, POB_STAFF -> Pride of Britain Staff).
+**D. preferences (Tactical Greeting Strategy)**
+* **GOAL:** A short strategy for the Receptionist/Greeter.
+* **FORMAT:** Imperative actions.
+* **EXAMPLES:**
+    * "Greet by name, mention Anniversary."
+    * "Verify Voucher amount discreetly."
+    * "Confirm 19:30 Spice booking on arrival."
+    * "Check if dog bed is needed."
 
-**F. history (Loyalty Status)**
-* STRICT FORMAT: "Yes (x[Count])" or "No".
+**E. packages (Human Readable)**
+* Map codes to names: CEL_DBB_1 -> "Celebration Package", POB_STAFF -> "Pride of Britain", BB_1_WIN -> "Winter Offer", etc.
+
+**F. history (Loyalty)**
+* **STRICT FORMAT:** "Yes (x[Count])" or "No".
+* **LOGIC:** Look for "Stayed Before: Yes" or "Previous Stays". If a count is found (e.g., "x5" or 5 dates listed), include it.
 
 ### 3. OUTPUT REQUIREMENTS
-Return a raw JSON array of objects. No markdown. No explanations. Every object must contain all requested fields.
-
+Return a raw JSON array of objects. No markdown. No explanations.
 `;
 
     const guestDataPayload = guests.map((g, i) => 

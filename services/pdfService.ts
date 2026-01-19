@@ -1,3 +1,4 @@
+
 import { Guest, Flag } from '../types';
 import { ROOM_MAP } from '../constants';
 
@@ -68,7 +69,7 @@ export class PDFService {
     });
     if (currentBlock) guestBlocks.push(currentBlock);
 
-    const guests = guestBlocks.map(block => this.parseBlock(block, arrivalDateObj, flags)).filter(g => g !== null);
+    const guests = guestBlocks.map(block => this.parseBlock(block, arrivalDateObj)).filter(g => g !== null);
     
     guests.sort((a, b) => {
       const rA = this.getRoomSortValue(a.room);
@@ -103,7 +104,60 @@ export class PDFService {
     return remaining.substring(0, bestEndIndex).trim();
   }
 
-  private static parseBlock(block: any, arrivalDate: Date | null, flags: Flag[]): Guest {
+  private static formatFacilities(text: string): string {
+    if (!text || text.trim() === "") return "";
+    
+    // Legacy v3.70 Logic: Emojis and structured formatting
+    let formatted = text.replace(/\s+/g, " ");
+    
+    // Map specific outlets to emojis
+    const mappings = [
+      { key: "Spice", icon: "🌶️" },
+      { key: "Source", icon: "🍽️" },
+      { key: "Treatments", icon: "💆" },
+      { key: "Massage", icon: "💆" },
+      { key: "Afternoon Tea", icon: "🍰" },
+      { key: "Bento", icon: "🍱" },
+      { key: "Spa Use", icon: "♨️" }
+    ];
+
+    // Split by common delimiters (e.g., date-like patterns or semicolons)
+    const bookings = formatted.split(/(\d{2}\/\d{2})/);
+    let result: string[] = [];
+    
+    for (let i = 1; i < bookings.length; i += 2) {
+      const date = bookings[i];
+      let details = (bookings[i+1] || "").trim();
+      
+      // Extract time
+      const timeMatch = details.match(/(\d{2}:\d{2})/);
+      const time = timeMatch ? `@ ${timeMatch[1]}` : "";
+      details = details.replace(/(\d{2}:\d{2})/, "").trim();
+      
+      // Extract Table for X
+      const tableMatch = details.match(/Table for (\d+)/i);
+      const pax = tableMatch ? `(T-${tableMatch[1]})` : "";
+      details = details.replace(/Table for \d+/i, "").trim();
+
+      // Find Emoji
+      let emoji = "📅";
+      for (const m of mappings) {
+        if (details.toLowerCase().includes(m.key.toLowerCase())) {
+          emoji = m.icon;
+          break;
+        }
+      }
+
+      // Clean up punctuation leftovers
+      details = details.replace(/^[,\-:\s]+|[,\-:\s]+$/g, "");
+      
+      result.push(`${emoji} ${details} ${pax} (${date}${time})`.trim());
+    }
+
+    return result.length > 0 ? result.join(" • ") : formatted;
+  }
+
+  private static parseBlock(block: any, arrivalDate: Date | null): Guest {
     const rawItems = block.lines.flatMap((l: any) => l.items);
     const rawText = block.lines.map((l: any) => l.items.map((i: any) => i.str).join(" ")).join("\n");
     const singleLineText = rawText.replace(/\s+/g, " ");
@@ -168,41 +222,80 @@ export class PDFService {
         }
     }
 
-    // v3.72+ Optimized Car Registration Logic with strict noise exclusion
+    // Legacy v3.70 Strict Car Registration: Positioning + Exclusion List
     let car = "";
     const plateRegex = /\b([A-Z]{2}\d{2}\s?[A-Z]{3}|[A-Z]{1,2}\d{1,4}\s?[A-Z]{0,3})\b/gi;
-    const exclusions = /^(BB\d|APR|RO|COMP|GS|JS|MR|SL|SS|MAG)/i;
+    const carExclusions = /^(BB\d|APR|RO|COMP|GS|JS|MR|SL|SS|MAG|RATE|ID|PAGE|DATE|ROOM)/i;
     
+    // In legacy, we strictly look for plates at the far right of the layout
     const possiblePlates = rawItems.filter(i => i.x > 500 && i.str.match(plateRegex));
     for (const item of possiblePlates) {
         const str = item.str.trim().toUpperCase();
-        if (!str.match(exclusions)) {
+        if (!str.match(carExclusions)) {
             car = str;
             break;
         }
     }
 
+    // Legacy Loyalty Logic: Extract Visit Count
     let ll = "No";
-    if (scanLower.includes("stayed before") || scanLower.includes("_regular")) ll = "Yes";
+    if (scanLower.includes("stayed before") || scanLower.includes("_regular")) {
+      const visitMatch = singleLineText.match(/stayed before\s*\(?x\s*(\d+)\)?/i);
+      if (visitMatch) {
+        ll = `Yes (x${visitMatch[1]})`;
+      } else {
+        ll = "Yes";
+      }
+    }
 
-    let auditAlerts: string[] = [];
+    // Legacy Notes/Prefill Construction with Keyword-to-Emoji Mapping
+    let notesList: string[] = [];
+
+    // Safety First: Allergies
+    if (scanLower.match(/nut allergy|anaphylaxis|no nut|peanut/)) notesList.push("🥜 Nut Allergy");
+    else if (scanLower.match(/nut free|nut-free/)) notesList.push("🥜 Nut Free Req");
+    
+    if (scanLower.match(/gluten free|gf|coeliac|celiac/)) notesList.push("🍞 Gluten Free");
+    if (scanLower.match(/dairy free|no dairy|lactose/)) notesList.push("🧀 Dairy Free");
+    if (scanLower.match(/oat milk/)) notesList.push("🥛 Oat Milk Req");
+    if (scanLower.match(/soya milk/)) notesList.push("🥛 Soya Milk Req");
+
+    // VIP / Package Badges
+    if (rateCode === "POB_STAFF" || scanLower.includes("pride of britain")) notesList.push("⭐ VIP (POB Staff)");
+    if (scanLower.match(/celebrity|director|owner|chairman/)) notesList.push("⭐ VIP High Profile");
+
+    // Service Alerts
+    if (scanLower.includes("guest unaware") || scanLower.includes("secret")) notesList.push("🤫 Comp Upgrade (Silent)");
+    if (scanLower.includes("voucher") || scanLower.includes("gift")) notesList.push("🎫 Voucher Applied");
+    if (scanLower.includes("comp stay") || scanLower.includes("complimentary")) notesList.push("🟢 Comp Stay");
+    if (scanLower.match(/complaint|pgi|issue|dissatisfied/)) notesList.push("🚩 Previous Problem");
+
+    // Occasions
+    if (scanLower.match(/birthday/)) notesList.push("🎉 Birthday");
+    if (scanLower.match(/anniversary/)) notesList.push("🎉 Anniversary");
+    if (scanLower.match(/honeymoon|proposal|engagement/)) notesList.push("🎉 Special Occasion");
+
+    // Pet logic
+    if (scanLower.match(/dog|pet in room|canine/)) notesList.push("🐾 Pet In Room");
+
+    // Merge manual notes
+    const hkNotes = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Billing:"]);
+    if (hkNotes) notesList.push(hkNotes);
+
+    const guestNotes = this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:", "Billing:"]);
+    if (guestNotes) notesList.push(guestNotes);
+
+    // Facilities Parsing
+    const rawFac = this.extractSection(singleLineText, "Facility Bookings:", ["HK Notes:", "Guest Notes:", "Unit:", "Billing:"]);
+    const facilitiesFormatted = this.formatFacilities(rawFac);
+
+    // In Room Items
     let inRoomItemsList: string[] = [];
-
-    if (rateCode === "POB_STAFF" || scanLower.includes("pride of britain")) {
-        auditAlerts.push("⭐ VIP (Pride of Britain Staff)");
-    }
-
-    if (scanLower.includes("guest unaware") || scanLower.includes("secret")) {
-        auditAlerts.push("🤫 Comp Upgrade: Guest Unaware");
-    }
-
     const inRoomMarkers = ["In Room on Arrival:", "In-Room:", "IN ROOM:"];
     inRoomMarkers.forEach(marker => {
       const extracted = this.extractSection(singleLineText, marker, ["HK Notes:", "Guest Notes:", "Unit:", "Billing:"]);
       if (extracted) extracted.split(',').forEach(p => inRoomItemsList.push(p.trim()));
     });
-
-    const notes = auditAlerts.join(" • ") + " " + this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Billing:"]);
 
     return {
       id: block.id,
@@ -212,8 +305,8 @@ export class PDFService {
       ll,
       eta,
       duration,
-      facilities: this.extractSection(singleLineText, "Facility Bookings:", ["HK Notes:", "Guest Notes:", "Unit:", "Billing:"]),
-      prefillNotes: notes.trim(),
+      facilities: facilitiesFormatted,
+      prefillNotes: notesList.join(" • "),
       inRoomItems: inRoomItemsList.join(" • "),
       preferences: "",
       packageName: rateCode,
