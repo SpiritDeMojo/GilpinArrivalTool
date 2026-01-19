@@ -49,7 +49,7 @@
         [data-theme="light"] textarea, 
         [data-theme="light"] input,
         [data-theme="light"] .guest-row textarea { 
-            color: #0f172a !important; /* Deep Navy Charcoal */
+            color: #0f172a !important; 
             -webkit-text-fill-color: #0f172a !important; 
         }
 
@@ -96,7 +96,6 @@
         .nav-logo-bubble:hover { transform: translateY(22px) scale(1.1); }
         .nav-logo-img { width: 100%; height: 100%; object-fit: contain; }
 
-        /* --- STICKY GLASS DASHBOARD --- */
         .dashboard-container.sticky {
             position: fixed; left: 0; right: 0;
             background: var(--nav-bg);
@@ -106,7 +105,6 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
 
-        /* --- PULSATING ALERTS --- */
         .pulsate-alert {
             animation: pulsate 2s infinite ease-in-out;
         }
@@ -116,14 +114,12 @@
             100% { background-color: #e11d48; box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
         }
 
-        /* --- LOADING HUB V3.72 --- */
         .loading-hub { position: relative; width: 240px; height: 240px; display: flex; align-items: center; justify-content: center; }
         .loading-ring { position: absolute; border-radius: 50%; border: 3px solid transparent; animation: ring-spin var(--duration) linear infinite; }
         .loading-ring-1 { inset: 0; border-top-color: var(--gilpin-gold); --duration: 1s; }
         .loading-ring-2 { inset: 15px; border-right-color: rgba(197, 160, 101, 0.3); --duration: 1.5s; }
         @keyframes ring-spin { 100% { transform: rotate(360deg); } }
 
-        /* --- INTELLIGENCE HIGHLIGHTS --- */
         .hl-badge {
             padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 10px;
             display: inline-block; margin: 1px; text-transform: uppercase; letter-spacing: 0.05em;
@@ -134,7 +130,7 @@
         .hl-ctx-red { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
         .hl-plate { background: #000; color: #fff; font-family: monospace; border: 1px solid #333; }
 
-        /* --- PRINT PROTOCOL --- */
+        /* --- PRINT PROTOCOL V4.0 --- */
         @media screen {
             .print-only { display: none !important; }
         }
@@ -142,19 +138,63 @@
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
-            body { background: white !important; color: black !important; background-image: none !important; }
-            .hl-badge { background: transparent !important; border: 1px solid #000 !important; color: black !important; text-decoration: underline !important; }
-            .raw-intel-box { border: 1px solid #000 !important; page-break-inside: avoid; }
-            .navbar, .live-orb-container, .dashboard-container { display: none !important; }
+            body { 
+                background: white !important; 
+                color: black !important; 
+                background-image: none !important; 
+                padding: 0 !important;
+                margin: 0 !important;
+            }
             
-            /* Greeter specific formatting */
-            .greeter-view .g-r-num { font-size: 110pt; font-weight: 900; line-height: 1; border: 8px solid black; padding: 10px 30px; display: inline-block; }
-            .greeter-view .g-name { font-size: 42pt; font-weight: 800; text-transform: uppercase; }
-            .greeter-view .g-meta { font-size: 24pt; font-weight: 600; }
+            .hl-badge { 
+                background: transparent !important; 
+                border: 1px solid #000 !important; 
+                color: black !important; 
+                text-decoration: none !important;
+                font-weight: 900 !important;
+            }
             
-            table { width: 100% !important; border-collapse: collapse !important; }
-            th, td { border-bottom: 2px solid #000 !important; padding: 12px !important; }
-            @page { size: landscape; margin: 0.5cm; }
+            table { 
+                width: 100% !important; 
+                border-collapse: collapse !important; 
+                table-layout: fixed !important;
+            }
+            th, td { 
+                border-bottom: 1px solid #ddd !important; 
+                padding: 8px !important; 
+                vertical-align: top !important;
+                word-wrap: break-word !important;
+            }
+            thead th {
+                background: #f1f1f1 !important;
+                color: black !important;
+                -webkit-print-color-adjust: exact;
+            }
+
+            @page { 
+                size: landscape; 
+                margin: 0.5cm; 
+            }
+
+            /* Column Visibility Logic */
+            .col-inroom, .col-allergies { display: none; }
+            
+            .print-mode-greeter .col-nts, 
+            .print-mode-greeter .col-facilities,
+            .print-mode-greeter .col-intel { display: none !important; }
+
+            .print-mode-delivery .col-identity,
+            .print-mode-delivery .col-vehicle,
+            .print-mode-delivery .col-ll,
+            .print-mode-delivery .col-facilities,
+            .print-mode-delivery .col-strategy { display: none !important; }
+            
+            .print-mode-delivery .col-inroom, 
+            .print-mode-delivery .col-allergies { display: table-cell !important; }
+            
+            /* Greeter List specific sizing */
+            .print-mode-greeter td { font-size: 14pt !important; height: 60pt; }
+            .print-mode-greeter td.font-black { font-size: 24pt !important; }
         }
     </style>
 <script type="importmap">
