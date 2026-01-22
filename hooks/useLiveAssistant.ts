@@ -43,6 +43,7 @@ export const useLiveAssistant = (guests: Guest[]) => {
 
   const sessionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const micEnabledRef = useRef(false);
   const nextStartTimeRef = useRef(0);
   const sourcesRef = useRef(new Set<AudioBufferSourceNode>());
@@ -52,14 +53,35 @@ export const useLiveAssistant = (guests: Guest[]) => {
   }, [isMicEnabled]);
 
   const disconnect = () => {
+    // 1. Explicitly stop all microphone stream tracks
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+
+    // 2. Properly close the audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(e => console.error("Error closing audio context", e));
+      audioContextRef.current = null;
+    }
+
+    // 3. Close the Live Session
     if (sessionRef.current) {
       sessionRef.current.close();
       sessionRef.current = null;
     }
+
+    // 4. Stop all scheduled audio playback sources
+    sourcesRef.current.forEach(s => {
+      try { s.stop(); } catch(e) {}
+    });
+    sourcesRef.current.clear();
+
+    // 5. Reset UI State
     setIsLiveActive(false);
     setIsMicEnabled(false);
-    sourcesRef.current.forEach(s => s.stop());
-    sourcesRef.current.clear();
+    setInterimInput("");
+    setInterimOutput("");
   };
 
   const startLiveAssistant = async () => {
@@ -71,7 +93,6 @@ export const useLiveAssistant = (guests: Guest[]) => {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      // Formatting the guest data to support "Clean Data" vs "Raw Stream" distinction
       const guestsBrief = guests.map(g => {
         const rNum = parseInt(g.room.split(' ')[0]);
         const location = (rNum >= 51 && rNum <= 60) ? 'Lake House' : 'Main Hotel';
@@ -99,6 +120,8 @@ ${g.rawHtml}
       audioContextRef.current = outputCtx;
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
       let currentInput = "";
       let currentOutput = "";
 
@@ -147,12 +170,15 @@ ${g.rawHtml}
               currentInput = ""; currentOutput = ""; setInterimInput(""); setInterimOutput("");
             }
             if (msg.serverContent?.interrupted) {
-              sourcesRef.current.forEach(s => s.stop()); sourcesRef.current.clear();
+              sourcesRef.current.forEach(s => {
+                try { s.stop(); } catch(e) {}
+              });
+              sourcesRef.current.clear();
               nextStartTimeRef.current = 0;
             }
           },
-          onclose: () => { setIsLiveActive(false); setIsMicEnabled(false); },
-          onerror: () => { setIsLiveActive(false); setIsMicEnabled(false); },
+          onclose: () => { disconnect(); },
+          onerror: () => { disconnect(); },
         },
         config: {
           responseModalities: [Modality.AUDIO],

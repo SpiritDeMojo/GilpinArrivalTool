@@ -60,7 +60,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen transition-colors duration-500" style={{ paddingTop: mainPaddingTop + 'px' }}>
+    <div className="min-h-screen transition-colors duration-500 print:!pt-0" style={{ paddingTop: mainPaddingTop + 'px' }}>
       <Navbar 
         arrivalDateStr={arrivalDateStr}
         isDark={isDark}
