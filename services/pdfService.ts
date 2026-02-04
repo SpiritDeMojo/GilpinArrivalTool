@@ -96,8 +96,12 @@ export class PDFService {
     if (!startMatch) return "";
     const startIndex = startMatch.index! + startMatch[0].length;
     const remaining = text.substring(startIndex);
+    
+    // Core V4.0 Stop Markers added to prevent data bleeding
+    const strictEndMarkers = [...endMarkers, "Checked:", "8 Day Check", "4 day Call", "Allergies", "Billing:"];
+    
     let bestEndIndex = remaining.length;
-    endMarkers.forEach(endM => {
+    strictEndMarkers.forEach(endM => {
       const m = remaining.match(new RegExp(endM.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i'));
       if (m && m.index! < bestEndIndex) bestEndIndex = m.index!;
     });
@@ -106,11 +110,7 @@ export class PDFService {
 
   private static formatFacilities(text: string): string {
     if (!text || text.trim() === "") return "";
-    
-    // Legacy v3.70 Logic: Emojis and structured formatting
     let formatted = text.replace(/\s+/g, " ");
-    
-    // Map specific outlets to emojis
     const mappings = [
       { key: "Spice", icon: "🌶️" },
       { key: "Source", icon: "🍽️" },
@@ -121,25 +121,17 @@ export class PDFService {
       { key: "Spa Use", icon: "♨️" }
     ];
 
-    // Split by common delimiters (e.g., date-like patterns or semicolons)
     const bookings = formatted.split(/(\d{2}\/\d{2})/);
     let result: string[] = [];
-    
     for (let i = 1; i < bookings.length; i += 2) {
       const date = bookings[i];
       let details = (bookings[i+1] || "").trim();
-      
-      // Extract time
       const timeMatch = details.match(/(\d{2}:\d{2})/);
       const time = timeMatch ? `@ ${timeMatch[1]}` : "";
       details = details.replace(/(\d{2}:\d{2})/, "").trim();
-      
-      // Extract Table for X
       const tableMatch = details.match(/Table for (\d+)/i);
       const pax = tableMatch ? `(T-${tableMatch[1]})` : "";
       details = details.replace(/Table for \d+/i, "").trim();
-
-      // Find Emoji
       let emoji = "📅";
       for (const m of mappings) {
         if (details.toLowerCase().includes(m.key.toLowerCase())) {
@@ -147,49 +139,52 @@ export class PDFService {
           break;
         }
       }
-
-      // Clean up punctuation leftovers
       details = details.replace(/^[,\-:\s]+|[,\-:\s]+$/g, "");
-      
       result.push(`${emoji} ${details} ${pax} (${date}${time})`.trim());
     }
-
     return result.length > 0 ? result.join(" • ") : formatted;
   }
 
   private static parseBlock(block: any, arrivalDate: Date | null): Guest {
     const rawItems = block.lines.flatMap((l: any) => l.items);
-    const rawText = block.lines.map((l: any) => l.items.map((i: any) => i.str).join(" ")).join("\n");
-    const singleLineText = rawText.replace(/\s+/g, " ");
+    const rawTextLines = block.lines.map((l: any) => l.items.map((i: any) => i.str).join(" "));
+    const singleLineText = rawTextLines.join(" ").replace(/\s+/g, " ");
     const scanLower = singleLineText.toLowerCase();
-    const headerLineItems = block.lines[0].items;
-    
+
+    // 1. IMPROVED ROOM DETECTION (v4.0 Robust Scanning)
+    // Supports hyphens, dots, and spans multiple lines
     let room = "Unassigned";
-    const roomItemIndex = headerLineItems.findIndex((i: any) => (i.str.match(/^\d{1,3}\.\s+[A-Za-z]+/) || i.str.match(/Lake House|Lodge|House/i)));
-    let roomItem = null;
-    if (roomItemIndex !== -1) {
-      roomItem = headerLineItems[roomItemIndex];
-      room = roomItem.str.trim();
-      const m = room.match(/(\d{1,3})\.\s*(.*)/);
-      if (m) room = `${m[1]} ${m[2].toUpperCase()}`;
-      else room = room.toUpperCase();
+    const roomRegex = /\b(\d{1,3})[.-]\s*([A-Za-z\s]+)\b/i;
+    
+    // Scan first 3 lines (typical room location in new/old formats)
+    for (let i = 0; i < Math.min(3, block.lines.length); i++) {
+        const lineText = block.lines[i].items.map((it: any) => it.str).join(" ");
+        const match = lineText.match(roomRegex);
+        if (match) {
+            room = `${match[1]} ${match[2].trim().toUpperCase()}`;
+            break;
+        }
+    }
+    
+    // Legacy Fallback: Scan the entire singleLineText if structured scan fails
+    if (room === "Unassigned") {
+        const globalMatch = singleLineText.match(roomRegex);
+        if (globalMatch) room = `${globalMatch[1]} ${globalMatch[2].trim().toUpperCase()}`;
     }
 
-    let eta = "N/A";
-    const etaMatch = singleLineText.match(/\b(\d{2}:?\d{2})\b/);
-    if (etaMatch) {
-      const e = etaMatch[1].replace(':', '');
-      if (e.length === 4) eta = `${e.substring(0,2)}:${e.substring(2,4)}`;
-    }
-
+    // 2. REFINED NAME EXTRACTION (Independent of Room position)
     let nameRaw = "";
+    const line0Items = block.lines[0].items;
     let foundId = false;
-    for (const item of headerLineItems) {
-      if (item.str === block.id) { foundId = true; continue; }
-      if (foundId) {
-        if (item.str === roomItem?.str) break;
-        nameRaw += " " + item.str;
-      }
+    for (const item of line0Items) {
+        const str = item.str.trim();
+        // Skip the initial ID
+        if (str === block.id) { foundId = true; continue; }
+        if (foundId) {
+            // If the Room happens to be on line 0 (old format), stop there
+            if (str.match(roomRegex)) break;
+            nameRaw += " " + str;
+        }
     }
     
     let name = nameRaw.trim()
@@ -198,14 +193,22 @@ export class PDFService {
       .replace(/(\s(Mr|Mrs|Miss|Ms|Dr|&|Sir|Lady|\+)+)+[*]*$/i, "")
       .trim();
 
+    // 3. ETA & DURATION
+    let eta = "N/A";
+    const etaMatch = singleLineText.match(/\b(\d{2}:?\d{2})\b/);
+    if (etaMatch) {
+      const e = etaMatch[1].replace(':', '');
+      if (e.length === 4) eta = `${e.substring(0,2)}:${e.substring(2,4)}`;
+    }
+
     const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|BB_1_WIN|BB_2_WIN|BB_3_WIN|COMP|LHAPR|LHMAG|LHBB1|LHBB2|LHBB|RO|CEL_DBB_1|POB_STAFF)\b/i;
     const rateCodeMatch = singleLineText.match(packageRegex);
     const rateCode = rateCodeMatch ? rateCodeMatch[1].toUpperCase() : "";
 
     let duration = "1";
     if (arrivalDate) {
-        const firstLineDates = singleLineText.match(/\d{2}\/\d{2}\/\d{2,4}/g) || [];
-        for (const dStr of firstLineDates) {
+        const datesFound = singleLineText.match(/\d{2}\/\d{2}\/\d{2,4}/g) || [];
+        for (const dStr of datesFound) {
             const parts = dStr.split('/');
             const d = parseInt(parts[0]);
             const m = parseInt(parts[1]);
@@ -222,12 +225,10 @@ export class PDFService {
         }
     }
 
-    // Legacy v3.70 Strict Car Registration: Positioning + Exclusion List
+    // 4. CAR REGISTRATION
     let car = "";
     const plateRegex = /\b([A-Z]{2}\d{2}\s?[A-Z]{3}|[A-Z]{1,2}\d{1,4}\s?[A-Z]{0,3})\b/gi;
     const carExclusions = /^(BB\d|APR|RO|COMP|GS|JS|MR|SL|SS|MAG|RATE|ID|PAGE|DATE|ROOM)/i;
-    
-    // In legacy, we strictly look for plates at the far right of the layout
     const possiblePlates = rawItems.filter(i => i.x > 500 && i.str.match(plateRegex));
     for (const item of possiblePlates) {
         const str = item.str.trim().toUpperCase();
@@ -237,63 +238,41 @@ export class PDFService {
         }
     }
 
-    // Legacy Loyalty Logic: Extract Visit Count
+    // 5. LOYALTY & NOTES
     let ll = "No";
     if (scanLower.includes("stayed before") || scanLower.includes("_regular")) {
       const visitMatch = singleLineText.match(/stayed before\s*\(?x\s*(\d+)\)?/i);
-      if (visitMatch) {
-        ll = `Yes (x${visitMatch[1]})`;
-      } else {
-        ll = "Yes";
-      }
+      ll = visitMatch ? `Yes (x${visitMatch[1]})` : "Yes";
     }
 
-    // Legacy Notes/Prefill Construction with Keyword-to-Emoji Mapping
     let notesList: string[] = [];
-
-    // Safety First: Allergies
     if (scanLower.match(/nut allergy|anaphylaxis|no nut|peanut/)) notesList.push("🥜 Nut Allergy");
-    else if (scanLower.match(/nut free|nut-free/)) notesList.push("🥜 Nut Free Req");
-    
     if (scanLower.match(/gluten free|gf|coeliac|celiac/)) notesList.push("🍞 Gluten Free");
     if (scanLower.match(/dairy free|no dairy|lactose/)) notesList.push("🧀 Dairy Free");
     if (scanLower.match(/oat milk/)) notesList.push("🥛 Oat Milk Req");
     if (scanLower.match(/soya milk/)) notesList.push("🥛 Soya Milk Req");
-
-    // VIP / Package Badges
     if (rateCode === "POB_STAFF" || scanLower.includes("pride of britain")) notesList.push("⭐ VIP (POB Staff)");
     if (scanLower.match(/celebrity|director|owner|chairman/)) notesList.push("⭐ VIP High Profile");
-
-    // Service Alerts
     if (scanLower.includes("guest unaware") || scanLower.includes("secret")) notesList.push("🤫 Comp Upgrade (Silent)");
     if (scanLower.includes("voucher") || scanLower.includes("gift")) notesList.push("🎫 Voucher Applied");
-    if (scanLower.includes("comp stay") || scanLower.includes("complimentary")) notesList.push("🟢 Comp Stay");
-    if (scanLower.match(/complaint|pgi|issue|dissatisfied/)) notesList.push("🚩 Previous Problem");
-
-    // Occasions
     if (scanLower.match(/birthday/)) notesList.push("🎉 Birthday");
     if (scanLower.match(/anniversary/)) notesList.push("🎉 Anniversary");
-    if (scanLower.match(/honeymoon|proposal|engagement/)) notesList.push("🎉 Special Occasion");
-
-    // Pet logic
     if (scanLower.match(/dog|pet in room|canine/)) notesList.push("🐾 Pet In Room");
 
-    // Merge manual notes
-    const hkNotes = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Billing:"]);
+    // Robust Section Extraction with strict stop markers
+    const hkNotes = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:"]);
     if (hkNotes) notesList.push(hkNotes);
 
-    const guestNotes = this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:", "Billing:"]);
+    const guestNotes = this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:"]);
     if (guestNotes) notesList.push(guestNotes);
 
-    // Facilities Parsing
-    const rawFac = this.extractSection(singleLineText, "Facility Bookings:", ["HK Notes:", "Guest Notes:", "Unit:", "Billing:"]);
+    const rawFac = this.extractSection(singleLineText, "Facility Bookings:", ["HK Notes:", "Guest Notes:", "Unit:"]);
     const facilitiesFormatted = this.formatFacilities(rawFac);
 
-    // In Room Items
     let inRoomItemsList: string[] = [];
     const inRoomMarkers = ["In Room on Arrival:", "In-Room:", "IN ROOM:"];
     inRoomMarkers.forEach(marker => {
-      const extracted = this.extractSection(singleLineText, marker, ["HK Notes:", "Guest Notes:", "Unit:", "Billing:"]);
+      const extracted = this.extractSection(singleLineText, marker, ["HK Notes:", "Guest Notes:", "Unit:"]);
       if (extracted) extracted.split(',').forEach(p => inRoomItemsList.push(p.trim()));
     });
 
@@ -311,7 +290,7 @@ export class PDFService {
       preferences: "",
       packageName: rateCode,
       rateCode,
-      rawHtml: rawText
+      rawHtml: rawTextLines.join("\n")
     };
   }
 }

@@ -22,7 +22,7 @@ const PrintHeader: React.FC<PrintHeaderProps> = ({ mode, arrivalDateStr, guests 
   };
 
   return (
-    <div className="w-full bg-white border-b-2 border-black mb-2 px-4 py-1 grid grid-cols-[20%_50%_30%] items-end">
+    <div className="w-full bg-white border-b-2 border-black mb-2 px-4 py-0.5 grid grid-cols-[20%_50%_30%] items-end">
       {/* LEFT: Timestamp */}
       <div className="flex flex-col justify-self-start text-left">
         <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Security Audit</span>
@@ -33,7 +33,7 @@ const PrintHeader: React.FC<PrintHeaderProps> = ({ mode, arrivalDateStr, guests 
       <div className="flex flex-col items-center justify-self-center w-full">
         <div className="flex items-center gap-3 mb-1">
            <img src={GILPIN_LOGO_URL} alt="Gilpin" className="h-8 object-contain" />
-           <h1 className="heading-font text-2xl font-black text-black leading-none uppercase tracking-tighter whitespace-nowrap">
+           <h1 className="heading-font text-xl font-black text-black leading-none uppercase tracking-tighter whitespace-nowrap">
             {titles[mode]}
           </h1>
         </div>
@@ -75,7 +75,7 @@ export const PrintLayout: React.FC<{
           /* GLOBAL PRINT RESET */
           body { -webkit-print-color-adjust: exact; background: white; font-size: 9pt; margin: 0 !important; padding: 0 !important; }
           table { table-layout: fixed !important; width: 100% !important; border-collapse: collapse; }
-          td, th { padding: 2px 4px !important; vertical-align: top !important; border-bottom: 1px solid #ccc; overflow: hidden; }
+          td, th { padding: 2px 4px !important; vertical-align: top !important; border-bottom: 1px solid #ccc; overflow: hidden; line-height: 1.1; }
           
           .print-only { display: block !important; min-height: auto !important; }
           thead { display: table-header-group !important; }
@@ -86,20 +86,20 @@ export const PrintLayout: React.FC<{
           .print-mode-delivery .col-identity, .print-mode-delivery .col-vehicle, .print-mode-delivery .col-ll, .print-mode-delivery .col-facilities, .print-mode-delivery .col-strategy, .print-mode-delivery .col-nts, .print-mode-delivery .col-eta, .print-mode-delivery .col-intel { display: none !important; }
           .print-mode-delivery .col-inroom, .print-mode-delivery .col-allergies { display: table-cell !important; }
 
-          /* --- OPTIMIZED COLUMN WIDTHS (Horizontal Flow) --- */
+          /* --- ULTRA-DENSITY COLUMN WIDTHS --- */
 
-          /* GREETER: Maximize Strategy to prevent wrapping */
-          .print-mode-greeter th:nth-child(1) { width: 5% !important; } 
-          .print-mode-greeter .col-identity { width: 18% !important; } 
-          .print-mode-greeter .col-vehicle { width: 12% !important; } 
-          .print-mode-greeter .col-ll { width: 4% !important; } 
-          .print-mode-greeter .col-eta { width: 6% !important; } 
-          .print-mode-greeter .col-strategy { width: 55% !important; font-size: 9pt !important; white-space: normal !important; }
+          /* GREETER: Squeezed for maximum Strategic horizontal span */
+          .print-mode-greeter th:nth-child(1) { width: 4% !important; } 
+          .print-mode-greeter .col-identity { width: 15% !important; } 
+          .print-mode-greeter .col-vehicle { width: 10% !important; } 
+          .print-mode-greeter .col-ll { width: 3% !important; } 
+          .print-mode-greeter .col-eta { width: 5% !important; } 
+          .print-mode-greeter .col-strategy { width: 63% !important; font-size: 8pt !important; white-space: normal !important; }
 
-          /* DELIVERY: Maximize In-Room Items */
-          .print-mode-delivery th:nth-child(1) { width: 5% !important; } 
-          .print-mode-delivery .col-inroom { width: 70% !important; font-size: 10pt !important; } 
-          .print-mode-delivery .col-allergies { width: 25% !important; }
+          /* DELIVERY: Maximize In-Room Assets flow */
+          .print-mode-delivery th:nth-child(1) { width: 4% !important; } 
+          .print-mode-delivery .col-inroom { width: 75% !important; font-size: 8pt !important; white-space: normal !important; } 
+          .print-mode-delivery .col-allergies { width: 21% !important; }
 
           /* MASTER: Balanced High Density */
           .print-mode-master th:nth-child(1) { width: 5% !important; } 
