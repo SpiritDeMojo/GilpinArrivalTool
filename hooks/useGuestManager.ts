@@ -18,6 +18,22 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     return localStorage.getItem('gilpin_active_id_v5') || "";
   });
 
+  // Ensure there is always at least one session on mount
+  useEffect(() => {
+    if (sessions.length === 0) {
+        const id = `MAN-${Date.now()}`;
+        const newSession = { 
+            id, 
+            label: "New List", 
+            dateObj: new Date().toISOString(), 
+            guests: [], 
+            lastModified: Date.now() 
+        };
+        setSessions([newSession]);
+        setActiveSessionId(id);
+    }
+  }, []);
+
   // 2. Computed Current State
   const activeSession = useMemo(() => 
     sessions.find(s => s.id === activeSessionId) || (sessions.length > 0 ? sessions[0] : null)
@@ -43,41 +59,41 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
   // 3. Persistence
   useEffect(() => {
-    localStorage.setItem('gilpin_sessions_v5', JSON.stringify(sessions));
-    if (activeSessionId) {
+    if (sessions.length > 0) {
+        localStorage.setItem('gilpin_sessions_v5', JSON.stringify(sessions));
         localStorage.setItem('gilpin_active_id_v5', activeSessionId);
     }
   }, [sessions, activeSessionId]);
 
   // 4. Actions
   
-  // FIX: Robust Delete Logic with focus switching
+  // FIX: Robust Delete Logic with Focus Switching
   const deleteSession = (idToDelete: string) => {
     const sessionIndex = sessions.findIndex(s => s.id === idToDelete);
     if (sessionIndex === -1) return;
 
     const newSessions = sessions.filter(s => s.id !== idToDelete);
     
-    // If we are deleting the currently active session, we must switch focus
-    if (idToDelete === activeSessionId) {
-        if (newSessions.length > 0) {
-            // Try to go to the left, otherwise go to the first one
+    if (newSessions.length === 0) {
+        // If deleting the last session, create a fresh manual one
+        const newId = `MAN-${Date.now()}`;
+        const freshSession = {
+            id: newId,
+            label: "New List",
+            dateObj: new Date().toISOString(),
+            guests: [],
+            lastModified: Date.now()
+        };
+        setSessions([freshSession]);
+        setActiveSessionId(newId);
+    } else {
+        // If deleting current active, switch to neighbor
+        if (idToDelete === activeSessionId) {
             const newIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
             setActiveSessionId(newSessions[newIndex].id);
-        } else {
-            // If deleting the last one, create a fresh manual session automatically
-            const newId = `MAN-${Date.now()}`;
-            newSessions.push({
-                id: newId,
-                label: `New List ${new Date().toLocaleDateString('en-GB')}`,
-                dateObj: new Date().toISOString(),
-                guests: [],
-                lastModified: Date.now()
-            });
-            setActiveSessionId(newId);
         }
+        setSessions(newSessions);
     }
-    setSessions(newSessions);
   };
 
   const createNewSession = () => {
@@ -93,15 +109,16 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     setActiveSessionId(id);
   };
 
-  // FIX: Robust Upload Logic (Prevent Duplicates and normalize IDs)
+  // FIX: Smart Upload Logic (Replaces Empty Placeholder Tabs)
   const handleFileUpload = async (file: File) => {
     setIsProcessing(true);
     setProgressMsg("ANALYSING ARRIVALS...");
     try {
       const result = await PDFService.parse(file, initialFlags);
-      const sessionId = result.arrivalDateStr.trim(); // Normalize ID
+      const sessionId = result.arrivalDateStr.trim(); // The "Real" Date ID
 
       setSessions(prev => {
+        // 1. Check if we already have this Date open
         const existingIdx = prev.findIndex(s => s.id === sessionId);
         
         const newSessionData: ArrivalSession = {
@@ -113,21 +130,30 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         };
 
         if (existingIdx >= 0) {
-            // Update existing session
+            // CASE A: Date exists -> Update it
             const updated = [...prev];
             updated[existingIdx] = newSessionData;
             return updated;
-        } else {
-            // Add new and sort by date chronological order
-            const newList = [...prev, newSessionData];
-            return newList.sort((a, b) => new Date(a.dateObj).getTime() - new Date(b.dateObj).getTime());
+        } 
+        
+        // CASE B: Date doesn't exist. Check if the active tab is an empty "Manual" placeholder
+        const activeIdx = prev.findIndex(s => s.id === activeSessionId);
+        if (activeIdx >= 0 && prev[activeIdx].id.startsWith("MAN-") && prev[activeIdx].guests.length === 0) {
+            // REPLACEMENT STRATEGY: Overwrite the empty placeholder with real data
+            const updated = [...prev];
+            updated[activeIdx] = newSessionData;
+            return updated;
         }
+
+        // CASE C: Just add a new tab and sort by date
+        const newList = [...prev, newSessionData];
+        return newList.sort((a, b) => new Date(a.dateObj).getTime() - new Date(b.dateObj).getTime());
       });
       
-      setActiveSessionId(sessionId); // Switch focus to the newly uploaded/updated session
+      setActiveSessionId(sessionId);
     } catch (err) {
       console.error(err);
-      alert("Error parsing PDF. Please ensure it is a valid Gilpin Arrival List.");
+      alert("Error parsing PDF.");
     } finally {
       setIsProcessing(false);
     }
@@ -174,22 +200,14 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     };
     
     if (sessions.length === 0 || !activeSessionId) {
-        const newId = `MAN-${Date.now()}`;
-        const newSession: ArrivalSession = { 
-            id: newId, 
-            label: "Manual List", 
-            dateObj: new Date().toISOString(), 
-            guests: [g], 
-            lastModified: Date.now() 
-        };
-        setSessions([newSession]);
-        setActiveSessionId(newId);
-    } else {
-        setSessions(prev => prev.map(s => {
-            if (s.id !== activeSessionId) return s;
-            return { ...s, guests: [g, ...s.guests], lastModified: Date.now() };
-        }));
+        createNewSession();
+        return;
     }
+
+    setSessions(prev => prev.map(s => {
+        if (s.id !== activeSessionId) return s;
+        return { ...s, guests: [g, ...s.guests], lastModified: Date.now() };
+    }));
   };
 
   const handleAIRefine = async () => {
