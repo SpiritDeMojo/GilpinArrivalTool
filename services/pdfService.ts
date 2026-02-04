@@ -97,8 +97,18 @@ export class PDFService {
     const startIndex = startMatch.index! + startMatch[0].length;
     const remaining = text.substring(startIndex);
     
-    // Core V4.0 Stop Markers added to prevent data bleeding
-    const strictEndMarkers = [...endMarkers, "Checked:", "8 Day Check", "4 day Call", "Allergies", "Billing:"];
+    // Core V4.1 Polish: Added strict operational end markers to stop data bleeding
+    const strictEndMarkers = [
+      ...endMarkers, 
+      "Checked:", 
+      "8 Day Check", 
+      "4 day Call", 
+      "Allergies:", 
+      "Billing:",
+      "Total Rate:",
+      "Deposit:",
+      "Balance Due:"
+    ];
     
     let bestEndIndex = remaining.length;
     strictEndMarkers.forEach(endM => {
@@ -151,13 +161,11 @@ export class PDFService {
     const singleLineText = rawTextLines.join(" ").replace(/\s+/g, " ");
     const scanLower = singleLineText.toLowerCase();
 
-    // 1. IMPROVED ROOM DETECTION (v4.0 Robust Scanning)
-    // Supports hyphens, dots, and spans multiple lines
+    // 1. ROBUST ROOM DETECTION (Scan first 4 lines for hyphenated or dotted rooms)
     let room = "Unassigned";
-    const roomRegex = /\b(\d{1,3})[.-]\s*([A-Za-z\s]+)\b/i;
+    const roomRegex = /(?:^|\s)(\d{1,3})[.-]\s*([A-Za-z\s]+)/i;
     
-    // Scan first 3 lines (typical room location in new/old formats)
-    for (let i = 0; i < Math.min(3, block.lines.length); i++) {
+    for (let i = 0; i < Math.min(4, block.lines.length); i++) {
         const lineText = block.lines[i].items.map((it: any) => it.str).join(" ");
         const match = lineText.match(roomRegex);
         if (match) {
@@ -166,22 +174,22 @@ export class PDFService {
         }
     }
     
-    // Legacy Fallback: Scan the entire singleLineText if structured scan fails
     if (room === "Unassigned") {
         const globalMatch = singleLineText.match(roomRegex);
         if (globalMatch) room = `${globalMatch[1]} ${globalMatch[2].trim().toUpperCase()}`;
     }
 
-    // 2. REFINED NAME EXTRACTION (Independent of Room position)
+    // 2. STABLE NAME EXTRACTION (Independent of Room position)
     let nameRaw = "";
     const line0Items = block.lines[0].items;
     let foundId = false;
     for (const item of line0Items) {
         const str = item.str.trim();
-        // Skip the initial ID
         if (str === block.id) { foundId = true; continue; }
         if (foundId) {
-            // If the Room happens to be on line 0 (old format), stop there
+            // Stop if we hit symbols or known operational junk on Line 1
+            if (str.length === 2 && str === str.toUpperCase() && !["MR", "MS", "DR"].includes(str)) break;
+            // Also stop if the Room happened to be on Line 1 (Legacy compatibility)
             if (str.match(roomRegex)) break;
             nameRaw += " " + str;
         }
@@ -259,7 +267,7 @@ export class PDFService {
     if (scanLower.match(/anniversary/)) notesList.push("🎉 Anniversary");
     if (scanLower.match(/dog|pet in room|canine/)) notesList.push("🐾 Pet In Room");
 
-    // Robust Section Extraction with strict stop markers
+    // Robust Section Extraction with strict stop markers (Checked, Total Rate, Deposit)
     const hkNotes = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:"]);
     if (hkNotes) notesList.push(hkNotes);
 
@@ -272,7 +280,8 @@ export class PDFService {
     let inRoomItemsList: string[] = [];
     const inRoomMarkers = ["In Room on Arrival:", "In-Room:", "IN ROOM:"];
     inRoomMarkers.forEach(marker => {
-      const extracted = this.extractSection(singleLineText, marker, ["HK Notes:", "Guest Notes:", "Unit:"]);
+      // End markers like "Checked:" now strictly enforce a stop here to prevent data bleeding
+      const extracted = this.extractSection(singleLineText, marker, ["HK Notes:", "Guest Notes:", "Unit:", "Facility Bookings:"]);
       if (extracted) extracted.split(',').forEach(p => inRoomItemsList.push(p.trim()));
     });
 
