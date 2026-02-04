@@ -23,12 +23,14 @@ export class PDFService {
       })));
     }
 
+    // Sort items by page, then Y (top to bottom), then X (left to right)
     rawItems.sort((a, b) => {
       if (a.page !== b.page) return a.page - b.page;
       if (Math.abs(a.y - b.y) > 4) return a.y - b.y;
       return a.x - b.x;
     });
 
+    // Extract Arrival Date from header
     const headerItem = rawItems.find(i => i.str.match(/Arrival List|Guest Greeter/i) && i.str.match(/\d{2}\/\d{2}\/\d{4}/i));
     if (headerItem) {
       const m = headerItem.str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
@@ -39,23 +41,26 @@ export class PDFService {
       }
     }
 
+    // Group items into lines
     let lines: any[] = [];
     let currentLine: { y: number, items: any[] } = { y: -999, items: [] };
     rawItems.forEach(item => {
       if (Math.abs(item.y - currentLine.y) > 5) {
-        lines.push(currentLine);
+        if (currentLine.items.length > 0) lines.push(currentLine);
         currentLine = { y: item.y, items: [item] };
       } else {
         currentLine.items.push(item);
       }
     });
-    lines.push(currentLine);
+    if (currentLine.items.length > 0) lines.push(currentLine);
 
+    // Filter noise lines
     lines = lines.filter(l => {
       const text = l.items.map((i: any) => i.str).join(" ");
       return !text.match(/^ID\s+Guest Name|Req\.\s+Vip|Page\s+\d+|JHunt\/Gilpin|Total Rate:/i);
     });
 
+    // Group lines into Guest Blocks by 5-digit ID
     let guestBlocks: any[] = [];
     let currentBlock: any = null;
     lines.forEach((line) => {
@@ -70,23 +75,14 @@ export class PDFService {
 
     const guests = guestBlocks.map(block => this.parseBlock(block, arrivalDateObj)).filter(g => g !== null);
     
+    // Final Sort by Room Number using forced map values
     guests.sort((a, b) => {
-      const rA = this.getRoomSortValue(a.room);
-      const rB = this.getRoomSortValue(b.room);
+      const rA = parseInt(a.room.split(' ')[0]) || 999;
+      const rB = parseInt(b.room.split(' ')[0]) || 999;
       return rA - rB;
     });
 
     return { guests, arrivalDateStr, arrivalDateObj };
-  }
-
-  private static getRoomSortValue(roomString: string): number {
-    if (!roomString) return 999;
-    const clean = roomString.toLowerCase().replace(/[^a-z]/g, '');
-    for (const key in ROOM_MAP) {
-      if (clean.includes(key)) return ROOM_MAP[key];
-    }
-    const m = roomString.match(/^(\d+)/);
-    return m ? parseInt(m[1]) : 999;
   }
 
   private static extractSection(text: string, startMarker: string, endMarkers: string[]): string {
@@ -98,19 +94,15 @@ export class PDFService {
     
     const strictEndMarkers = [
       ...endMarkers, 
-      "Checked:", 
-      "8 Day Check", 
-      "4 day Call", 
-      "Allergies:", 
-      "Billing:",
-      "Total Rate:",
-      "Deposit:",
-      "Balance Due:"
+      "Checked:", "8 Day Check", "4 day Call", "Allergies:", 
+      "Billing:", "Total Rate:", "Deposit:", "Balance Due:",
+      "/Source:", "/Spice:", "/Bento:", "/The Lake House:", "/GH Pure:"
     ];
     
     let bestEndIndex = remaining.length;
     strictEndMarkers.forEach(endM => {
-      const m = remaining.match(new RegExp(endM.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i'));
+      const escaped = endM.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const m = remaining.match(new RegExp(escaped, 'i'));
       if (m && m.index! < bestEndIndex) bestEndIndex = m.index!;
     });
     return remaining.substring(0, bestEndIndex).trim();
@@ -118,7 +110,6 @@ export class PDFService {
 
   private static formatFacilities(text: string): string {
     if (!text || text.trim() === "") return "";
-    let formatted = text.replace(/\s+/g, " ");
     const mappings = [
       { key: "Spice", icon: "🌶️" },
       { key: "Source", icon: "🍽️" },
@@ -126,31 +117,48 @@ export class PDFService {
       { key: "Massage", icon: "💆" },
       { key: "Afternoon Tea", icon: "🍰" },
       { key: "Bento", icon: "🍱" },
-      { key: "Spa Use", icon: "♨️" }
+      { key: "Spa Use", icon: "♨️" },
+      { key: "Lake House", icon: "🍰" },
+      { key: "GH Pure", icon: "💆" },
+      { key: "Pure", icon: "💆" },
+      { key: "Pure Couples", icon: "💆" }
     ];
 
-    const bookings = formatted.split(/(\d{2}\/\d{2})/);
+    const parts = text.split('/');
     let result: string[] = [];
-    for (let i = 1; i < bookings.length; i += 2) {
-      const date = bookings[i];
-      let details = (bookings[i+1] || "").trim();
-      const timeMatch = details.match(/(\d{2}:\d{2})/);
+
+    parts.forEach(part => {
+      const p = part.trim();
+      if (!p) return;
+      
+      const dateMatch = p.match(/(\d{2}\/\d{2})/);
+      const timeMatch = p.match(/(\d{2}:\d{2})/);
+      const tableMatch = p.match(/Table for (\d+)/i);
+      
+      const date = dateMatch ? dateMatch[1] : "";
       const time = timeMatch ? `@ ${timeMatch[1]}` : "";
-      details = details.replace(/(\d{2}:\d{2})/, "").trim();
-      const tableMatch = details.match(/Table for (\d+)/i);
       const pax = tableMatch ? `(T-${tableMatch[1]})` : "";
-      details = details.replace(/Table for \d+/i, "").trim();
-      let emoji = "📅";
+      
+      let cleanDetails = p.replace(/\d{2}\/\d{2}/, "")
+                          .replace(/\d{2}:\d{2}/, "")
+                          .replace(/Table for \d+/i, "")
+                          .replace(/^[:\s\-]+|[:\s\-]+$/g, "")
+                          .trim();
+
+      let emoji = "🔹";
       for (const m of mappings) {
-        if (details.toLowerCase().includes(m.key.toLowerCase())) {
+        if (cleanDetails.toLowerCase().includes(m.key.toLowerCase())) {
           emoji = m.icon;
           break;
         }
       }
-      details = details.replace(/^[,\-:\s]+|[,\-:\s]+$/g, "");
-      result.push(`${emoji} ${details} ${pax} (${date}${time})`.trim());
-    }
-    return result.length > 0 ? result.join(" • ") : formatted;
+
+      if (cleanDetails) {
+        result.push(`${emoji} ${cleanDetails} ${pax} (${date}${time})`.replace(/\s+/g, " ").trim());
+      }
+    });
+
+    return result.join(" • ");
   }
 
   private static parseBlock(block: any, arrivalDate: Date | null): Guest {
@@ -159,154 +167,167 @@ export class PDFService {
     const singleLineText = rawTextLines.join(" ").replace(/\s+/g, " ");
     const scanLower = singleLineText.toLowerCase();
 
-    // 1. ADVANCED ROOM DETECTION & CLEANING
+    // --- 1. ROOM (Map-Enforced Validation & Duplicate Fix) ---
     let room = "Unassigned";
-    const roomRegex = /(?:^|\s)(\d{1,3})[.-]\s*([A-Za-z\s0-9:]+)/i;
+    const roomPattern = /(?:^|\s)(\d{1,3})[.-]\s*([A-Za-z\s]+)/i;
+    let rawRoomCandidate = "";
     
-    for (let i = 0; i < Math.min(4, block.lines.length); i++) {
-        const lineText = block.lines[i].items.map((it: any) => it.str).join(" ");
-        const match = lineText.match(roomRegex);
-        if (match) {
-            let roomRaw = `${match[1]} ${match[2].trim()}`;
-            // Apply Noise Filter: Remove DEF, CHI, GRP, etc. and 4-digit timestamps
-            room = roomRaw.replace(/\b(DEF|CHI|GRP|VAC|MR|SS|SL|JS)\b/gi, "")
-                           .replace(/\b(\d{4}|\d{2}:\d{2})\b/g, "")
-                           .replace(/\s+/g, " ").trim().toUpperCase();
-            break;
-        }
-    }
-    
-    if (room === "Unassigned") {
-        const globalMatch = singleLineText.match(roomRegex);
-        if (globalMatch) {
-          let roomRaw = `${globalMatch[1]} ${globalMatch[2].trim()}`;
-          room = roomRaw.replace(/\b(DEF|CHI|GRP|VAC|MR|SS|SL|JS)\b/gi, "")
-                         .replace(/\b(\d{4}|\d{2}:\d{2})\b/g, "")
-                         .replace(/\s+/g, " ").trim().toUpperCase();
-        }
+    // Scan first 5 lines for a room-like pattern
+    for (let i = 0; i < Math.min(5, block.lines.length); i++) {
+      const lineText = block.lines[i].items.map((it: any) => it.str).join(" ");
+      const match = lineText.match(roomPattern);
+      if (match) {
+        rawRoomCandidate = match[0].trim();
+        break;
+      }
     }
 
-    // 2. STABLE NAME EXTRACTION
+    if (rawRoomCandidate) {
+      const normalizedCandidate = rawRoomCandidate.toLowerCase();
+      let foundMatch = false;
+      for (const [key, num] of Object.entries(ROOM_MAP)) {
+        if (normalizedCandidate.includes(key)) {
+          // FORCE the exact number and name from our master ROOM_MAP
+          room = `${num} ${key.toUpperCase()}`;
+          foundMatch = true;
+          break;
+        }
+      }
+      if (!foundMatch) {
+        // Fallback for custom rooms or cases where map fails: cleanup noise
+        room = rawRoomCandidate.replace(/\b(DEF|CHI|GRP|VAC|MR|SS|SL|JS)\b/gi, "")
+                               .replace(/\b(\d{4}|\d{2}:\d{2})\b/g, "")
+                               .replace(/\b(\d+)\s+\1\b/, "$1") // Fix "26 26" duplicate
+                               .replace(/\s+/g, " ").trim().toUpperCase();
+      }
+    }
+
+    // --- 2. GUEST NAME ---
     let nameRaw = "";
     const line0Items = block.lines[0].items;
     let foundId = false;
     for (const item of line0Items) {
-        const str = item.str.trim();
-        if (str === block.id) { foundId = true; continue; }
-        if (foundId) {
-            if (str.length === 2 && str === str.toUpperCase() && !["MR", "MS", "DR"].includes(str)) break;
-            if (str.match(roomRegex)) break;
-            nameRaw += " " + str;
-        }
+      const str = item.str.trim();
+      if (str === block.id) { foundId = true; continue; }
+      if (foundId) {
+        // Break if we hit staff initials, a room pattern, or a rate code
+        if (str.length === 2 && str === str.toUpperCase() && !["MR", "MS", "DR"].includes(str)) break;
+        if (str.match(roomPattern)) break;
+        nameRaw += " " + str;
+      }
     }
-    
     let name = nameRaw.trim()
       .replace(/^_Regular.*?(?=\w)/i, "")
       .replace(/VIP\s*-\s*\w+/gi, "")
       .replace(/(\s(Mr|Mrs|Miss|Ms|Dr|&|Sir|Lady|\+)+)+[*]*$/i, "")
       .trim();
 
-    // 3. ETA & DURATION
-    let eta = "N/A";
-    const etaMatch = singleLineText.match(/\b(\d{2}:?\d{2})\b/);
-    if (etaMatch) {
-      const e = etaMatch[1].replace(':', '');
-      if (e.length === 4) eta = `${e.substring(0,2)}:${e.substring(2,4)}`;
+    // --- 3. FACILITIES (Slash-Based Deep Scan) ---
+    // We scan the entire text for slashes regardless of section headers
+    const facilityMatches = singleLineText.match(/\/(Spice|Source|The Lake House|GH\s+Pure|GH\s+ESPA|Pure|Massage|Treatments|Steam|Couples|Tea|Afternoon|Spa|Mud|Bento)[^/]+/gi) || [];
+    const facilitiesFormatted = this.formatFacilities(facilityMatches.join(" "));
+
+    // --- 4. CAR REGISTRATION (Filtered & Stabilized V4.1) ---
+    let car = "";
+    const plateRegex = /\b([A-Z]{2}\d{2}\s?[A-Z]{3}|[A-Z]{1,2}\d{1,4}\s?[A-Z]{0,3})\b/gi;
+    const monthFilter = /\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b/i;
+    const carExclusions = /^(BB[\s_]?\d|APR|RO|COMP|GS|JS|MR|SL|SS|MAG|RATE|ID|PAGE|DATE|ROOM|UNIT|TOKEN|TOTAL|DEPOSIT|NET|VAT|GBP|MAN|UA|AD|CH|GRP)/i;
+    
+    const possiblePlates = rawItems.filter(i => i.x > 450 && i.str.match(plateRegex));
+    for (const item of possiblePlates) {
+        const str = item.str.trim().toUpperCase();
+        const cleanStr = str.replace(/\s/g, ''); 
+        
+        // Filter out dates, short strings (rate codes), and explicit exclusions
+        if (cleanStr.length < 4) continue;
+        if (str.match(monthFilter)) continue;
+        if (!str.match(carExclusions)) {
+            car = str;
+            break; 
+        }
     }
 
-    const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|BB_1_WIN|BB_2_WIN|BB_3_WIN|COMP|LHAPR|LHMAG|LHBB1|LHBB2|LHBB|RO|CEL_DBB_1|POB_STAFF)\b/i;
-    const rateCodeMatch = singleLineText.match(packageRegex);
-    const rateCode = rateCodeMatch ? rateCodeMatch[1].toUpperCase() : "";
+    // --- 5. ETA & DURATION ---
+    let eta = "N/A";
+    const etaPrefixMatch = singleLineText.match(/ETA:\s*(\d{2}:?\d{2}|\d{4})/i);
+    if (etaPrefixMatch) {
+      const e = etaPrefixMatch[1].replace(':', '');
+      if (e.length === 4) eta = `${e.substring(0,2)}:${e.substring(2,4)}`;
+    } else {
+      const fallbackEtaMatch = singleLineText.match(/\b(\d{2}:?\d{2})\b/);
+      if (fallbackEtaMatch) {
+        const e = fallbackEtaMatch[1].replace(':', '');
+        if (e.length === 4) eta = `${e.substring(0,2)}:${e.substring(2,4)}`;
+      }
+    }
 
     let duration = "1";
     if (arrivalDate) {
-        const datesFound = singleLineText.match(/\d{2}\/\d{2}\/\d{2,4}/g) || [];
-        for (const dStr of datesFound) {
-            const parts = dStr.split('/');
-            const d = parseInt(parts[0]);
-            const m = parseInt(parts[1]);
-            let y = parseInt(parts[2]);
-            if (y < 100) y += 2000;
-            const checkDate = new Date(y, m - 1, d);
-            if (checkDate > arrivalDate) {
-                const diffDays = Math.ceil((checkDate.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60 * 24));
-                if (diffDays > 0 && diffDays < 21) {
-                    duration = diffDays.toString();
-                    break;
-                }
-            }
+      const datesFound = singleLineText.match(/\d{2}\/\d{2}\/\d{2,4}/g) || [];
+      for (const dStr of datesFound) {
+        const parts = dStr.split('/');
+        const d = parseInt(parts[0]);
+        const m = parseInt(parts[1]);
+        let y = parseInt(parts[2]);
+        if (y < 100) y += 2000;
+        const checkDate = new Date(y, m - 1, d);
+        if (checkDate > arrivalDate) {
+          const diffDays = Math.ceil((checkDate.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays > 0 && diffDays < 21) { duration = diffDays.toString(); break; }
         }
+      }
     }
 
-    // 4. CAR REGISTRATION
-    let car = "";
-    const plateRegex = /\b([A-Z]{2}\d{2}\s?[A-Z]{3}|[A-Z]{1,2}\d{1,4}\s?[A-Z]{0,3})\b/gi;
-    const carExclusions = /^(BB\d|APR|RO|COMP|GS|JS|MR|SL|SS|MAG|RATE|ID|PAGE|DATE|ROOM)/i;
-    const possiblePlates = rawItems.filter(i => i.x > 500 && i.str.match(plateRegex));
-    for (const item of possiblePlates) {
-        const str = item.str.trim().toUpperCase();
-        if (!str.match(carExclusions)) {
-            car = str;
-            break;
-        }
-    }
-
-    // 5. LOYALTY & NOTES
+    // --- 6. LOYALTY (L&L) - Robust V4.1 ---
     let ll = "No";
-    if (scanLower.includes("stayed before") || scanLower.includes("_regular")) {
-      const visitMatch = singleLineText.match(/stayed before\s*\(?x\s*(\d+)\)?/i);
-      ll = visitMatch ? `Yes (x${visitMatch[1]})` : "Yes";
+    // Strategy A: Explicit "Been Before" Field
+    const beenBeforeMatch = singleLineText.match(/Been Before:\s*(Yes|Y|True)(?:\s*\(?x\s*(\d+)\)?)?/i);
+    if (beenBeforeMatch) {
+        const count = beenBeforeMatch[2];
+        ll = count ? `Yes (x${count})` : "Yes";
+    } 
+    // Strategy B: Header Flags (_Stayed / _Regular)
+    else if (singleLineText.match(/_(Stayed|Regular)/i)) {
+        ll = "Yes";
+        const looseCount = singleLineText.match(/\b(?:Yes|Stays)\s*x\s*(\d+)/i);
+        if (looseCount) ll = `Yes (x${looseCount[1]})`;
+    }
+    // Strategy C: Previous Stays detection
+    else if (scanLower.includes("previous stays") || singleLineText.match(/Stayed\s+\d{2}\/\d{2}\/\d{4}/i)) {
+        ll = "Yes";
     }
 
-    let notesList: string[] = [];
-    if (scanLower.match(/nut allergy|anaphylaxis|no nut|peanut/)) notesList.push("🥜 Nut Allergy");
-    if (scanLower.match(/gluten free|gf|coeliac|celiac/)) notesList.push("🍞 Gluten Free");
-    if (scanLower.match(/dairy free|no dairy|lactose/)) notesList.push("🧀 Dairy Free");
-    if (scanLower.match(/oat milk/)) notesList.push("🥛 Oat Milk Req");
-    if (scanLower.match(/soya milk/)) notesList.push("🥛 Soya Milk Req");
-    if (rateCode === "POB_STAFF" || scanLower.includes("pride of britain")) notesList.push("⭐ VIP (POB Staff)");
-    if (scanLower.match(/celebrity|director|owner|chairman/)) notesList.push("⭐ VIP High Profile");
-    if (scanLower.includes("guest unaware") || scanLower.includes("secret")) notesList.push("🤫 Comp Upgrade (Silent)");
-    if (scanLower.includes("voucher") || scanLower.includes("gift")) notesList.push("🎫 Voucher Applied");
-    if (scanLower.match(/birthday/)) notesList.push("🎉 Birthday");
-    if (scanLower.match(/anniversary/)) notesList.push("🎉 Anniversary");
-    if (scanLower.match(/dog|pet in room|canine/)) notesList.push("🐾 Pet In Room");
+    // --- 7. CONSOLIDATED NOTES & INTELLIGENCE ---
+    const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB|RO|CEL|POB_STAFF)\b/i;
+    const rateMatch = singleLineText.match(packageRegex);
+    const rateCode = rateMatch ? rateMatch[1].toUpperCase() : "";
 
-    const hkNotes = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:"]);
-    if (hkNotes) notesList.push(hkNotes);
-
-    const guestNotesSection = this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:"]);
-    if (guestNotesSection) notesList.push(guestNotesSection);
-
-    const rawFac = this.extractSection(singleLineText, "Facility Bookings:", ["HK Notes:", "Guest Notes:", "Unit:"]);
-    const facilitiesFormatted = this.formatFacilities(rawFac);
-
-    // 6. DEEP SWEEP FOR IN-ROOM ITEMS
-    let inRoomItemsList: string[] = [];
-    const inRoomSources = [
-      this.extractSection(singleLineText, "In Room(?: on Arrival)?:", ["Checked:", "8 Day Check", "Billing:"]),
-      this.extractSection(singleLineText, "In-Room:", ["Checked:", "8 Day Check", "Billing:"]),
-      this.extractSection(singleLineText, "IN ROOM:", ["Checked:", "8 Day Check", "Billing:"]),
-      this.extractSection(singleLineText, "Traces:", ["Booking Notes", "Been Before", "Occasion:"])
+    const noteSections = [
+      this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Booking Notes:"]),
+      this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:", "Booking Notes:"]),
+      this.extractSection(singleLineText, "Booking Notes:", ["Unit:", "Page", "HK Notes:", "Guest Notes:"]),
+      this.extractSection(singleLineText, "Traces:", ["Booking Notes", "Been Before", "Occasion:"]),
+      this.extractSection(singleLineText, "In Room(?: on Arrival)?:", ["Checked:", "8 Day Check", "Billing:"])
     ];
 
-    // Scan Guest Notes for specifics
-    const manualKeywords = ["Ice Bucket", "Glasses", "Dog Bed", "Cot", "Extra Bed", "Champagne", "Itinerary", "Tickets", "Voucher", "Robes"];
-    manualKeywords.forEach(kw => {
-      if (guestNotesSection.toLowerCase().includes(kw.toLowerCase())) inRoomItemsList.push(kw);
-    });
+    const keywords = ["Ice Bucket", "Glasses", "Dog Bed", "Cot", "Extra Bed", "Topper", "Robes", "Voucher", "Flowers", "Birthday", "Anniversary", "Champage", "Chocolates", "Balloons"];
+    const foundKeywords = keywords.filter(k => scanLower.includes(k.toLowerCase()));
 
-    // Merge and Filter from sources
-    inRoomSources.forEach(source => {
-      if (source) {
-        source.split(/,|&|\/|•/).forEach(item => {
-          const clean = item.trim();
-          // Filter out staff initials (2 chars), noise, and empty strings
-          if (clean.length > 2 && !/^(NDR|None|N\/A|LV|KW|AM|JS|SL|SS)$/i.test(clean)) {
-            inRoomItemsList.push(clean);
-          }
-        });
-      }
+    let consolidatedNotes: string[] = [];
+    if (scanLower.includes("nut allergy")) consolidatedNotes.push("🥜 Nut Allergy");
+    if (scanLower.includes("gluten free") || scanLower.includes("coeliac")) consolidatedNotes.push("🍞 Gluten Free");
+    if (scanLower.includes("dairy free") || scanLower.includes("lactose")) consolidatedNotes.push("🧀 Dairy Free");
+    if (rateCode === "POB_STAFF") consolidatedNotes.push("⭐ VIP (POB Staff)");
+    
+    noteSections.forEach(sec => {
+      if (!sec) return;
+      sec.split(/,|•|&|\n/).forEach(p => {
+        const clean = p.trim();
+        // Noise Filter: Filter Staff Initials (2 Chars Uppercase) and NDR/None
+        if (clean.length > 2 && !/^[A-Z]{2}$/.test(clean) && !/^(NDR|None|N\/A|LV|KW|AM|JS|SL|SS)$/i.test(clean)) {
+          consolidatedNotes.push(clean);
+        }
+      });
     });
 
     return {
@@ -318,8 +339,8 @@ export class PDFService {
       eta,
       duration,
       facilities: facilitiesFormatted,
-      prefillNotes: notesList.join(" • "),
-      inRoomItems: [...new Set(inRoomItemsList)].join(" • "),
+      prefillNotes: [...new Set(consolidatedNotes)].join(" • "),
+      inRoomItems: [...new Set(foundKeywords)].join(" • "),
       preferences: "",
       packageName: rateCode,
       rateCode,
