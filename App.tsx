@@ -87,8 +87,9 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* 1. Dashboard Block */}
       {guests.length > 0 && (
-        <div className="no-print relative my-10 h-auto">
+        <div className="no-print relative my-6">
           <div className={`dashboard-container no-print py-4 transition-all ${isSticky ? `sticky top-[${NAV_HEIGHT}px] z-[1000] bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-[#c5a065]/20` : ''}`}>
             <Dashboard guests={guests} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
           </div>
@@ -97,7 +98,7 @@ const App: React.FC = () => {
 
       <main className="max-w-[1800px] mx-auto px-10 pb-32 no-print">
         
-        {/* SessionBar placed here to appear after Dashboard in the main flow */}
+        {/* 2. Session Tabs - PLACED HERE (Between Dashboard and Table, Stationary) */}
         <SessionBar 
           sessions={sessions}
           activeId={activeSessionId}
@@ -106,6 +107,7 @@ const App: React.FC = () => {
           onCreate={createNewSession}
         />
 
+        {/* 3. Table / Empty State */}
         {guests.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh]">
             <div className="p-24 border-2 border-dashed border-[#c5a065]/40 rounded-[3rem] bg-white/50 dark:bg-white/5 backdrop-blur flex flex-col items-center gap-8 cursor-pointer hover:border-[#c5a065] transition-all" onClick={() => document.getElementById('file-upload-nav')?.click()}>
