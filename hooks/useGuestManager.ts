@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from 'react';
 import { Guest, Flag, FilterType, ArrivalSession } from '../types';
 import { PDFService } from '../services/pdfService';
@@ -61,7 +60,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     let nextActiveId = activeSessionId;
 
     if (nextSessions.length === 0) {
-        // If all sessions are deleted, we return to empty state (0 sessions)
+        // ALLOW EMPTY STATE: If all sessions are deleted, we return to 0 tabs
         nextActiveId = "";
     } else if (idToDelete === activeSessionId) {
         // If we deleted the active one, find neighbor
@@ -186,11 +185,10 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         const currentBatch = chunks[i];
         setProgressMsg(`AUDITING: ${i + 1}/${chunks.length}...`);
         
-        // Retry logic: If it fails, wait and try once more
         let refinements = await GeminiService.refineGuestBatch(currentBatch, ['notes', 'facilities']);
         if (!refinements) {
             console.warn("Batch failed, retrying...");
-            await new Promise(r => setTimeout(r, 3000)); // Longer wait for retry
+            await new Promise(r => setTimeout(r, 3000)); 
             refinements = await GeminiService.refineGuestBatch(currentBatch, ['notes', 'facilities']);
         }
         

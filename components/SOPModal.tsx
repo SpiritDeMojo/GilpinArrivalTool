@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface SOPModalProps {
@@ -28,18 +27,17 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
         {/* Content */}
         <div className="p-10 overflow-y-auto custom-scrollbar flex-1 space-y-12 bg-white dark:bg-[#0f1115]">
           
-          {/* Section 1: The Workspace (Tabs) */}
+          {/* Section 1: The Tab Workspace */}
           <section className="space-y-6">
-            <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">01. The Workspace</h4>
+            <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">01. Tab Workspace</h4>
             <div className="p-8 rounded-[2.5rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col md:flex-row gap-8 items-center">
               <div className="text-5xl">📂</div>
               <div className="flex-1">
-                <h6 className="font-black text-sm uppercase tracking-wider dark:text-white mb-2">Smart Day Tabs</h6>
+                <h6 className="font-black text-sm uppercase tracking-wider dark:text-white mb-2">Browser-Style Workflow</h6>
                 <p className="text-[12px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  The Hub now works like a web browser. Every Arrival PDF you upload creates a new <strong>Day Tab</strong> (e.g., "Friday", "Saturday"). 
-                  This allows you to keep multiple days open at once. 
+                  The Intelligence Hub now supports multiple days simultaneously. Every PDF upload creates a dedicated <strong>Day Tab</strong> at the top of the interface. 
                   <br /><br />
-                  <span className="text-[#c5a065] font-bold">Action:</span> Simply click the tabs at the top to switch days instantly. Use the <strong>×</strong> on a tab to clear that day when you are finished.
+                  <span className="text-[#c5a065] font-bold">Concept:</span> Switch between Friday, Saturday, and Sunday instantly. Your edits are saved to each specific day automatically. Click the <strong>×</strong> to permanently clear a day from your dashboard.
                 </p>
               </div>
             </div>
@@ -53,21 +51,21 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                 <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-sm">1</div>
                 <h5 className="font-black text-[12px] dark:text-white uppercase tracking-wider">Ingest</h5>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Drag & Drop your Arrival Report PDF. The system uses <strong>Map-Lock</strong> to fix room name errors and <strong>Slash-Scan</strong> to find hidden dinner bookings automatically.
+                  Drag & Drop your Arrival Report PDF. <strong>Map-Lock</strong> technology cross-references the floor plan to fix OCR room errors, while <strong>Slash-Scan</strong> finds hidden dinner bookings.
                 </p>
               </div>
               <div className="space-y-4 p-6 rounded-[2rem] bg-[#c5a065]/5 border border-[#c5a065]/20">
                 <div className="w-10 h-10 rounded-full bg-[#c5a065] text-white flex items-center justify-center font-black text-sm">2</div>
                 <h5 className="font-black text-[12px] dark:text-white uppercase tracking-wider text-[#c5a065]">Audit</h5>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Click <strong>✨ AI Audit</strong>. The system scans every line of text to find Allergies, VIP statuses, and "Paid in Full" indicators that are usually missed.
+                  Click <strong>✨ AI Audit</strong>. The system performs a <strong>Deep Sweep</strong>, scanning every line of booking text to find hidden Allergies, VIP statuses, and physical asset requests.
                 </p>
               </div>
               <div className="space-y-4 p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-800/20 border border-slate-100 dark:border-stone-700/50">
                 <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-sm">3</div>
                 <h5 className="font-black text-[12px] dark:text-white uppercase tracking-wider">Deploy</h5>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Use the <strong>🖨️ Print</strong> menu to choose your layout: <strong>Master</strong> (Full data), <strong>Greeter</strong> (Arrivals only), or <strong>In-Room</strong> (Housekeeping list).
+                  Use the <strong>🖨️ Print</strong> menu for your specific role: <strong>Master</strong> (Full data), <strong>Greeter</strong> (Strategic view), or <strong>In-Room</strong> (Housekeeping manifest).
                 </p>
               </div>
             </div>
@@ -81,21 +79,21 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                 <span className="text-3xl block mb-4">🛡️</span>
                 <h6 className="font-black text-[11px] uppercase tracking-widest dark:text-white mb-2">Revenue Guard</h6>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Never ask a guest to pay twice. If the rate code is "APR", the AI automatically tags them as <strong>✅ PAID IN FULL</strong> for room and breakfast.
+                  The AI identifies "APR" (Advanced Purchase) codes and tags guests as <strong>✅ PAID IN FULL</strong> automatically to prevent awkward billing requests.
                 </p>
               </div>
               <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60">
                 <span className="text-3xl block mb-4">🧹</span>
                 <h6 className="font-black text-[11px] uppercase tracking-widest dark:text-white mb-2">The Deep Sweep</h6>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Finds requests buried in "Booking Notes" or "Traces" like <strong>Ice Buckets</strong>, <strong>Dog Beds</strong>, or <strong>Extra Pillows</strong> that don't appear in standard lists.
+                  Finds requests buried deep in "Traces" or "Booking Notes" like <strong>Ice Buckets</strong>, <strong>Dog Beds</strong>, or <strong>Extra Pillows</strong> that usually don't reach the arrival sheet.
                 </p>
               </div>
               <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60">
                 <span className="text-3xl block mb-4">💎</span>
                 <h6 className="font-black text-[11px] uppercase tracking-widest dark:text-white mb-2">Map-Lock</h6>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Guarantees 100% accurate Room Numbers. The system checks every booking against the official Gilpin floor plan to fix OCR room errors automatically.
+                  Room names from OCR can be unreliable. Map-Lock forces every guest into the 100% correct room based on the official Gilpin Hotel and Lake House floor plan.
                 </p>
               </div>
             </div>
@@ -107,14 +105,14 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
             <div className="p-8 rounded-[2.5rem] border border-indigo-500/20 bg-indigo-500/5 flex flex-col md:flex-row gap-8 items-center">
               <div className="text-5xl animate-pulse">🤖</div>
               <div className="flex-1">
-                <h6 className="font-black text-sm uppercase tracking-wider dark:text-white mb-2">Your AI Co-Pilot</h6>
+                <h6 className="font-black text-sm uppercase tracking-wider dark:text-white mb-2">Live Co-Pilot</h6>
                 <p className="text-[12px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Click the <strong>Robot</strong> icon in the Navbar to activate your live assistant. You can speak naturally to it or type commands.
+                  Activate your partner by clicking the <strong>Robot</strong> icon. Speak naturally to audit the arrivals or get briefings.
                   <br /><br />
-                  <strong>Try saying:</strong> 
-                  <span className="block mt-2 font-mono text-indigo-500">"Give me a morning briefing for today."</span>
-                  <span className="block font-mono text-indigo-500">"Which guests have severe allergies?"</span>
-                  <span className="block font-mono text-indigo-500">"Are there any special occasions in the Lake House?"</span>
+                  <strong>Voice Prompts:</strong> 
+                  <span className="block mt-2 font-mono text-indigo-500 italic">"Brief me on today's arrivals."</span>
+                  <span className="block font-mono text-indigo-500 italic">"Find all guests with dairy allergies."</span>
+                  <span className="block font-mono text-indigo-500 italic">"Are there any VIPs arriving after 4pm?"</span>
                 </p>
               </div>
             </div>
