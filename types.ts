@@ -17,6 +17,14 @@ export interface Guest {
   isManual?: boolean;
 }
 
+export interface ArrivalSession {
+  id: string;        // Unique ID (e.g., date string or timestamp)
+  label: string;     // Tab Name (e.g., "Friday 7th February")
+  dateObj: string;   // ISO date for sorting
+  guests: Guest[];   // The data for this day
+  lastModified: number;
+}
+
 export interface Flag {
   id: number;
   name: string;

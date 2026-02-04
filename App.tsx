@@ -6,6 +6,7 @@ import { useGuestManager } from './hooks/useGuestManager';
 import { useLiveAssistant } from './hooks/useLiveAssistant';
 
 import Navbar from './components/Navbar';
+import SessionBar from './components/SessionBar';
 import Dashboard from './components/Dashboard';
 import GuestRow from './components/GuestRow';
 import SOPModal from './components/SOPModal';
@@ -22,7 +23,8 @@ const App: React.FC = () => {
 
   const {
     guests, filteredGuests, arrivalDateStr, isOldFile, activeFilter, setActiveFilter,
-    isProcessing, progressMsg, handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, onExcelExport
+    isProcessing, progressMsg, handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, onExcelExport,
+    sessions, activeSessionId, switchSession, deleteSession, createNewSession
   } = useGuestManager(DEFAULT_FLAGS);
 
   const {
@@ -41,11 +43,10 @@ const App: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [guests.length]);
 
-  const mainPaddingTop = isOldFile ? NAV_HEIGHT + ALERT_HEIGHT : NAV_HEIGHT;
+  const mainPaddingTop = isOldFile && guests.length > 0 ? NAV_HEIGHT + ALERT_HEIGHT : NAV_HEIGHT;
 
   const triggerPrint = (mode: PrintMode) => {
     setPrintMode(mode);
-    // Use requestAnimationFrame or setTimeout to ensure React state update renders before print dialog
     setTimeout(() => {
       window.print();
     }, 300);
@@ -67,7 +68,6 @@ const App: React.FC = () => {
         toggleTheme={() => setIsDark(!isDark)}
         onFileUpload={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
         onPrint={(mode: any) => {
-          // Map component string to type PrintMode
           const mapped: PrintMode = mode === 'main' ? 'master' : mode === 'inroom' ? 'delivery' : mode;
           triggerPrint(mapped);
         }}
@@ -88,14 +88,24 @@ const App: React.FC = () => {
       )}
 
       {guests.length > 0 && (
-        <div className="no-print relative my-10 h-[64px]">
-          <div className={`dashboard-container no-print py-4 transition-all ${isSticky ? 'sticky top-[72px]' : ''}`}>
+        <div className="no-print relative my-10 h-auto">
+          <div className={`dashboard-container no-print py-4 transition-all ${isSticky ? `sticky top-[${NAV_HEIGHT}px] z-[1000] bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-[#c5a065]/20` : ''}`}>
             <Dashboard guests={guests} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
           </div>
         </div>
       )}
 
       <main className="max-w-[1800px] mx-auto px-10 pb-32 no-print">
+        
+        {/* SessionBar placed here to appear after Dashboard in the main flow */}
+        <SessionBar 
+          sessions={sessions}
+          activeId={activeSessionId}
+          onSwitch={switchSession}
+          onDelete={deleteSession}
+          onCreate={createNewSession}
+        />
+
         {guests.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh]">
             <div className="p-24 border-2 border-dashed border-[#c5a065]/40 rounded-[3rem] bg-white/50 dark:bg-white/5 backdrop-blur flex flex-col items-center gap-8 cursor-pointer hover:border-[#c5a065] transition-all" onClick={() => document.getElementById('file-upload-nav')?.click()}>
