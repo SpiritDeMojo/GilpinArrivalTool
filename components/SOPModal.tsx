@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface SOPModalProps {
@@ -15,8 +16,8 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
         {/* Header */}
         <div className="px-10 py-6 border-b border-[#c5a065]/20 flex justify-between items-center bg-slate-50/50 dark:bg-stone-900/50">
           <div>
-            <h2 className="heading-font text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Operational Guide</h2>
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#c5a065] mt-1">Intelligence Hub • v5.0 Titanium Protocol</p>
+            <h2 className="heading-font text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Gilpin Intelligence Hub • Operational Guide</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#c5a065] mt-1">v5.0 Titanium Protocol</p>
           </div>
           <button 
             onClick={onClose} 
@@ -24,20 +25,20 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
           >×</button>
         </div>
 
-        {/* Content */}
+        {/* Content Body */}
         <div className="p-10 overflow-y-auto custom-scrollbar flex-1 space-y-12 bg-white dark:bg-[#0f1115]">
           
-          {/* Section 1: The Tab Workspace */}
+          {/* Section 1: The Workspace (Tabs) */}
           <section className="space-y-6">
-            <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">01. Tab Workspace</h4>
+            <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">01. The Workspace (Tabs)</h4>
             <div className="p-8 rounded-[2.5rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 flex flex-col md:flex-row gap-8 items-center">
               <div className="text-5xl">📂</div>
               <div className="flex-1">
-                <h6 className="font-black text-sm uppercase tracking-wider dark:text-white mb-2">Browser-Style Workflow</h6>
+                <h6 className="font-black text-sm uppercase tracking-wider dark:text-white mb-2">Browser-Style Organization</h6>
                 <p className="text-[12px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  The Intelligence Hub now supports multiple days simultaneously. Every PDF upload creates a dedicated <strong>Day Tab</strong> at the top of the interface. 
+                  The Hub now works like a modern web browser. Every Arrival PDF you drop into the interface creates a dedicated <strong>Day Tab</strong> at the top (e.g., "Friday 7th", "Saturday 8th"). 
                   <br /><br />
-                  <span className="text-[#c5a065] font-bold">Concept:</span> Switch between Friday, Saturday, and Sunday instantly. Your edits are saved to each specific day automatically. Click the <strong>×</strong> to permanently clear a day from your dashboard.
+                  <span className="text-[#c5a065] font-bold">Concept:</span> Switch between different arrival days instantly by clicking the tabs. Your edits and notes are saved automatically to the specific day. When you're finished with a list, click the <strong>×</strong> to close the tab and clear the memory.
                 </p>
               </div>
             </div>
@@ -47,25 +48,27 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
           <section className="space-y-6">
             <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">02. The 3-Step Workflow</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="space-y-4 p-6 rounded-[2rem] bg-white dark:bg-stone-800/20 border border-slate-100 dark:border-stone-700/50">
-                <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-sm">1</div>
-                <h5 className="font-black text-[12px] dark:text-white uppercase tracking-wider">Ingest</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Drag & Drop your Arrival Report PDF. <strong>Map-Lock</strong> technology cross-references the floor plan to fix OCR room errors, while <strong>Slash-Scan</strong> finds hidden dinner bookings.
+              <div className="space-y-4 p-6 rounded-[2rem] bg-white dark:bg-stone-800/20 border border-slate-100 dark:border-stone-700/50 relative overflow-hidden group">
+                <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-sm z-10 relative">1</div>
+                <h5 className="font-black text-[12px] dark:text-white uppercase tracking-wider relative z-10">Ingest</h5>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed relative z-10">
+                  Drag & Drop the Arrival Report. <strong>Map-Lock</strong> automatically validates room names against the floor plan, ensuring 100% accurate numbering.
                 </p>
               </div>
-              <div className="space-y-4 p-6 rounded-[2rem] bg-[#c5a065]/5 border border-[#c5a065]/20">
-                <div className="w-10 h-10 rounded-full bg-[#c5a065] text-white flex items-center justify-center font-black text-sm">2</div>
-                <h5 className="font-black text-[12px] dark:text-white uppercase tracking-wider text-[#c5a065]">Audit</h5>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Click <strong>✨ AI Audit</strong>. The system performs a <strong>Deep Sweep</strong>, scanning every line of booking text to find hidden Allergies, VIP statuses, and physical asset requests.
+
+              <div className="space-y-4 p-6 rounded-[2rem] bg-[#c5a065]/5 border border-[#c5a065]/30 relative overflow-hidden">
+                <div className="w-10 h-10 rounded-full bg-[#c5a065] text-white flex items-center justify-center font-black text-sm z-10 relative">2</div>
+                <h5 className="font-black text-[12px] dark:text-white uppercase tracking-wider relative z-10">Audit</h5>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed relative z-10 font-medium">
+                  Click <strong>✨ AI Audit</strong>. The Intelligence Unit scans every hidden trace to find Allergies, Payment statuses, and missing package items automatically.
                 </p>
               </div>
-              <div className="space-y-4 p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-800/20 border border-slate-100 dark:border-stone-700/50">
-                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-sm">3</div>
-                <h5 className="font-black text-[12px] dark:text-white uppercase tracking-wider">Deploy</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Use the <strong>🖨️ Print</strong> menu for your specific role: <strong>Master</strong> (Full data), <strong>Greeter</strong> (Strategic view), or <strong>In-Room</strong> (Housekeeping manifest).
+
+              <div className="space-y-4 p-6 rounded-[2rem] bg-white dark:bg-stone-800/20 border border-slate-100 dark:border-stone-700/50 relative overflow-hidden">
+                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-sm z-10 relative">3</div>
+                <h5 className="font-black text-[12px] dark:text-white uppercase tracking-wider relative z-10">Deploy</h5>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed relative z-10">
+                  Use the <strong>🖨️ Print</strong> menu to generate the layout for your role: <strong>Greeter</strong>, <strong>Master</strong>, or <strong>In-Room</strong> checklists.
                 </p>
               </div>
             </div>
@@ -74,45 +77,54 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
           {/* Section 3: Intelligence Features */}
           <section className="space-y-6">
             <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">03. Intelligence Features</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 transition-transform hover:-translate-y-1">
                 <span className="text-3xl block mb-4">🛡️</span>
-                <h6 className="font-black text-[11px] uppercase tracking-widest dark:text-white mb-2">Revenue Guard</h6>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  The AI identifies "APR" (Advanced Purchase) codes and tags guests as <strong>✅ PAID IN FULL</strong> automatically to prevent awkward billing requests.
+                <h6 className="font-black text-[10px] uppercase tracking-widest dark:text-white mb-2">Revenue Guard</h6>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Identifies "APR" codes and tags guests as <strong>✅ PAID IN FULL</strong> so you never ask for money at the door.
                 </p>
               </div>
-              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60">
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 transition-transform hover:-translate-y-1">
                 <span className="text-3xl block mb-4">🧹</span>
-                <h6 className="font-black text-[11px] uppercase tracking-widest dark:text-white mb-2">The Deep Sweep</h6>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Finds requests buried deep in "Traces" or "Booking Notes" like <strong>Ice Buckets</strong>, <strong>Dog Beds</strong>, or <strong>Extra Pillows</strong> that usually don't reach the arrival sheet.
+                <h6 className="font-black text-[10px] uppercase tracking-widest dark:text-white mb-2">Deep Sweep</h6>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Hunts for "Ice Buckets" or "Dog Beds" buried deep in booking traces and brings them to the surface.
                 </p>
               </div>
-              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60">
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 transition-transform hover:-translate-y-1">
                 <span className="text-3xl block mb-4">💎</span>
-                <h6 className="font-black text-[11px] uppercase tracking-widest dark:text-white mb-2">Map-Lock</h6>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Room names from OCR can be unreliable. Map-Lock forces every guest into the 100% correct room based on the official Gilpin Hotel and Lake House floor plan.
+                <h6 className="font-black text-[10px] uppercase tracking-widest dark:text-white mb-2">Map-Lock</h6>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Ensures 100% accurate Room Numbers by validating every entry against the official Gilpin floor plan.
+                </p>
+              </div>
+              <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 transition-transform hover:-translate-y-1">
+                <span className="text-3xl block mb-4">🎁</span>
+                <h6 className="font-black text-[10px] uppercase tracking-widest dark:text-white mb-2">Asset Tracker</h6>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Places gifts (Champagne, Flowers) directly in the <strong>Intelligence</strong> column so Greeters never miss a surprise.
                 </p>
               </div>
             </div>
           </section>
 
-          {/* Section 4: Voice Assistant */}
+          {/* Section 4: Voice AI Assistant */}
           <section className="space-y-6">
             <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">04. The Guest Partner (Voice AI)</h4>
-            <div className="p-8 rounded-[2.5rem] border border-indigo-500/20 bg-indigo-500/5 flex flex-col md:flex-row gap-8 items-center">
+            <div className="p-8 rounded-[2.5rem] bg-indigo-500/5 border border-indigo-500/20 flex flex-col md:flex-row gap-8 items-center">
               <div className="text-5xl animate-pulse">🤖</div>
               <div className="flex-1">
-                <h6 className="font-black text-sm uppercase tracking-wider dark:text-white mb-2">Live Co-Pilot</h6>
+                <h6 className="font-black text-sm uppercase tracking-wider dark:text-white mb-2">Operational Co-Pilot</h6>
                 <p className="text-[12px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Activate your partner by clicking the <strong>Robot</strong> icon. Speak naturally to audit the arrivals or get briefings.
+                  Click the <strong>Robot</strong> icon in the navigation bar to wake your assistant. You can speak naturally or type commands.
                   <br /><br />
-                  <strong>Voice Prompts:</strong> 
-                  <span className="block mt-2 font-mono text-indigo-500 italic">"Brief me on today's arrivals."</span>
-                  <span className="block font-mono text-indigo-500 italic">"Find all guests with dairy allergies."</span>
-                  <span className="block font-mono text-indigo-500 italic">"Are there any VIPs arriving after 4pm?"</span>
+                  <span className="text-indigo-500 font-bold uppercase tracking-widest text-[10px]">Suggested Commands:</span>
+                  <ul className="mt-3 space-y-2 text-[11px] font-mono italic">
+                    <li>• "Give me a morning briefing for Friday."</li>
+                    <li>• "Which guests have dairy allergies?"</li>
+                    <li>• "Are there any special occasions arriving after 4 PM?"</li>
+                  </ul>
                 </p>
               </div>
             </div>
