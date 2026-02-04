@@ -1,12 +1,12 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Guest, Flag, FilterType, ArrivalSession, RefinementField } from '../types';
+import { useState, useMemo, useEffect } from 'react';
+import { Guest, Flag, FilterType, ArrivalSession } from '../types';
 import { PDFService } from '../services/pdfService';
 import { GeminiService } from '../services/geminiService';
 import { ExcelService } from '../services/excelService';
 import { BATCH_SIZE } from '../constants';
 
 export const useGuestManager = (initialFlags: Flag[]) => {
-  // 1. Initialize State from LocalStorage
+  // 1. Initialize
   const [sessions, setSessions] = useState<ArrivalSession[]>(() => {
     try {
         const saved = localStorage.getItem('gilpin_sessions_v5');
@@ -18,38 +18,27 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     return localStorage.getItem('gilpin_active_id_v5') || "";
   });
 
-  // Ensure there is always at least one session on mount
+  // Ensure initial session
   useEffect(() => {
     if (sessions.length === 0) {
         const id = `MAN-${Date.now()}`;
-        const newSession = { 
-            id, 
-            label: "New List", 
-            dateObj: new Date().toISOString(), 
-            guests: [], 
-            lastModified: Date.now() 
-        };
-        setSessions([newSession]);
+        setSessions([{ 
+            id, label: "New List", dateObj: new Date().toISOString(), 
+            guests: [], lastModified: Date.now() 
+        }]);
         setActiveSessionId(id);
     }
   }, []);
 
-  // 2. Computed Current State
-  const activeSession = useMemo(() => 
-    sessions.find(s => s.id === activeSessionId) || (sessions.length > 0 ? sessions[0] : null)
-  , [sessions, activeSessionId]);
-
-  const guests = useMemo(() => activeSession?.guests || [], [activeSession]);
-  
-  const arrivalDateStr = useMemo(() => 
-    activeSession?.label || activeSession?.id || "No Selection"
-  , [activeSession]);
+  // 2. Computed
+  const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
+  const guests = activeSession ? activeSession.guests : [];
+  const arrivalDateStr = activeSession ? (activeSession.label || activeSession.id) : "No Selection";
   
   const isOldFile = useMemo(() => {
     if (!activeSession?.dateObj) return false;
     const fileDate = new Date(activeSession.dateObj);
-    const today = new Date(); 
-    today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0);
     return fileDate < today;
   }, [activeSession]);
 
@@ -57,7 +46,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState("");
 
-  // 3. Persistence
+  // 3. Persist
   useEffect(() => {
     if (sessions.length > 0) {
         localStorage.setItem('gilpin_sessions_v5', JSON.stringify(sessions));
@@ -67,58 +56,51 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
   // 4. Actions
   
-  // FIX: Robust Delete Logic with Focus Switching
+  // FIX: Synchronous Delete Calculation
   const deleteSession = (idToDelete: string) => {
-    const sessionIndex = sessions.findIndex(s => s.id === idToDelete);
-    if (sessionIndex === -1) return;
+    // Calculate NEXT state immediately
+    let nextSessions = sessions.filter(s => s.id !== idToDelete);
+    let nextActiveId = activeSessionId;
 
-    const newSessions = sessions.filter(s => s.id !== idToDelete);
-    
-    if (newSessions.length === 0) {
-        // If deleting the last session, create a fresh manual one
+    if (nextSessions.length === 0) {
+        // If empty, reset to fresh manual
         const newId = `MAN-${Date.now()}`;
-        const freshSession = {
-            id: newId,
-            label: "New List",
-            dateObj: new Date().toISOString(),
-            guests: [],
-            lastModified: Date.now()
-        };
-        setSessions([freshSession]);
-        setActiveSessionId(newId);
-    } else {
-        // If deleting current active, switch to neighbor
-        if (idToDelete === activeSessionId) {
-            const newIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
-            setActiveSessionId(newSessions[newIndex].id);
-        }
-        setSessions(newSessions);
+        nextSessions = [{ 
+            id: newId, label: "New List", dateObj: new Date().toISOString(), 
+            guests: [], lastModified: Date.now() 
+        }];
+        nextActiveId = newId;
+    } else if (idToDelete === activeSessionId) {
+        // If we deleted the active one, find neighbor
+        const deletedIndex = sessions.findIndex(s => s.id === idToDelete);
+        const newIndex = deletedIndex > 0 ? deletedIndex - 1 : 0;
+        nextActiveId = nextSessions[newIndex].id;
     }
+
+    // Apply updates
+    setSessions(nextSessions);
+    setActiveSessionId(nextActiveId);
   };
 
   const createNewSession = () => {
     const id = `MAN-${Date.now()}`;
-    const newSession: ArrivalSession = {
-        id,
-        label: `New List ${new Date().toLocaleDateString('en-GB')}`,
-        dateObj: new Date().toISOString(),
-        guests: [],
-        lastModified: Date.now()
-    };
-    setSessions(prev => [...prev, newSession]);
+    setSessions(prev => [...prev, {
+        id, label: `New List ${new Date().toLocaleDateString('en-GB')}`,
+        dateObj: new Date().toISOString(), guests: []
+    }]);
     setActiveSessionId(id);
   };
 
-  // FIX: Smart Upload Logic (Replaces Empty Placeholder Tabs)
+  // FIX: Smart Upload (Overwrite empty tabs)
   const handleFileUpload = async (file: File) => {
     setIsProcessing(true);
-    setProgressMsg("ANALYSING ARRIVALS...");
+    setProgressMsg("ANALYSING FILE...");
     try {
       const result = await PDFService.parse(file, initialFlags);
-      const sessionId = result.arrivalDateStr.trim(); // The "Real" Date ID
+      const sessionId = result.arrivalDateStr.trim();
 
       setSessions(prev => {
-        // 1. Check if we already have this Date open
+        // Check 1: Do we already have this date?
         const existingIdx = prev.findIndex(s => s.id === sessionId);
         
         const newSessionData: ArrivalSession = {
@@ -130,22 +112,17 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         };
 
         if (existingIdx >= 0) {
-            // CASE A: Date exists -> Update it
             const updated = [...prev];
             updated[existingIdx] = newSessionData;
             return updated;
-        } 
-        
-        // CASE B: Date doesn't exist. Check if the active tab is an empty "Manual" placeholder
-        const activeIdx = prev.findIndex(s => s.id === activeSessionId);
-        if (activeIdx >= 0 && prev[activeIdx].id.startsWith("MAN-") && prev[activeIdx].guests.length === 0) {
-            // REPLACEMENT STRATEGY: Overwrite the empty placeholder with real data
-            const updated = [...prev];
-            updated[activeIdx] = newSessionData;
-            return updated;
         }
 
-        // CASE C: Just add a new tab and sort by date
+        // Check 2: Is the ONLY existing tab an empty "New List"?
+        if (prev.length === 1 && prev[0].guests.length === 0 && prev[0].id.startsWith("MAN-")) {
+            return [newSessionData]; // REPLACE IT
+        }
+
+        // Check 3: Add new tab
         const newList = [...prev, newSessionData];
         return newList.sort((a, b) => new Date(a.dateObj).getTime() - new Date(b.dateObj).getTime());
       });
@@ -159,61 +136,29 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     }
   };
 
-  const updateGuest = useCallback((id: string, updates: Partial<Guest>) => {
-    setSessions(prev => prev.map(s => {
-      if (s.id !== activeSessionId) return s;
-      return { 
-        ...s, 
-        guests: s.guests.map(g => g.id === id ? { ...g, ...updates } : g),
-        lastModified: Date.now()
-      };
-    }));
-  }, [activeSessionId]);
+  // Helper to update guests in active session
+  const updateActiveSessionGuests = (newGuests: Guest[]) => {
+    setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, guests: newGuests } : s));
+  };
 
-  const deleteGuest = useCallback((id: string) => {
-    setSessions(prev => prev.map(s => {
-      if (s.id !== activeSessionId) return s;
-      return { 
-        ...s, 
-        guests: s.guests.filter(g => g.id !== id),
-        lastModified: Date.now()
-      };
-    }));
-  }, [activeSessionId]);
+  const updateGuest = (id: string, updates: Partial<Guest>) => {
+    updateActiveSessionGuests(guests.map(g => g.id === id ? { ...g, ...updates } : g));
+  };
+
+  const deleteGuest = (id: string) => {
+    updateActiveSessionGuests(guests.filter(g => g.id !== id));
+  };
 
   const addManual = () => {
     const id = "MAN-" + Date.now();
-    const g: Guest = { 
-        id, 
-        room: "TBD", 
-        name: "New Guest", 
-        car: "", 
-        ll: "No", 
-        eta: "14:00", 
-        duration: "1", 
-        facilities: "", 
-        prefillNotes: "", 
-        inRoomItems: "", 
-        preferences: "", 
-        rawHtml: "Manual Entry", 
-        isManual: true 
-    };
-    
-    if (sessions.length === 0 || !activeSessionId) {
-        createNewSession();
-        return;
-    }
-
-    setSessions(prev => prev.map(s => {
-        if (s.id !== activeSessionId) return s;
-        return { ...s, guests: [g, ...s.guests], lastModified: Date.now() };
-    }));
+    const g: Guest = { id, room: "TBD", name: "New Guest", car: "", ll: "No", eta: "14:00", duration: "1", facilities: "", prefillNotes: "", inRoomItems: "", preferences: "", rawHtml: "Manual", isManual: true };
+    updateActiveSessionGuests([g, ...guests]);
   };
 
   const handleAIRefine = async () => {
     if (guests.length === 0) return;
     setIsProcessing(true);
-    setProgressMsg("REFINING INTEL...");
+    setProgressMsg("REFINING DATA...");
     const batch = guests;
     const chunks = [];
     for (let i = 0; i < batch.length; i += BATCH_SIZE) chunks.push(batch.slice(i, i + BATCH_SIZE));
@@ -222,33 +167,24 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       for (let i = 0; i < chunks.length; i++) {
         const currentBatch = chunks[i];
         setProgressMsg(`AUDITING: ${i + 1}/${chunks.length}...`);
-        const refinements = await GeminiService.refineGuestBatch(currentBatch, ['notes', 'facilities', 'inRoomItems', 'preferences', 'packages', 'history']);
-        
+        const refinements = await GeminiService.refineGuestBatch(currentBatch, ['notes', 'facilities']);
         if (refinements) {
-          setSessions(prev => prev.map(s => {
-            if (s.id !== activeSessionId) return s;
-            const updatedGuests = [...s.guests];
-            currentBatch.forEach((original, idx) => {
-               const ref = refinements[idx];
-               if (ref) {
-                 const gIndex = updatedGuests.findIndex(g => g.id === original.id);
-                 if (gIndex !== -1) {
-                   updatedGuests[gIndex] = { 
-                       ...updatedGuests[gIndex], 
-                       prefillNotes: ref.notes, 
-                       facilities: ref.facilities, 
-                       inRoomItems: ref.inRoomItems, 
-                       preferences: ref.preferences, 
-                       packageName: ref.packages, 
-                       ll: ref.history 
-                    };
-                 }
-               }
-            });
-            return { ...s, guests: updatedGuests, lastModified: Date.now() };
-          }));
+            setSessions(prev => prev.map(s => {
+                if (s.id !== activeSessionId) return s;
+                const updatedGuests = [...s.guests];
+                currentBatch.forEach((original, idx) => {
+                    const ref = refinements[idx];
+                    if (ref) {
+                        const gIndex = updatedGuests.findIndex(g => g.id === original.id);
+                        if (gIndex !== -1) {
+                            updatedGuests[gIndex] = { ...updatedGuests[gIndex], prefillNotes: ref.notes, facilities: ref.facilities, inRoomItems: ref.inRoomItems, preferences: ref.preferences, packageName: ref.packages, ll: ref.history };
+                        }
+                    }
+                });
+                return { ...s, guests: updatedGuests };
+            }));
         }
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 500));
       }
     } finally { setIsProcessing(false); }
   };

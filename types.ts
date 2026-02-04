@@ -17,12 +17,13 @@ export interface Guest {
   isManual?: boolean;
 }
 
+// NEW: Moved here for global access
 export interface ArrivalSession {
-  id: string;        // Unique ID (e.g., date string or timestamp)
-  label: string;     // Tab Name (e.g., "Friday 7th February")
-  dateObj: string;   // ISO date for sorting
-  guests: Guest[];   // The data for this day
-  lastModified: number;
+  id: string;
+  label: string;
+  dateObj: string;
+  guests: Guest[];
+  lastModified?: number;
 }
 
 export interface Flag {
@@ -35,7 +36,6 @@ export interface Flag {
 export type FilterType = 'all' | 'main' | 'lake' | 'vip' | 'allergy' | 'return';
 export type PrintMode = 'master' | 'greeter' | 'delivery';
 export type RefinementField = 'notes' | 'facilities' | 'inRoomItems' | 'preferences' | 'packages' | 'history';
-export type RefinementMode = 'free' | 'paid';
 
 export interface RoomMapping {
   [key: string]: number;
