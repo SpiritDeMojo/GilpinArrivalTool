@@ -112,14 +112,17 @@ ${g.rawHtml}
 --- GUEST END ---`;
       }).join('\n\n');
 
-      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+      // VITAL FIX: Remove forced sample rate of 16k and detect browser's actual rate
+      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      
+      const actualSampleRate = inputCtx.sampleRate;
       
       await inputCtx.resume();
       await outputCtx.resume();
       audioContextRef.current = outputCtx;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
       mediaStreamRef.current = stream;
 
       let currentInput = "";
@@ -136,7 +139,14 @@ ${g.rawHtml}
               const inputData = e.inputBuffer.getChannelData(0);
               const int16 = new Int16Array(inputData.length);
               for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
-              sessionPromise.then(s => s.sendRealtimeInput({ media: { data: encode(new Uint8Array(int16.buffer)), mimeType: 'audio/pcm;rate=16000' } }));
+              
+              // Dynamic MIME Type: Inform Gemini of the actual rate we are sending
+              sessionPromise.then(s => s.sendRealtimeInput({ 
+                media: { 
+                  data: encode(new Uint8Array(int16.buffer)), 
+                  mimeType: `audio/pcm;rate=${actualSampleRate}` 
+                } 
+              }));
             };
             source.connect(processor);
             processor.connect(inputCtx.destination);

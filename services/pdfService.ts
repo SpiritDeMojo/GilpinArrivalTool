@@ -1,4 +1,3 @@
-
 import { Guest, Flag } from '../types';
 import { ROOM_MAP } from '../constants';
 
@@ -97,7 +96,6 @@ export class PDFService {
     const startIndex = startMatch.index! + startMatch[0].length;
     const remaining = text.substring(startIndex);
     
-    // Core V4.1 Polish: Added strict operational end markers to stop data bleeding
     const strictEndMarkers = [
       ...endMarkers, 
       "Checked:", 
@@ -161,25 +159,34 @@ export class PDFService {
     const singleLineText = rawTextLines.join(" ").replace(/\s+/g, " ");
     const scanLower = singleLineText.toLowerCase();
 
-    // 1. ROBUST ROOM DETECTION (Scan first 4 lines for hyphenated or dotted rooms)
+    // 1. ADVANCED ROOM DETECTION & CLEANING
     let room = "Unassigned";
-    const roomRegex = /(?:^|\s)(\d{1,3})[.-]\s*([A-Za-z\s]+)/i;
+    const roomRegex = /(?:^|\s)(\d{1,3})[.-]\s*([A-Za-z\s0-9:]+)/i;
     
     for (let i = 0; i < Math.min(4, block.lines.length); i++) {
         const lineText = block.lines[i].items.map((it: any) => it.str).join(" ");
         const match = lineText.match(roomRegex);
         if (match) {
-            room = `${match[1]} ${match[2].trim().toUpperCase()}`;
+            let roomRaw = `${match[1]} ${match[2].trim()}`;
+            // Apply Noise Filter: Remove DEF, CHI, GRP, etc. and 4-digit timestamps
+            room = roomRaw.replace(/\b(DEF|CHI|GRP|VAC|MR|SS|SL|JS)\b/gi, "")
+                           .replace(/\b(\d{4}|\d{2}:\d{2})\b/g, "")
+                           .replace(/\s+/g, " ").trim().toUpperCase();
             break;
         }
     }
     
     if (room === "Unassigned") {
         const globalMatch = singleLineText.match(roomRegex);
-        if (globalMatch) room = `${globalMatch[1]} ${globalMatch[2].trim().toUpperCase()}`;
+        if (globalMatch) {
+          let roomRaw = `${globalMatch[1]} ${globalMatch[2].trim()}`;
+          room = roomRaw.replace(/\b(DEF|CHI|GRP|VAC|MR|SS|SL|JS)\b/gi, "")
+                         .replace(/\b(\d{4}|\d{2}:\d{2})\b/g, "")
+                         .replace(/\s+/g, " ").trim().toUpperCase();
+        }
     }
 
-    // 2. STABLE NAME EXTRACTION (Independent of Room position)
+    // 2. STABLE NAME EXTRACTION
     let nameRaw = "";
     const line0Items = block.lines[0].items;
     let foundId = false;
@@ -187,9 +194,7 @@ export class PDFService {
         const str = item.str.trim();
         if (str === block.id) { foundId = true; continue; }
         if (foundId) {
-            // Stop if we hit symbols or known operational junk on Line 1
             if (str.length === 2 && str === str.toUpperCase() && !["MR", "MS", "DR"].includes(str)) break;
-            // Also stop if the Room happened to be on Line 1 (Legacy compatibility)
             if (str.match(roomRegex)) break;
             nameRaw += " " + str;
         }
@@ -267,22 +272,41 @@ export class PDFService {
     if (scanLower.match(/anniversary/)) notesList.push("🎉 Anniversary");
     if (scanLower.match(/dog|pet in room|canine/)) notesList.push("🐾 Pet In Room");
 
-    // Robust Section Extraction with strict stop markers (Checked, Total Rate, Deposit)
     const hkNotes = this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:"]);
     if (hkNotes) notesList.push(hkNotes);
 
-    const guestNotes = this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:"]);
-    if (guestNotes) notesList.push(guestNotes);
+    const guestNotesSection = this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:"]);
+    if (guestNotesSection) notesList.push(guestNotesSection);
 
     const rawFac = this.extractSection(singleLineText, "Facility Bookings:", ["HK Notes:", "Guest Notes:", "Unit:"]);
     const facilitiesFormatted = this.formatFacilities(rawFac);
 
+    // 6. DEEP SWEEP FOR IN-ROOM ITEMS
     let inRoomItemsList: string[] = [];
-    const inRoomMarkers = ["In Room on Arrival:", "In-Room:", "IN ROOM:"];
-    inRoomMarkers.forEach(marker => {
-      // End markers like "Checked:" now strictly enforce a stop here to prevent data bleeding
-      const extracted = this.extractSection(singleLineText, marker, ["HK Notes:", "Guest Notes:", "Unit:", "Facility Bookings:"]);
-      if (extracted) extracted.split(',').forEach(p => inRoomItemsList.push(p.trim()));
+    const inRoomSources = [
+      this.extractSection(singleLineText, "In Room(?: on Arrival)?:", ["Checked:", "8 Day Check", "Billing:"]),
+      this.extractSection(singleLineText, "In-Room:", ["Checked:", "8 Day Check", "Billing:"]),
+      this.extractSection(singleLineText, "IN ROOM:", ["Checked:", "8 Day Check", "Billing:"]),
+      this.extractSection(singleLineText, "Traces:", ["Booking Notes", "Been Before", "Occasion:"])
+    ];
+
+    // Scan Guest Notes for specifics
+    const manualKeywords = ["Ice Bucket", "Glasses", "Dog Bed", "Cot", "Extra Bed", "Champagne", "Itinerary", "Tickets", "Voucher", "Robes"];
+    manualKeywords.forEach(kw => {
+      if (guestNotesSection.toLowerCase().includes(kw.toLowerCase())) inRoomItemsList.push(kw);
+    });
+
+    // Merge and Filter from sources
+    inRoomSources.forEach(source => {
+      if (source) {
+        source.split(/,|&|\/|•/).forEach(item => {
+          const clean = item.trim();
+          // Filter out staff initials (2 chars), noise, and empty strings
+          if (clean.length > 2 && !/^(NDR|None|N\/A|LV|KW|AM|JS|SL|SS)$/i.test(clean)) {
+            inRoomItemsList.push(clean);
+          }
+        });
+      }
     });
 
     return {
@@ -295,7 +319,7 @@ export class PDFService {
       duration,
       facilities: facilitiesFormatted,
       prefillNotes: notesList.join(" • "),
-      inRoomItems: inRoomItemsList.join(" • "),
+      inRoomItems: [...new Set(inRoomItemsList)].join(" • "),
       preferences: "",
       packageName: rateCode,
       rateCode,
