@@ -46,14 +46,14 @@ export class ExcelService {
       { n: 21, l: "21 BIRDOSWALD" }, { n: 22, l: "22 MAGLONA" }, { n: 23, l: "23 GLANNOVENTA" },
       { n: 24, l: "24 VOREDA" }, { n: 25, l: "25 HARDKNOTT" }, { n: 26, l: "26 BRATHAY" },
       { n: 27, l: "27 CRAKE" }, { n: 28, l: "28 DUDDON" }, { n: 30, l: "30 LOWTHER" }, { n: 31, l: "31 LYVENNET" },
-      { n: 0, l: "Lakehouse rooms", header: "Lakehouse rooms" }, // Match the orange banner in screenshot
+      { n: 0, l: "Lakehouse rooms", header: "Lakehouse rooms" }, 
       { n: 51, l: "51 HARRIET" }, 
       { n: 52, l: "52 ETHEL" }, 
       { n: 53, l: "53 ADGIE" }, 
       { n: 54, l: "54 GERTIE" }, 
-      { n: 55, l: "55 MAUD" }, // Room 55 Included as requested
+      { n: 55, l: "55 MAUD" }, 
       { n: 56, l: "56 BEATRICE" }, 
-      { n: 57, l: "57 TARN SUITE" }, // Corrected labels to match screenshot
+      { n: 57, l: "57 TARN SUITE" }, 
       { n: 58, l: "58 KNIPE SUITE" }
     ];
 
@@ -78,7 +78,7 @@ export class ExcelService {
             g.name, 
             g.car, 
             "", // Car Type
-            g.ll, 
+            g.ll, // Tactical Fix: Export full L&L details directly
             g.eta, 
             "", // Arrival Time
             "", // Location
@@ -115,7 +115,7 @@ export class ExcelService {
       { wch: 30 }, // Guest Name
       { wch: 12 }, // Car Reg
       { wch: 10 }, // Car Type
-      { wch: 8 },  // L & L
+      { wch: 12 }, // L & L (increased for counts)
       { wch: 8 },  // ETA
       { wch: 12 }, // Arrival Time
       { wch: 15 }, // Location

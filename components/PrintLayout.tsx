@@ -92,9 +92,9 @@ export const PrintLayout: React.FC<{
           .print-mode-greeter th:nth-child(1) { width: 4% !important; } 
           .print-mode-greeter .col-identity { width: 15% !important; } 
           .print-mode-greeter .col-vehicle { width: 10% !important; } 
-          .print-mode-greeter .col-ll { width: 3% !important; } 
+          .print-mode-greeter .col-ll { width: 6% !important; } 
           .print-mode-greeter .col-eta { width: 5% !important; } 
-          .print-mode-greeter .col-strategy { width: 63% !important; font-size: 8pt !important; white-space: normal !important; }
+          .print-mode-greeter .col-strategy { width: 60% !important; font-size: 8pt !important; white-space: normal !important; }
 
           /* DELIVERY: Maximize In-Room Assets flow */
           .print-mode-delivery th:nth-child(1) { width: 4% !important; } 
@@ -106,8 +106,8 @@ export const PrintLayout: React.FC<{
           .print-mode-master .col-identity { width: 15% !important; } 
           .print-mode-master .col-nts { width: 3% !important; } 
           .print-mode-master .col-vehicle { width: 10% !important; } 
-          .print-mode-master .col-ll { width: 3% !important; } 
-          .print-mode-master .col-facilities { width: 20% !important; font-size: 8pt !important; } 
+          .print-mode-master .col-ll { width: 5% !important; } 
+          .print-mode-master .col-facilities { width: 18% !important; font-size: 8pt !important; } 
           .print-mode-master .col-eta { width: 5% !important; } 
           .print-mode-master .col-intel { width: 19% !important; font-size: 8pt !important; } 
           .print-mode-master .col-strategy { width: 20% !important; font-size: 8pt !important; }
@@ -127,8 +127,8 @@ export const PrintLayout: React.FC<{
             <th className="p-1 w-[15%] text-left col-identity">Identity</th>
             <th className="p-1 w-[3%] text-center col-nts">Nts</th>
             <th className="p-1 w-[10%] text-left col-vehicle">Vehicle</th>
-            <th className="p-1 w-[3%] text-center col-ll">L&L</th>
-            <th className="p-1 w-[20%] text-left col-facilities">Facilities</th>
+            <th className="p-1 w-[5%] text-center col-ll">L&L</th>
+            <th className="p-1 w-[18%] text-left col-facilities">Facilities</th>
             <th className="p-1 w-[5%] text-center col-eta">ETA</th>
             <th className="p-1 w-[19%] text-left col-intel">Intelligence</th>
             <th className="p-1 w-[20%] text-left col-strategy">Strategy</th>
@@ -147,7 +147,8 @@ export const PrintLayout: React.FC<{
               <td className="p-1 text-center font-bold text-xs align-top col-nts">{g.duration}</td>
               <td className="p-1 font-mono font-bold text-[9pt] uppercase align-top col-vehicle">{g.car || "—"}</td>
               <td className="p-1 text-center font-black uppercase text-[8pt] align-top col-ll">
-                {g.ll.toLowerCase().includes('yes') ? 'YES' : 'NO'}
+                {/* Tactical Fix: Display full Loyalty string (e.g., "YES (x3)") for strategic depth */}
+                {g.ll || "—"}
               </td>
               <td className="p-1 text-[8pt] leading-tight align-top col-facilities">{g.facilities}</td>
               <td className="p-1 text-center font-black text-sm align-top col-eta">{g.eta}</td>
