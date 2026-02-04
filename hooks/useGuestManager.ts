@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect } from 'react';
 import { Guest, Flag, FilterType, ArrivalSession } from '../types';
 import { PDFService } from '../services/pdfService';
@@ -17,8 +18,6 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const [activeSessionId, setActiveSessionId] = useState<string>(() => {
     return localStorage.getItem('gilpin_active_id_v5') || "";
   });
-
-  // Removed: initial session useEffect (Starts with 0 sessions if localStorage is empty)
 
   // 2. Computed
   const activeSession = useMemo(() => 
@@ -87,7 +86,6 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     setActiveSessionId(id);
   };
 
-  // Smart Upload (Overwrite empty placeholder if it's the only one)
   const handleFileUpload = async (file: File) => {
     setIsProcessing(true);
     setProgressMsg("ANALYSING FILE...");
@@ -96,7 +94,6 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       const sessionId = result.arrivalDateStr.trim();
 
       setSessions(prev => {
-        // Check 1: Do we already have this date?
         const existingIdx = prev.findIndex(s => s.id === sessionId);
         
         const newSessionData: ArrivalSession = {
@@ -113,12 +110,10 @@ export const useGuestManager = (initialFlags: Flag[]) => {
             return updated;
         }
 
-        // Check 2: Overwrite if current tab is a fresh empty manual one
         if (prev.length === 1 && prev[0].guests.length === 0 && prev[0].id.startsWith("MAN-")) {
             return [newSessionData];
         }
 
-        // Check 3: Add new tab and sort
         const newList = [...prev, newSessionData];
         return newList.sort((a, b) => new Date(a.dateObj).getTime() - new Date(b.dateObj).getTime());
       });
@@ -190,24 +185,43 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       for (let i = 0; i < chunks.length; i++) {
         const currentBatch = chunks[i];
         setProgressMsg(`AUDITING: ${i + 1}/${chunks.length}...`);
-        const refinements = await GeminiService.refineGuestBatch(currentBatch, ['notes', 'facilities']);
-        if (refinements) {
-            setSessions(prev => prev.map(s => {
-                if (s.id !== activeSessionId) return s;
-                const updatedGuests = [...s.guests];
-                currentBatch.forEach((original, idx) => {
-                    const ref = refinements[idx];
-                    if (ref) {
-                        const gIndex = updatedGuests.findIndex(g => g.id === original.id);
-                        if (gIndex !== -1) {
-                            updatedGuests[gIndex] = { ...updatedGuests[gIndex], prefillNotes: ref.notes, facilities: ref.facilities, inRoomItems: ref.inRoomItems, preferences: ref.preferences, packageName: ref.packages, ll: ref.history };
-                        }
-                    }
-                });
-                return { ...s, guests: updatedGuests };
-            }));
+        
+        // Retry logic: If it fails, wait and try once more
+        let refinements = await GeminiService.refineGuestBatch(currentBatch, ['notes', 'facilities']);
+        if (!refinements) {
+            console.warn("Batch failed, retrying...");
+            await new Promise(r => setTimeout(r, 3000)); // Longer wait for retry
+            refinements = await GeminiService.refineGuestBatch(currentBatch, ['notes', 'facilities']);
         }
-        await new Promise(r => setTimeout(r, 500));
+        
+        if (refinements) {
+          setSessions(prev => prev.map(s => {
+            if (s.id !== activeSessionId) return s;
+            const updatedGuests = [...s.guests];
+            currentBatch.forEach((original, idx) => {
+               const ref = refinements[idx];
+               if (ref) {
+                 const gIndex = updatedGuests.findIndex(g => g.id === original.id);
+                 if (gIndex !== -1) {
+                   updatedGuests[gIndex] = { 
+                       ...updatedGuests[gIndex], 
+                       prefillNotes: ref.notes, 
+                       facilities: ref.facilities, 
+                       inRoomItems: ref.inRoomItems, 
+                       preferences: ref.preferences, 
+                       packageName: ref.packages, 
+                       ll: ref.history 
+                   };
+                 }
+               }
+            });
+            return { ...s, guests: updatedGuests };
+          }));
+        }
+        
+        console.log("Batch complete, cooling down...");
+        // INCREASED DELAY: 2000ms to prevent Rate Limiting
+        await new Promise(r => setTimeout(r, 2000));
       }
     } finally { setIsProcessing(false); }
   };
