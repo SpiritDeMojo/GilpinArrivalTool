@@ -3,6 +3,9 @@ import { ROOM_MAP } from '../constants';
 
 declare const pdfjsLib: any;
 
+// 🛑 CRITICAL FIX: Define Worker Source to prevent browser freeze
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
 export class PDFService {
   static async parse(file: File, flags: Flag[]): Promise<{ guests: Guest[], arrivalDateStr: string, arrivalDateObj: Date | null }> {
     const buffer = await file.arrayBuffer();
