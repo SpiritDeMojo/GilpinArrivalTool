@@ -7,10 +7,10 @@ export class GeminiService {
     fields: RefinementField[]
   ): Promise<any[] | null> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const modelName = 'gemini-3-flash-preview'; 
+    // Using user-requested model name
+    const modelName = 'gemini-2.0-flash'; 
 
-    const systemInstruction =`
-**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v5.2).
+    const systemInstruction = `**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v5.2).
 **MISSION:** You are the final safety net. Review raw booking data and output a perfect, "Zero-Error" arrival manifest.
 
 ### 1. 🛡️ REVENUE & SECURITY GUARD
@@ -36,15 +36,15 @@ export class GeminiService {
     1.  **Status:** ✅ PAID / ⭐ VIP / 🔵 STAFF / 🟢 COMP
     2.  **Alerts:** ⚠️ [Allergies] / 💰 [Billing] / 🤫 [Silent]
     3.  **Room:** 🟠 NO BREAKFAST / 👤 SINGLE / 👥 3+ GUESTS
-    4.  **Occasions:** 🎉 Birthday / 🥂 Anniversary / 💒 Honeymoon
-    5.  **Requests:** 📌 [Feather, Twin, Cot, Quiet, Near]
+    4.  **Occasions:** 🎉 Birthday - L or G / 🥂 Anniversary / 💒 Honeymoon
+    5.  **Requests:** 📌 [Feather, Twin, Cot, Quiet, No Alcohol]
     6.  **History:** 📜 Prev: [Dates if listed]
     7.  **ASSETS:** 🎁 [Champagne, Flowers, Balloons, Tickets]
 * **Example:** "✅ PAID IN FULL • ⚠️ Nut Allergy • 🎉 Birthday • 🎁 Champagne, Flowers"
 
-**C. inRoomItems (Housekeeping Checklist)**
-* **GOAL:** Physical list for HK.
-* **INCLUDE:** Champagne, Ice Bucket, Glasses, Dog Bed, Robes, Itinerary.
+**C. inRoomItems (Front of House Checklist)**
+* **GOAL:** Physical list for the Bar.
+* **INCLUDE:** Champagne, Ice Bucket, Glasses,Types of Champange or Proseco,Types of wine, Itinerary.
 * **FORMAT:** Comma-separated.
 
 **D. preferences (Greeting Strategy)**
@@ -53,13 +53,13 @@ export class GeminiService {
 **E. packages (Human Readable) - REFINED**
 * **GOAL:** Convert codes to beautiful names.
 * **MAPPINGS:**
-    * BB / BB_1 / BB_2 / BB_3 / LHBB / BB_3_SUM -> "Bed & Breakfast"
+    * BB / BB_1 / BB_2 / BB_3 / LHBB / LHBB1 / LHBB2 / LHBB3 -> "Bed & Breakfast"
     * RO -> "Room Only"
     * DBB / DBB_1 -> "Dinner, Bed & Breakfast"
-    * MIN / MINIMOON -> "🌙 Mini-Moon"
+    * MINI / MINIMOON -> "🌙 Mini Moon"
     * MAGESC -> "✨ Magical Escape"
     * CEL -> "🎉 Celebration"
-    * BB_1_WIN -> "❄️ Winter Offer"
+    * BB_1_WIN / BB_2_WIN / BB_3_WIN -> "❄️ Winter Offer"
     * POB_STAFF -> "Pride of Britain Staff"
     * APR / ADV -> "💳 Advanced Purchase"
 * **DEFAULT:** If no code matches, use the Rate Description found in text.
@@ -102,7 +102,9 @@ RAW: ${g.rawHtml}`
           }
         }
       });
-      return JSON.parse(response.text || "[]");
+      const text = response.text || "";
+      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanJson || "[]");
     } catch (error) {
       console.error("Audit AI Error:", error);
       return null;

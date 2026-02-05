@@ -4,11 +4,10 @@ import { GlobalAnalyticsData, ArrivalSession } from "../types";
 export class AnalyticsService {
   static async generateGlobalAnalytics(sessions: ArrivalSession[]): Promise<GlobalAnalyticsData | null> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    // Pro model for superior cross-document synthesis
-    const modelName = 'gemini-3-pro-preview';
+    // Using user-requested model name
+    const modelName = 'gemini-2.0-flash';
 
-    const systemInstruction = `
-**ROLE:** Gilpin Strategic Data Analyst.
+    const systemInstruction = `**ROLE:** Gilpin Strategic Data Analyst.
 **MISSION:** Synthesize all arrival manifests into high-level business intelligence.
 
 **CHART SCHEMA REQUIREMENTS (MANDATORY):**
@@ -25,8 +24,7 @@ export class AnalyticsService {
 - vipIntensity: Integer percentage of VIP guests.
 - strategicInsights: 2 punchy tactical sentences.
 
-**OUTPUT:** Pure JSON. No markdown backticks.
-`;
+**OUTPUT:** Pure JSON. No markdown backticks.`;
 
     const summaryPayload = sessions.map(s => {
       return `DATE: ${s.label} (${s.dateObj})
@@ -77,7 +75,9 @@ ${s.guests.map(g => `- ${g.name} | Rm: ${g.room} | LL: ${g.ll} | Nts: ${g.prefil
         }
       });
 
-      const parsed = JSON.parse(response.text || "null");
+      const text = response.text || "";
+      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson || "null");
       return parsed ? { ...parsed, lastUpdated: Date.now() } : null;
     } catch (error) {
       console.error("Analytics AI Error:", error);

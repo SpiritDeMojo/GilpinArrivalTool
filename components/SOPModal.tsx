@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface SOPModalProps {
@@ -125,6 +124,52 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     <li>• "Which guests have dairy allergies?"</li>
                     <li>• "Are there any special occasions arriving after 4 PM?"</li>
                   </ul>
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 5: Strategic Intelligence Dashboard */}
+          <section className="space-y-6">
+            <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#c5a065] border-b border-[#c5a065]/10 pb-2">05. Strategic Intelligence Dashboard</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-8 rounded-[2.5rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 transition-all hover:border-[#c5a065]/30">
+                <div className="flex items-center gap-4 mb-3">
+                  <span className="text-3xl">📈</span>
+                  <h6 className="font-black text-[12px] uppercase tracking-widest dark:text-white">Occupancy Pulse</h6>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Visualizes the flow of arrivals across your manifests. This help the management team spot peak check-in windows to ensure greeters are positioned when the pressure is highest.
+                </p>
+              </div>
+
+              <div className="p-8 rounded-[2.5rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 transition-all hover:border-[#c5a065]/30">
+                <div className="flex items-center gap-4 mb-3">
+                  <span className="text-3xl">🥧</span>
+                  <h6 className="font-black text-[12px] uppercase tracking-widest dark:text-white">Strategic Mix</h6>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Breaks down the arrival portfolio into <strong>Strategic (VIP)</strong>, <strong>Return</strong>, and <strong>New</strong> guests. Use this to pivot the team's tone between "Welcome back" and property orientation.
+                </p>
+              </div>
+
+              <div className="p-8 rounded-[2.5rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 transition-all hover:border-[#c5a065]/30">
+                <div className="flex items-center gap-4 mb-3">
+                  <span className="text-3xl">🔍</span>
+                  <h6 className="font-black text-[12px] uppercase tracking-widest dark:text-white">Risk Pattern Analysis</h6>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  A pre-emptive operational scan that clusters hidden booking risks—like missing TBD logistics or payment alerts—into categories for rapid resolution before guest arrival.
+                </p>
+              </div>
+
+              <div className="p-8 rounded-[2.5rem] bg-slate-50 dark:bg-stone-900/40 border border-slate-100 dark:border-stone-800/60 transition-all hover:border-[#c5a065]/30">
+                <div className="flex items-center gap-4 mb-3">
+                  <span className="text-3xl">⚓</span>
+                  <h6 className="font-black text-[12px] uppercase tracking-widest dark:text-white">Loyalty Anchor</h6>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  A high-level percentage score reflecting the retention strength of the current manifest. A high score suggests a "Home away from home" atmosphere is required for the day.
                 </p>
               </div>
             </div>

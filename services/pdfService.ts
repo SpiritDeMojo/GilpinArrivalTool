@@ -294,7 +294,7 @@ export class PDFService {
     }
 
     // --- 7. CONSOLIDATED NOTES ---
-    const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB|RO|CEL|POB_STAFF)\b/i;
+    const packageRegex = /\b(MIN|MAGESC|BB1|BB2|BB3|BB|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB|LHBB1|LHBB2|RO|CEL|POB_STAFF)\b/i;
     const rateMatch = singleLineText.match(packageRegex);
     const rateCode = rateMatch ? rateMatch[1].toUpperCase() : "";
 

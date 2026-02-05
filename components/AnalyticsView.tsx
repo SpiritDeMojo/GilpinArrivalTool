@@ -15,16 +15,20 @@ interface AnalyticsViewProps {
 const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions }) => {
   const [data, setData] = useState<GlobalAnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [chartsReady, setChartsReady] = useState(false);
   const sessionsRef = useRef<string>("");
 
   const fetchAnalytics = useCallback(async () => {
     if (allSessions.length === 0) return;
     setIsLoading(true);
+    setChartsReady(false);
     try {
       const result = await AnalyticsService.generateGlobalAnalytics(allSessions);
       if (result) {
         setData(result);
         sessionsRef.current = JSON.stringify(allSessions.map(s => ({ id: s.id, count: s.guests.length })));
+        // Stability delay for Recharts layout engine
+        setTimeout(() => setChartsReady(true), 500);
       }
     } catch (e) {
       console.error("Strategic Analytics Sync Failed:", e);
@@ -40,7 +44,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions }) => {
     }
   }, [allSessions, data, isLoading, fetchAnalytics]);
 
-  // Handle case with no sessions/manifests
   if (allSessions.length === 0) {
     return (
       <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-[2.5rem] p-12 border border-white/20 dark:border-white/5 shadow-xl text-center mb-10 animate-in fade-in duration-500">
@@ -51,7 +54,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions }) => {
     );
   }
 
-  // Color Map Constants
   const identityColors: Record<string, string> = {
     'Strategic (VIP)': '#c5a065',
     'Return Guests': '#3b82f6',
@@ -65,7 +67,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions }) => {
     'TBD Logistics': '#94a3b8'
   };
 
-  // Helper to normalize AI keys to UI color keys in case of minor hallucinations
   const normalizeKey = (key: string, map: Record<string, string>): string => {
     const lowerKey = key.toLowerCase();
     const found = Object.keys(map).find(k => k.toLowerCase() === lowerKey || lowerKey.includes(k.toLowerCase()) || k.toLowerCase().includes(lowerKey));
@@ -86,7 +87,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions }) => {
     return null;
   };
 
-  // Normalization for AreaChart (requires at least 2 points to render an area visually)
   const normalizedOccupancy = data?.occupancyPulse && data.occupancyPulse.length === 1
     ? [{ date: 'Start', count: 0 }, ...data.occupancyPulse, { date: 'End', count: 0 }]
     : data?.occupancyPulse || [];
@@ -94,7 +94,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions }) => {
   return (
     <div className="space-y-6 mb-10 animate-in fade-in duration-700">
       
-      {/* HEADER & SYNC CONTROLS */}
       <div className="flex justify-between items-end px-2">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-[#c5a065]/10 rounded-2xl flex items-center justify-center text-2xl border border-[#c5a065]/20 shadow-inner">🧠</div>
@@ -113,7 +112,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions }) => {
         </button>
       </div>
 
-      {/* LOADING STATE PLACEHOLDER */}
       {!data && isLoading && (
         <div className="h-[400px] flex flex-col items-center justify-center bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-[3rem] border-2 border-dashed border-[#c5a065]/20 animate-pulse">
           <div className="w-16 h-16 border-4 border-[#c5a065]/20 border-t-[#c5a065] rounded-full animate-spin mb-4"></div>
@@ -123,7 +121,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions }) => {
 
       {data && (
         <>
-          {/* KPI STAT STRIP */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: 'Total Volume', val: allSessions.reduce((acc, s) => acc + s.guests.length, 0), icon: '🌍', color: 'text-slate-900 dark:text-white' },
@@ -139,7 +136,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions }) => {
             ))}
           </div>
 
-          {/* AI GENERATED INSIGHT */}
           <div className="bg-indigo-500/5 dark:bg-indigo-500/10 border border-indigo-500/20 p-8 rounded-[3rem] backdrop-blur-md relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 text-indigo-500/10 text-4xl font-black">AI</div>
             <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2">Tactical Summary & Outlook</h4>
@@ -148,88 +144,92 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions }) => {
             </p>
           </div>
 
-          {/* MAIN CHARTS SECTION */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* OCCUPANCY PULSE TRACE */}
             <div className="lg:col-span-2 bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-[3rem] p-10 border border-white/20 dark:border-white/5 shadow-xl flex flex-col h-[400px]">
               <h3 className="text-[11px] font-black uppercase tracking-[0.35em] text-[#c5a065] mb-8">Occupancy Pulse Trace</h3>
-              <div className="flex-1 w-full min-h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={normalizedOccupancy} key={`area-pulse-${data.lastUpdated}`}>
-                    <defs>
-                      <linearGradient id="pulseFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#c5a065" stopOpacity={0.4}/>
-                        <stop offset="95%" stopColor="#c5a065" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(197, 160, 101, 0.1)" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
-                    <YAxis hide />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area type="monotone" dataKey="count" stroke="#c5a065" strokeWidth={5} fill="url(#pulseFill)" animationDuration={1500} />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="flex-1 w-full min-h-[250px] flex items-center justify-center">
+                {chartsReady ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={normalizedOccupancy} key={`area-pulse-${data.lastUpdated}`}>
+                      <defs>
+                        <linearGradient id="pulseFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#c5a065" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="#c5a065" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(197, 160, 101, 0.1)" />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
+                      <YAxis hide />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Area type="monotone" dataKey="count" stroke="#c5a065" strokeWidth={5} fill="url(#pulseFill)" animationDuration={1000} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="animate-pulse text-[10px] font-black uppercase text-[#c5a065]/40 tracking-widest">Stabilizing Pulse Data...</div>
+                )}
               </div>
             </div>
 
-            {/* STRATEGIC MIX PIE */}
             <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-[3rem] p-10 border border-white/20 dark:border-white/5 shadow-xl flex flex-col h-[400px]">
               <h3 className="text-[11px] font-black uppercase tracking-[0.35em] text-[#c5a065] mb-8 text-center">Global Strategic Mix</h3>
-              <div className="flex-1 w-full min-h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart key={`mix-pie-${data.lastUpdated}`}>
-                    <Pie
-                      data={data.strategicMix}
-                      cx="50%" cy="45%" innerRadius={70} outerRadius={100} paddingAngle={8}
-                      dataKey="value" nameKey="name" stroke="none" animationDuration={1200}
-                    >
-                      {data.strategicMix.map((entry, index) => (
-                        <Cell key={`mix-cell-${index}`} fill={identityColors[normalizeKey(entry.name, identityColors)] || '#1e293b'} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend 
-                      verticalAlign="bottom" align="center" 
-                      formatter={(v) => <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{v}</span>} 
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="flex-1 w-full min-h-[250px] flex items-center justify-center">
+                {chartsReady ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart key={`mix-pie-${data.lastUpdated}`}>
+                      <Pie
+                        data={data.strategicMix}
+                        cx="50%" cy="45%" innerRadius={70} outerRadius={100} paddingAngle={8}
+                        dataKey="value" nameKey="name" stroke="none" animationDuration={1000}
+                      >
+                        {data.strategicMix.map((entry, index) => (
+                          <Cell key={`mix-cell-${index}`} fill={identityColors[normalizeKey(entry.name, identityColors)] || '#1e293b'} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend 
+                        verticalAlign="bottom" align="center" 
+                        formatter={(v) => <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{v}</span>} 
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="animate-pulse text-[10px] font-black uppercase text-[#c5a065]/40 tracking-widest">Calibrating Mix...</div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* SECONDARY ANALYTICS SECTION */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* RISK PATTERN ANALYSIS - VERTICAL BAR CHART */}
             <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-[3rem] p-10 border border-white/20 dark:border-white/5 shadow-xl flex flex-col h-[350px]">
               <h3 className="text-[11px] font-black uppercase tracking-[0.35em] text-[#c5a065] mb-8">Risk Pattern Analysis</h3>
-              <div className="flex-1 w-full min-h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.riskAnalysis} layout="vertical" margin={{ left: 10, right: 30 }} key={`risk-bar-${data.lastUpdated}`}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.05)" />
-                    <XAxis type="number" hide />
-                    <YAxis 
-                      dataKey="name" 
-                      type="category" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      width={130} 
-                      style={{ fontSize: '10px', fontWeight: 800, fill: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }} 
-                    />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(197, 160, 101, 0.05)' }} />
-                    <Bar dataKey="value" radius={[0, 12, 12, 0]} barSize={24} animationDuration={1000}>
-                      {data.riskAnalysis.map((entry, index) => (
-                        <Cell key={`risk-bar-cell-${index}`} fill={riskColors[normalizeKey(entry.name, riskColors)] || '#94a3b8'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="flex-1 w-full min-h-[200px] flex items-center justify-center">
+                {chartsReady ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.riskAnalysis} layout="vertical" margin={{ left: 10, right: 30 }} key={`risk-bar-${data.lastUpdated}`}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.05)" />
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        width={130} 
+                        style={{ fontSize: '10px', fontWeight: 800, fill: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }} 
+                      />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(197, 160, 101, 0.05)' }} />
+                      <Bar dataKey="value" radius={[0, 12, 12, 0]} barSize={24} animationDuration={1000}>
+                        {data.riskAnalysis.map((entry, index) => (
+                          <Cell key={`risk-bar-cell-${index}`} fill={riskColors[normalizeKey(entry.name, riskColors)] || '#94a3b8'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="animate-pulse text-[10px] font-black uppercase text-[#c5a065]/40 tracking-widest">Profiling Risks...</div>
+                )}
               </div>
             </div>
 
-            {/* LOYALTY SUMMARY CARD */}
             <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-[3rem] p-10 border border-white/20 dark:border-white/5 shadow-xl flex flex-col h-[350px] items-center justify-center">
               <h3 className="text-[11px] font-black uppercase tracking-[0.35em] text-[#c5a065] mb-8">Loyalty Anchor Summary</h3>
               <div className="text-center">
