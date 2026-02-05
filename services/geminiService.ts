@@ -7,51 +7,50 @@ export class GeminiService {
     fields: RefinementField[]
   ): Promise<any[] | null> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    // Using user-requested model name
     const modelName = 'gemini-2.0-flash'; 
 
-    const systemInstruction = `**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v5.2).
-**MISSION:** You are the final safety net. Review raw booking data and output a perfect, "Zero-Error" arrival manifest.
+    const systemInstruction = `**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v6.0).
+**MISSION:** Extract EVERY operational detail. If a detail is in the text, it MUST appear in the output. Do not summarize away important nuances.
 
 ### 1. 🛡️ REVENUE & SECURITY GUARD
 * **APR / LHAPR:** IF RateCode has 'APR'/'ADV' -> Start 'notes' with: "✅ PAID IN FULL (Extras Only)".
 * **Billing Alerts:** IF text has "Voucher", "Deposit Taken", "Balance Due" -> Add "💰 [Details]" to 'notes'.
 * **Silent Upgrades:** IF text has "Guest Unaware"/"Secret" -> Add "🤫 COMP UPGRADE (Silent)" to 'notes'.
 
-### 2. 🎁 PACKAGE AUDIT (The "Promise" Check)
+### 2. 🎁 PACKAGE & AMENITY AUDIT
 * **MINIMOON:** Audit for: Champagne, Itinerary, Cruise Tickets.
 * **MAGESC:** Audit for: Champagne, Itinerary.
 * **CEL:** Audit for: Champagne, Balloons.
-* **RULE:** If a package *requires* an item but it is NOT in the raw text, add: "⚠️ MISSING: [Item]" to 'inRoomItems'.
+* **RULE:** If a package *requires* an item but it is NOT in the raw text, add: "⚠️ MISSING: [Item]" to 'inRoomItems' AND 'notes'.
 
 ### 3. 📝 FIELD GENERATION RULES
 
 **A. facilities (The Itinerary)**
 * **FORMAT:** \`{Icon} {Name}: {Count} ({Date} @ {Time})\`
 * **ICONS:** 🌶️ Spice, 🍽️ Source, 🍰 Tea/Lake House, 🍱 Bento, 💆 Spa/Massage.
-* **LOGIC:** Merge duplicates (e.g., "Massage" x2 -> "💆 Massage for 2").
+* **LOGIC:** Merge duplicates. Keep specific notes (e.g. "Couples Massage").
 
 **B. notes (The "Intelligence String")**
+* **CRITICAL:** Preserve specific details (Names, severity, specific requests).
 * **HIERARCHY (Concatenate with " • "):**
     1.  **Status:** ✅ PAID / ⭐ VIP / 🔵 STAFF / 🟢 COMP
-    2.  **Alerts:** ⚠️ [Allergies] / 💰 [Billing] / 🤫 [Silent]
+    2.  **Alerts:** ⚠️ [Allergies + Details] (e.g. "Nut Allergy (Epipen)") / 💰 [Billing] / 🤫 [Silent]
     3.  **Room:** 🟠 NO BREAKFAST / 👤 SINGLE / 👥 3+ GUESTS
-    4.  **Occasions:** 🎉 Birthday / 🥂 Anniversary / 💒 Honeymoon
-    5.  **Requests:** 📌 [Feather, Twin, Cot, Quiet, No Alcohol]
+    4.  **Occasions:** 🎉 [Birthday - Name/Age] / 🥂 Anniversary / 💒 Honeymoon
+    5.  **Requests & Logistics:** 📌 [Any special request: "Spa Hamper", "Feather Pillows", "Dinner in Garden Room", "Specific Room Requested"]
     6.  **History:** 📜 Prev: [Dates if listed]
-    7.  **ASSETS:** 🎁 [Champagne, Flowers, Balloons, Tickets]
-* **Example:** "✅ PAID IN FULL • ⚠️ Nut Allergy • 🎉 Birthday • 🎁 Champagne, Flowers"
+    7.  **ASSETS:** 🎁 [Champagne, Flowers, Balloons, Tickets, Hampers]
+* **Example:** "✅ PAID IN FULL • ⚠️ Nut Allergy (Carries Epipen) • 🎉 Birthday (Rob - 50th) • 📌 Spa Hamper, Garden Room Req • 🎁 Champagne"
 
-**C. inRoomItems (Front of House Checklist)**
-* **GOAL:** Physical list for the Bar.
-* **INCLUDE:** Champagne, Ice Bucket, Glasses,Types of Champange or Proseco,Types of wine, Itinerary.
-* **FORMAT:** Comma-separated.
+**C. inRoomItems (Physical Checklist)**
+* **GOAL:** Physical list for Housekeeping/Bar.
+* **INCLUDE:** Anything physical going into the room. (Champagne, Ice Bucket, Glasses, Dog Bed, Robes, Spa Hamper, Balloons, Itinerary).
+* **RULE:** If it is in 'notes' as an asset, it MUST also be here.
 
 **D. preferences (Greeting Strategy)**
-* **STYLE:** Short, punchy, imperative instructions. (e.g. "Wish Happy Birthday. Check Voucher.")
+* **STYLE:** Short, punchy, imperative instructions. (e.g. "Wish Happy Birthday to Rob. Check Voucher.")
 
-**E. packages (Human Readable) - REFINED**
-* **GOAL:** Convert codes to beautiful names.
+**E. packages (Human Readable)**
 * **MAPPINGS:**
     * BB / BB1 / BB2 / BB3 / LHBB / LHBB1 / LHBB2 / LHBB3 -> "Bed & Breakfast"
     * RO -> "Room Only"
@@ -62,11 +61,10 @@ export class GeminiService {
     * BB_1_WIN / BB_2_WIN / BB_3_WIN -> "❄️ Winter Offer"
     * POB_STAFF -> "Pride of Britain Staff"
     * APR / ADV -> "💳 Advanced Purchase"
-* **DEFAULT:** If no code matches, use the Rate Description found in text.
+* **DEFAULT:** Use Rate Description if no code matches.
 
 **F. history (Loyalty Tracker)**
 * **FORMAT:** "Yes (x[Count])", "Yes", or "No".
-* **RULE:** Do NOT list specific dates here (move them to 'notes').
 
 ### 4. OUTPUT REQUIREMENTS
 Return a raw JSON array of objects. No markdown.
@@ -103,7 +101,11 @@ RAW: ${g.rawHtml}`
         }
       });
       const text = response.text || "";
-      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      let cleanJson = text;
+      // Robust cleanup for markdown code blocks
+      if (typeof text === 'string') {
+        cleanJson = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      }
       return JSON.parse(cleanJson || "[]");
     } catch (error) {
       console.error("Audit AI Error:", error);
