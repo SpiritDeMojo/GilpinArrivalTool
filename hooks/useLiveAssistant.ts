@@ -3,6 +3,7 @@ import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { Guest } from '../types';
 
 // --- AUDIO PROTOCOLS ---
+// Custom base64 decoding implementation as per guidelines
 function decode(base64: string) {
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
@@ -10,12 +11,14 @@ function decode(base64: string) {
   return bytes;
 }
 
+// Custom base64 encoding implementation as per guidelines
 function encode(bytes: Uint8Array) {
   let binary = '';
   for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
 }
 
+// Custom PCM decoding implementation as per guidelines
 async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer, data.byteOffset, data.byteLength / 2);
   const frameCount = dataInt16.length / numChannels;
@@ -91,6 +94,7 @@ export const useLiveAssistant = (guests: Guest[]) => {
     }
 
     try {
+      // Fix: Create new instance right before making an API call
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const guestsBrief = guests.map(g => {
@@ -112,11 +116,8 @@ ${g.rawHtml}
 --- GUEST END ---`;
       }).join('\n\n');
 
-      // VITAL FIX: Remove forced sample rate of 16k and detect browser's actual rate
-      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      
-      const actualSampleRate = inputCtx.sampleRate;
       
       await inputCtx.resume();
       await outputCtx.resume();
@@ -128,6 +129,7 @@ ${g.rawHtml}
       let currentInput = "";
       let currentOutput = "";
 
+      // Fix: Wrap connection logic and ensure data is sent after session promise resolves
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
@@ -140,11 +142,11 @@ ${g.rawHtml}
               const int16 = new Int16Array(inputData.length);
               for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
               
-              // Dynamic MIME Type: Inform Gemini of the actual rate we are sending
+              // Fix: Use sessionPromise.then to send input safely after connection
               sessionPromise.then(s => s.sendRealtimeInput({ 
                 media: { 
                   data: encode(new Uint8Array(int16.buffer)), 
-                  mimeType: `audio/pcm;rate=${actualSampleRate}` 
+                  mimeType: 'audio/pcm;rate=16000' 
                 } 
               }));
             };

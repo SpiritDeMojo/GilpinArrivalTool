@@ -13,11 +13,13 @@ import SOPModal from './components/SOPModal';
 import LiveChatWidget from './components/LiveChatWidget';
 import LoadingHub from './components/LoadingHub';
 import { PrintLayout } from './components/PrintLayout';
+import AnalyticsView from './components/AnalyticsView';
 
 const App: React.FC = () => {
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
   const [isSticky, setIsSticky] = useState(false);
   const [isSopOpen, setIsSopOpen] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [printMode, setPrintMode] = useState<PrintMode>('master');
 
@@ -60,6 +62,9 @@ const App: React.FC = () => {
     });
   };
 
+  const stickyStyle = isSticky ? `fixed left-0 right-0 z-[1000] bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-[#c5a065]/20` : '';
+  const stickyTop = isSticky ? { top: `${NAV_HEIGHT}px` } : {};
+
   return (
     <div className="min-h-screen transition-colors duration-500 print:!pt-0" style={{ paddingTop: mainPaddingTop + 'px' }}>
       <Navbar 
@@ -79,6 +84,8 @@ const App: React.FC = () => {
         onToggleLive={startLiveAssistant}
         hasGuests={guests.length > 0}
         onAIRefine={handleAIRefine}
+        onToggleAnalytics={() => setShowAnalytics(!showAnalytics)}
+        showAnalytics={showAnalytics}
       />
 
       {isOldFile && guests.length > 0 && (
@@ -87,18 +94,18 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* 1. Dashboard Block */}
       {guests.length > 0 && (
         <div className="no-print relative my-6">
-          <div className={`dashboard-container no-print py-4 transition-all ${isSticky ? `sticky top-[${NAV_HEIGHT}px] z-[1000] bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-[#c5a065]/20` : ''}`}>
+          <div 
+            className={`dashboard-container no-print py-4 transition-all ${stickyStyle}`}
+            style={stickyTop}
+          >
             <Dashboard guests={guests} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
           </div>
         </div>
       )}
 
       <main className="max-w-[1800px] mx-auto px-10 pb-32 no-print">
-        
-        {/* 2. Session Tabs - PLACED HERE (Between Dashboard and Table, Stationary) */}
         <SessionBar 
           sessions={sessions}
           activeId={activeSessionId}
@@ -107,7 +114,10 @@ const App: React.FC = () => {
           onCreate={createNewSession}
         />
 
-        {/* 3. Table / Empty State */}
+        {showAnalytics && (
+          <AnalyticsView activeGuests={guests} allSessions={sessions} />
+        )}
+
         {guests.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh]">
             <div className="p-24 border-2 border-dashed border-[#c5a065]/40 rounded-[3rem] bg-white/50 dark:bg-white/5 backdrop-blur flex flex-col items-center gap-8 cursor-pointer hover:border-[#c5a065] transition-all" onClick={() => document.getElementById('file-upload-nav')?.click()}>

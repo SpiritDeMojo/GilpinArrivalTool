@@ -7,10 +7,9 @@ export class GeminiService {
     fields: RefinementField[]
   ): Promise<any[] | null> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    // Use gemini-3-flash-preview for reliable, fast text extraction tasks as per core guidelines.
     const modelName = 'gemini-3-flash-preview'; 
 
-    const systemInstruction = `
+    const systemInstruction =`
 **ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v5.2).
 **MISSION:** You are the final safety net. Review raw booking data and output a perfect, "Zero-Error" arrival manifest.
 
@@ -75,14 +74,14 @@ Return a raw JSON array of objects. No markdown.
 
     const guestDataPayload = guests.map((g, i) => 
       `--- GUEST ${i+1} ---
-       NAME: ${g.name} | RATE: ${g.rateCode || 'Standard'}
-       RAW: ${g.rawHtml}`
+NAME: ${g.name} | RATE: ${g.rateCode || 'Standard'}
+RAW: ${g.rawHtml}`
     ).join("\n\n");
 
     try {
       const response = await ai.models.generateContent({
         model: modelName,
-        contents: [{ role: 'user', parts: [{ text: guestDataPayload }] }],
+        contents: guestDataPayload,
         config: {
           systemInstruction: systemInstruction,
           responseMimeType: "application/json",
@@ -103,10 +102,9 @@ Return a raw JSON array of objects. No markdown.
           }
         }
       });
-
       return JSON.parse(response.text || "[]");
     } catch (error) {
-      console.error("AI Error:", error);
+      console.error("Audit AI Error:", error);
       return null;
     }
   }

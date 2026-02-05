@@ -15,10 +15,12 @@ interface NavbarProps {
   onToggleLive: () => void;
   hasGuests: boolean;
   onAIRefine: () => void;
+  onToggleAnalytics: () => void;
+  showAnalytics: boolean;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
-  arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP, isLiveActive, isMicEnabled, onToggleLive, hasGuests, onAIRefine
+  arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP, isLiveActive, isMicEnabled, onToggleLive, hasGuests, onAIRefine, onToggleAnalytics, showAnalytics
 }) => {
   return (
     <nav className="navbar no-print">
@@ -39,6 +41,13 @@ const Navbar: React.FC<NavbarProps> = ({
         <div className="flex gap-2">
           {hasGuests && (
             <>
+              <button 
+                onClick={onToggleAnalytics} 
+                className={`${showAnalytics ? 'bg-[#c5a065] text-white' : 'bg-slate-100 dark:bg-stone-800 text-slate-600 dark:text-slate-300'} px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95 border border-[#c5a065]/20`}
+              >
+                📊 Intelligence
+              </button>
+
               <button onClick={onAIRefine} className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95">
                 ✨ AI Audit
               </button>

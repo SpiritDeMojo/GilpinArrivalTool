@@ -17,13 +17,22 @@ export interface Guest {
   isManual?: boolean;
 }
 
-// NEW: Moved here for global access
 export interface ArrivalSession {
   id: string;
   label: string;
   dateObj: string;
   guests: Guest[];
   lastModified?: number;
+}
+
+export interface GlobalAnalyticsData {
+  strategicMix: { name: string; value: number }[];
+  occupancyPulse: { date: string; count: number }[];
+  riskAnalysis: { name: string; value: number }[];
+  strategicInsights: string;
+  loyaltyRate: number;
+  vipIntensity: number;
+  lastUpdated: number;
 }
 
 export interface Flag {
