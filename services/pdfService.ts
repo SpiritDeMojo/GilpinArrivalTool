@@ -1,14 +1,15 @@
+import * as pdfjsLib from 'pdfjs-dist';
 import { Guest, Flag } from '../types';
 import { ROOM_MAP } from '../constants';
 
-declare const pdfjsLib: any;
-
-// 🛑 CRITICAL FIX: Define Worker Source to prevent browser freeze
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+// 🛑 CRITICAL FIX: Synchronize Worker version with API version (5.4.624)
+// This must match the version in index.html's import map to avoid the version mismatch error.
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@5.4.624/build/pdf.worker.min.mjs';
 
 export class PDFService {
   static async parse(file: File, flags: Flag[]): Promise<{ guests: Guest[], arrivalDateStr: string, arrivalDateObj: Date | null }> {
     const buffer = await file.arrayBuffer();
+    // Use the imported library, not a global variable
     const pdf = await pdfjsLib.getDocument(new Uint8Array(buffer)).promise;
     let rawItems: any[] = [];
     let arrivalDateStr = "Unknown Date";
@@ -226,11 +227,10 @@ export class PDFService {
       .trim();
 
     // --- 3. FACILITIES (Slash-Based Deep Scan) ---
-    // We scan the entire text for slashes regardless of section headers
     const facilityMatches = singleLineText.match(/\/(Spice|Source|The Lake House|GH\s+Pure|GH\s+ESPA|Pure|Massage|Treatments|Steam|Couples|Tea|Afternoon|Spa|Mud|Bento)[^/]+/gi) || [];
     const facilitiesFormatted = this.formatFacilities(facilityMatches.join(" "));
 
-    // --- 4. CAR REGISTRATION (Filtered & Stabilized V4.1) ---
+    // --- 4. CAR REGISTRATION ---
     let car = "";
     const plateRegex = /\b([A-Z]{2}\d{2}\s?[A-Z]{3}|[A-Z]{1,2}\d{1,4}\s?[A-Z]{0,3})\b/gi;
     const monthFilter = /\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b/i;
@@ -240,8 +240,6 @@ export class PDFService {
     for (const item of possiblePlates) {
         const str = item.str.trim().toUpperCase();
         const cleanStr = str.replace(/\s/g, ''); 
-        
-        // Filter out dates, short strings (rate codes), and explicit exclusions
         if (cleanStr.length < 4) continue;
         if (str.match(monthFilter)) continue;
         if (!str.match(carExclusions)) {
@@ -281,26 +279,21 @@ export class PDFService {
       }
     }
 
-    // --- 6. LOYALTY (L&L) - Robust V4.1 ---
+    // --- 6. LOYALTY (L&L) ---
     let ll = "No";
-    // Strategy A: Explicit "Been Before" Field
     const beenBeforeMatch = singleLineText.match(/Been Before:\s*(Yes|Y|True)(?:\s*\(?x\s*(\d+)\)?)?/i);
     if (beenBeforeMatch) {
         const count = beenBeforeMatch[2];
         ll = count ? `Yes (x${count})` : "Yes";
-    } 
-    // Strategy B: Header Flags (_Stayed / _Regular)
-    else if (singleLineText.match(/_(Stayed|Regular)/i)) {
+    } else if (singleLineText.match(/_(Stayed|Regular)/i)) {
         ll = "Yes";
         const looseCount = singleLineText.match(/\b(?:Yes|Stays)\s*x\s*(\d+)/i);
         if (looseCount) ll = `Yes (x${looseCount[1]})`;
-    }
-    // Strategy C: Previous Stays detection
-    else if (scanLower.includes("previous stays") || singleLineText.match(/Stayed\s+\d{2}\/\d{2}\/\d{4}/i)) {
+    } else if (scanLower.includes("previous stays") || singleLineText.match(/Stayed\s+\d{2}\/\d{2}\/\d{4}/i)) {
         ll = "Yes";
     }
 
-    // --- 7. CONSOLIDATED NOTES & INTELLIGENCE ---
+    // --- 7. CONSOLIDATED NOTES ---
     const packageRegex = /\b(MIN|MAGESC|BB_1|BB_2|BB_3|BB_|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB|RO|CEL|POB_STAFF)\b/i;
     const rateMatch = singleLineText.match(packageRegex);
     const rateCode = rateMatch ? rateMatch[1].toUpperCase() : "";
@@ -326,7 +319,6 @@ export class PDFService {
       if (!sec) return;
       sec.split(/,|•|&|\n/).forEach(p => {
         const clean = p.trim();
-        // Noise Filter: Filter Staff Initials (2 Chars Uppercase) and NDR/None
         if (clean.length > 2 && !/^[A-Z]{2}$/.test(clean) && !/^(NDR|None|N\/A|LV|KW|AM|JS|SL|SS)$/i.test(clean)) {
           consolidatedNotes.push(clean);
         }
