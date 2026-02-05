@@ -36,7 +36,7 @@ export class GeminiService {
     1.  **Status:** ✅ PAID / ⭐ VIP / 🔵 STAFF / 🟢 COMP
     2.  **Alerts:** ⚠️ [Allergies] / 💰 [Billing] / 🤫 [Silent]
     3.  **Room:** 🟠 NO BREAKFAST / 👤 SINGLE / 👥 3+ GUESTS
-    4.  **Occasions:** 🎉 Birthday - L or G / 🥂 Anniversary / 💒 Honeymoon
+    4.  **Occasions:** 🎉 Birthday / 🥂 Anniversary / 💒 Honeymoon
     5.  **Requests:** 📌 [Feather, Twin, Cot, Quiet, No Alcohol]
     6.  **History:** 📜 Prev: [Dates if listed]
     7.  **ASSETS:** 🎁 [Champagne, Flowers, Balloons, Tickets]
@@ -53,7 +53,7 @@ export class GeminiService {
 **E. packages (Human Readable) - REFINED**
 * **GOAL:** Convert codes to beautiful names.
 * **MAPPINGS:**
-    * BB / BB_1 / BB_2 / BB_3 / LHBB / LHBB1 / LHBB2 / LHBB3 -> "Bed & Breakfast"
+    * BB / BB1 / BB2 / BB3 / LHBB / LHBB1 / LHBB2 / LHBB3 -> "Bed & Breakfast"
     * RO -> "Room Only"
     * DBB / DBB_1 -> "Dinner, Bed & Breakfast"
     * MINI / MINIMOON -> "🌙 Mini Moon"
