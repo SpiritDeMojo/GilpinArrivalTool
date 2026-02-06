@@ -34,16 +34,27 @@ export function initializeFirebase(): boolean {
     // Check if Firebase is configured
     if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL) {
         console.warn('Firebase not configured. Real-time sync disabled.');
+        console.log('Firebase config check:', {
+            hasApiKey: !!firebaseConfig.apiKey,
+            hasDatabaseURL: !!firebaseConfig.databaseURL,
+            hasProjectId: !!firebaseConfig.projectId
+        });
         return false;
     }
 
     try {
+        console.log('🔥 Initializing Firebase with config:', {
+            projectId: firebaseConfig.projectId,
+            databaseURL: firebaseConfig.databaseURL?.substring(0, 50) + '...',
+            authDomain: firebaseConfig.authDomain
+        });
+
         app = initializeApp(firebaseConfig);
         db = getDatabase(app);
-        console.log('Firebase initialized successfully');
+        console.log('✅ Firebase initialized successfully - Real-time sync ACTIVE');
         return true;
     } catch (error) {
-        console.error('Failed to initialize Firebase:', error);
+        console.error('❌ Failed to initialize Firebase:', error);
         return false;
     }
 }
