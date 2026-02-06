@@ -35,3 +35,24 @@ export const BATCH_SIZE = 5;
 
 // Brand Assets - Updated to the user-provided direct image link
 export const GILPIN_LOGO_URL = 'https://i.ibb.co/YBNNHwxL/logo.png';
+
+/**
+ * Extract room number from a room string
+ * e.g., "12 PATTERDALE" -> 12, "51 HARRIET" -> 51
+ */
+export const getRoomNumber = (room: string): number => {
+  // First try to get number from start of string
+  const numMatch = room.match(/^(\d+)/);
+  if (numMatch) {
+    return parseInt(numMatch[1]);
+  }
+
+  // Otherwise look up in room map using name portion
+  const namePart = room.replace(/^\d+\s*/, '').toLowerCase().trim();
+  if (ROOM_MAP[namePart]) {
+    return ROOM_MAP[namePart];
+  }
+
+  // Default fallback
+  return 0;
+};

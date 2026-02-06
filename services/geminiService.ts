@@ -3,11 +3,21 @@ import { Guest, RefinementField } from "../types";
 
 export class GeminiService {
   static async refineGuestBatch(
-    guests: Guest[], 
+    guests: Guest[],
     fields: RefinementField[]
   ): Promise<any[] | null> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const modelName = 'gemini-3-pro-preview'; 
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+    if (!apiKey) {
+      console.error('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.');
+      alert('AI Audit requires a Gemini API key. Please configure VITE_GEMINI_API_KEY in your .env file.');
+      return null;
+    }
+
+    console.log('[AI Audit] Starting refinement for', guests.length, 'guests');
+
+    const ai = new GoogleGenAI({ apiKey });
+    const modelName = 'gemini-2.0-flash';
 
     const systemInstruction = `**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v6.0).
 **MISSION:** Extract EVERY operational detail. If a detail is in the text, it MUST appear in the output. Do not summarize away important nuances.
@@ -51,16 +61,19 @@ export class GeminiService {
 * **STYLE:** Short, punchy, imperative instructions. (e.g. "Wish Happy Birthday to Rob. Check Voucher.")
 
 **E. packages (Human Readable)**
+* **CRITICAL:** Match the exact RateCode format. Underscores matter!
 * **MAPPINGS:**
-    * BB / BB1 / BB2 / BB3 / LHBB / LHBB1 / LHBB2 / LHBB3 -> "Bed & Breakfast"
-    * RO -> "Room Only"
-    * DBB / DBB_1 -> "Dinner, Bed & Breakfast"
-    * MINI / MINIMOON -> "🌙 Mini Moon"
-    * MAGESC -> "✨ Magical Escape"
-    * CEL -> "🎉 Celebration"
-    * BB_1_WIN / BB_2_WIN / BB_3_WIN -> "❄️ Winter Offer"
-    * POB_STAFF -> "Pride of Britain Staff"
-    * APR / ADV -> "💳 Advanced Purchase"
+    * BB / BB_1 / BB_2 / BB_3 / BB1 / BB2 / BB3 -> "Bed & Breakfast"
+    * LHBB / LHBB_1 / LHBB_2 / LHBB_3 / LHBB1 / LHBB2 / LHBB3 -> "Bed & Breakfast (Lake House)"
+    * RO / RO_1 / RO_2 -> "Room Only"
+    * DBB / DBB_1 / DBB_2 -> "Dinner, Bed & Breakfast"
+    * MINI / MINIMOON / MINI_MOON -> "🌙 Mini Moon"
+    * MAGESC / MAG_ESC -> "✨ Magical Escape"
+    * CEL / CELEB -> "🎉 Celebration"
+    * BB_1_WIN / BB_2_WIN / BB_3_WIN / BB1_WIN / BB2_WIN / BB3_WIN -> "❄️ Winter Offer"
+    * POB_STAFF / POB / STAFF -> "Pride of Britain Staff"
+    * APR / ADV / ADVANCE / LHAPR -> "💳 Advanced Purchase"
+* **IMPORTANT:** "BB_2" is NOT "Winter Offer". Only codes containing "WIN" in the name are Winter Offers.
 * **DEFAULT:** Use Rate Description if no code matches.
 
 **F. history (Loyalty Tracker)**
@@ -70,11 +83,18 @@ export class GeminiService {
 Return a raw JSON array of objects. No markdown.
 `;
 
-    const guestDataPayload = guests.map((g, i) => 
-      `--- GUEST ${i+1} ---
+    const guestDataPayload = guests.map((g, i) =>
+      `--- GUEST ${i + 1} ---
 NAME: ${g.name} | RATE: ${g.rateCode || 'Standard'}
 RAW: ${g.rawHtml}`
     ).join("\n\n");
+
+    console.log('[AI Audit] Sending', guestDataPayload.length, 'chars to Gemini');
+    console.log('[AI Audit] First guest raw data length:', guests[0]?.rawHtml?.length || 0);
+    if (guests[0]?.rawHtml?.length < 50) {
+      console.warn('[AI Audit] WARNING: Guest rawHtml seems too short - may not contain enough data for AI to process');
+      console.log('[AI Audit] Sample rawHtml:', guests[0]?.rawHtml);
+    }
 
     let retries = 3;
     let delay = 2000;
@@ -104,12 +124,16 @@ RAW: ${g.rawHtml}`
             }
           }
         });
+        console.log('[AI Audit] Response received, parsing...');
         const text = response.text || "";
+        console.log('[AI Audit] Raw response length:', text.length);
         let cleanJson = text;
         if (typeof text === 'string') {
-          cleanJson = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          cleanJson = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
         }
-        return JSON.parse(cleanJson || "[]");
+        const result = JSON.parse(cleanJson || "[]");
+        console.log('[AI Audit] Successfully parsed', result.length, 'refined guests');
+        return result;
       } catch (error: any) {
         const isTransient = error.status === 503 || error.status === 429 || error.message?.toLowerCase().includes('overloaded');
         if (retries > 1 && isTransient) {

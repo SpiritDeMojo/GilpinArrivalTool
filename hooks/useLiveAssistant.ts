@@ -78,7 +78,7 @@ export const useLiveAssistant = (guests: Guest[]) => {
 
     // 4. Stop all scheduled audio playback sources
     sourcesRef.current.forEach(s => {
-      try { s.stop(); } catch(e) {}
+      try { s.stop(); } catch (e) { }
     });
     sourcesRef.current.clear();
 
@@ -96,8 +96,15 @@ export const useLiveAssistant = (guests: Guest[]) => {
     }
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+      if (!apiKey) {
+        setError('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.');
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+
       const guestsBrief = guests.map(g => {
         const rNum = parseInt(g.room.split(' ')[0]);
         const location = (rNum >= 51 && rNum <= 60) ? 'Lake House' : 'Main Hotel';
@@ -119,7 +126,7 @@ ${g.rawHtml}
 
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      
+
       await inputCtx.resume();
       await outputCtx.resume();
       audioContextRef.current = outputCtx;
@@ -141,12 +148,12 @@ ${g.rawHtml}
               const inputData = e.inputBuffer.getChannelData(0);
               const int16 = new Int16Array(inputData.length);
               for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
-              
-              sessionPromise.then(s => s.sendRealtimeInput({ 
-                media: { 
-                  data: encode(new Uint8Array(int16.buffer)), 
-                  mimeType: 'audio/pcm;rate=16000' 
-                } 
+
+              sessionPromise.then(s => s.sendRealtimeInput({
+                media: {
+                  data: encode(new Uint8Array(int16.buffer)),
+                  mimeType: 'audio/pcm;rate=16000'
+                }
               }));
             };
             source.connect(processor);
@@ -182,7 +189,7 @@ ${g.rawHtml}
             }
             if (msg.serverContent?.interrupted) {
               sourcesRef.current.forEach(s => {
-                try { s.stop(); } catch(e) {}
+                try { s.stop(); } catch (e) { }
               });
               sourcesRef.current.clear();
               nextStartTimeRef.current = 0;

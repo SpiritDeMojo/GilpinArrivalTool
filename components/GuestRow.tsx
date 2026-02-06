@@ -6,6 +6,7 @@ interface GuestRowProps {
   isEditMode: boolean;
   onUpdate: (updates: Partial<Guest>) => void;
   onDelete: () => void;
+  onDuplicate?: () => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }
@@ -16,13 +17,13 @@ interface GuestRowProps {
  */
 export const highlightRaw = (text: string): string => {
   if (!text) return "";
-  
+
   // Sanitize
   let html = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  
+
   // 1. ID Badging
   html = html.replace(/(\d{5})/g, '<span class="hl-badge hl-id">$1</span>');
-  
+
   // 2. VIP & POB Highlighting
   const vips = ["VIP", "DIRECTOR", "CELEBRITY", "OWNER", "CHAIRMAN", "HIGH PROFILE", "PRIDE OF BRITAIN", "POB_STAFF", "POB"];
   vips.forEach(word => {
@@ -38,7 +39,7 @@ export const highlightRaw = (text: string): string => {
   });
 
   // 4. Rate Code Extraction
-  const rates = ["CEL_DBB_1", "MAGESC", "MIN", "RO", "BB_1", "BB_2", "BB_3", "COMP", "LHBB", "APR_1_BB", "APR_2_BB", "APR_3_BB", "POB_STAFF", "STAFF"  ];
+  const rates = ["CEL_DBB_1", "MAGESC", "MIN", "RO", "BB_1", "BB_2", "BB_3", "COMP", "LHBB", "APR_1_BB", "APR_2_BB", "APR_3_BB", "POB_STAFF", "STAFF"];
   rates.forEach(word => {
     const re = new RegExp(`\\b(${word})\\b`, 'gi');
     html = html.replace(re, '<span class="hl-badge hl-ro">$1</span>');
@@ -47,7 +48,7 @@ export const highlightRaw = (text: string): string => {
   // 5. Car Number Plate Parser (v3.72+ Strict Deep Match)
   const plateRegex = /\b([A-Z]{2}\d{2}\s?[A-Z]{3}|[A-Z]{1,2}\d{1,4}\s?[A-Z]{0,3})\b/gi;
   const exclusions = /^(BB\d|APR|RO|COMP|GS|JS|MR|SL|SS|MAG)/i;
-  
+
   html = html.replace(plateRegex, (match) => {
     if (match.length < 4 || match.match(exclusions)) return match;
     return `<span class="hl-badge hl-plate">${match.toUpperCase()}</span>`;
@@ -61,11 +62,11 @@ export const highlightRaw = (text: string): string => {
   return html;
 };
 
-const ResizableTextArea = ({ field, className, value, bold, center, onUpdate }: { 
-  field: keyof Guest, 
-  className?: string, 
-  value: string, 
-  bold?: boolean, 
+const ResizableTextArea = ({ field, className, value, bold, center, onUpdate }: {
+  field: keyof Guest,
+  className?: string,
+  value: string,
+  bold?: boolean,
   center?: boolean,
   onUpdate: (updates: Partial<Guest>) => void
 }) => {
@@ -89,8 +90,8 @@ const ResizableTextArea = ({ field, className, value, bold, center, onUpdate }: 
   );
 };
 
-const GuestRow: React.FC<GuestRowProps> = ({ 
-  guest, onUpdate, onDelete, isExpanded, onToggleExpand 
+const GuestRow: React.FC<GuestRowProps> = ({
+  guest, onUpdate, onDelete, onDuplicate, isExpanded, onToggleExpand
 }) => {
   const isReturn = guest.ll.toLowerCase().includes('yes');
 
@@ -98,7 +99,12 @@ const GuestRow: React.FC<GuestRowProps> = ({
     <>
       <tr className="group guest-row hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-b border-slate-200 dark:border-stone-800/40">
         <td className="p-1 text-center no-print">
-          <button onClick={onDelete} className="text-slate-300 hover:text-rose-500 transition-colors font-bold text-xl">×</button>
+          <div className="flex items-center justify-center gap-1">
+            <button onClick={onDelete} className="text-slate-300 hover:text-rose-500 transition-colors font-bold text-xl" title="Delete guest">×</button>
+            {onDuplicate && (
+              <button onClick={onDuplicate} className="text-slate-300 hover:text-blue-500 transition-colors text-sm" title="Duplicate guest">⧉</button>
+            )}
+          </div>
         </td>
         <td className="p-1 align-top">
           <ResizableTextArea field="room" value={guest.room} bold onUpdate={onUpdate} className="uppercase text-[#c5a065] font-black" />
@@ -142,7 +148,7 @@ const GuestRow: React.FC<GuestRowProps> = ({
           </div>
           {isExpanded && (
             <div className="raw-intel-box p-5 mb-5 rounded-2xl border border-[#c5a065]/20 bg-[#c5a065]/5 animate-in fade-in slide-in-from-top-1">
-              <div 
+              <div
                 className="font-mono text-[10.5px] leading-relaxed select-all whitespace-pre-wrap"
                 dangerouslySetInnerHTML={{ __html: highlightRaw(guest.rawHtml) }}
               />

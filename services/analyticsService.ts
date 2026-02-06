@@ -3,8 +3,15 @@ import { GlobalAnalyticsData, ArrivalSession } from "../types";
 
 export class AnalyticsService {
   static async generateGlobalAnalytics(sessions: ArrivalSession[]): Promise<GlobalAnalyticsData | null> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const modelName = 'gemini-3-flash-preview';
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+    if (!apiKey) {
+      console.error('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.');
+      return null;
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const modelName = 'gemini-2.0-flash';
 
     const systemInstruction = `**ROLE:** Gilpin Strategic Data Analyst.
 **MISSION:** Synthesize all arrival manifests into high-level business intelligence.
