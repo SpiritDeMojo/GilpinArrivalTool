@@ -43,7 +43,7 @@ const App: React.FC = () => {
 
   const {
     isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput,
-    startLiveAssistant, toggleMic, sendTextMessage, disconnect
+    startLiveAssistant, toggleMic, sendTextMessage, disconnect, clearHistory
   } = useLiveAssistant(guests);
 
   useEffect(() => {
@@ -196,6 +196,7 @@ const App: React.FC = () => {
         onToggleMic={toggleMic}
         onSendMessage={sendTextMessage}
         onClose={disconnect}
+        onClearHistory={clearHistory}
       />
 
       <LoadingHub isVisible={isProcessing} message={progressMsg} />

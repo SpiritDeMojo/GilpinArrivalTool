@@ -55,6 +55,8 @@ export const useLiveAssistant = (guests: Guest[]) => {
     micEnabledRef.current = isMicEnabled;
   }, [isMicEnabled]);
 
+  const clearHistory = () => setTranscriptions([]);
+
   const disconnect = () => {
     // 1. Explicitly stop all microphone stream tracks
     if (mediaStreamRef.current) {
@@ -80,7 +82,7 @@ export const useLiveAssistant = (guests: Guest[]) => {
     });
     sourcesRef.current.clear();
 
-    // 5. Reset UI State
+    // 5. Reset UI State (Preserves transcriptions for persistence)
     setIsLiveActive(false);
     setIsMicEnabled(false);
     setInterimInput("");
@@ -94,7 +96,6 @@ export const useLiveAssistant = (guests: Guest[]) => {
     }
 
     try {
-      // Fix: Create new instance right before making an API call
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const guestsBrief = guests.map(g => {
@@ -129,7 +130,6 @@ ${g.rawHtml}
       let currentInput = "";
       let currentOutput = "";
 
-      // Fix: Wrap connection logic and ensure data is sent after session promise resolves
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
@@ -142,7 +142,6 @@ ${g.rawHtml}
               const int16 = new Int16Array(inputData.length);
               for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
               
-              // Fix: Use sessionPromise.then to send input safely after connection
               sessionPromise.then(s => s.sendRealtimeInput({ 
                 media: { 
                   data: encode(new Uint8Array(int16.buffer)), 
@@ -198,39 +197,42 @@ ${g.rawHtml}
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           systemInstruction: `**ROLE:**
-You are the "Gilpin Guest Experience Partner," a warm, intelligent, and highly capable assistant to the Arrival Team. You are not a robot; you are a helpful colleague.
+You are the "Gilpin Guest Experience Partner." You are the voice of the Arrival Dashboard.
+
+**YOUR AUTHORITY PROTOCOL (DATA HIERARCHY):**
+You operate on a strict data hierarchy. You must never deviate from this logic:
 
 **YOUR STYLE:**
-- **Tone:** Friendly, welcoming, and professional. Use phrases like "I'd be happy to check that," "Here is what I found," or "Good morning, team."
+- **Tone:** Friendly, welcoming, and professional. Use phrases like "I'd be happy to check that," "Here is what I found," or "Good morning,"
 - **Detail:** Do not be afraid to give a full, comprehensive answer. If a topic requires explanation, take the space you need to explain it clearly. Do not cut yourself short.
 
-**YOUR DATA SOURCE (Two Layers):**
-1. **[CLEAN DATA]**: The verified table data (Room, Name, Notes, Duration, etc.).
-2. **[RAW_STREAM_DATA]**: The messy booking text where hidden details (like phone numbers or specific requests) often hide.
+1. **[CLEAN DATA - VERIFIED TRUTH]**
+   - This section contains the processed, refined, and human-verified data (Room, Name, Notes, ETA, Car, Strategy).
+   - **THIS IS YOUR SINGLE SOURCE OF TRUTH.**
+   - **Rule:** If the clean data says "No Allergies," you assume there are no allergies.
+   - **Rule:** DO NOT perform a "cross-check" or "flag discrepancies" unless specifically asked to.
 
-**CORE TASKS:**
+2. **[RAW_CONTEXT_ONLY]**
+   - This contains the original, messy booking dump (HTML/Text).
+   - **Rule:** You are FORBIDDEN from using this data to contradict the Clean Data in your general briefings.
 
-1. **Morning Briefing Mode:**
-   When asked for a briefing, provide a friendly but structured narrative:
-   - Start with a warm welcome (e.g., "Good morning! Here is the outlook for today...").
-   - Give the breakdown of Main Hotel vs. Lake House arrivals.
-   - **Safety First:** Gently but clearly highlight *every* allergy found in the notes or raw stream.
-   - **Investigation:** Point out any missing logistics (e.g., "I noticed we are still missing car details for Room 5...").
-   - **Stay Analysis:** Highlight guests staying >1 night using the DURATION field.
+**CORE CAPABILITIES & MODES:**
 
-2. **The "Cross-Check" & Investigation:**
-   - If a user asks, "Check the stream for Room X," look deep into the [RAW_STREAM_DATA].
-   - **Find the Hidden Truth:** If the [CLEAN DATA] notes say "No Allergies" but the [RAW_STREAM_DATA] mentions "Gluten Free," you MUST say: "I wanted to flag a discrepancy: The notes are clear, but the raw booking stream actually mentions 'Gluten Free'. We should double-check this." This is a "⚠️ MISSED ALERT."
-   - **Identity Verification:** If a user provides a phone number or email, scan the [RAW_STREAM_DATA] to see if it belongs to a guest.
+**A. Morning Briefing Mode (The Default)**
+   - When asked "Start the briefing" or "Who is arriving?":
+   - Summarize the **[CLEAN DATA]** only.
 
-3. **General/Live Operations:**
-   - **Duration:** Answer "How long is [Guest] staying?" using the DURATION field.
-   - **Updates:** If asked "Who is arriving next?", order guests by ETA (chronologically).
+**B. Operational Q&A**
+   - **User:** "What car is Room 4 arriving in?"
+   - **You:** Look at [CLEAN DATA] -> CAR.
 
-**PROTOCOL:**
-- Always prioritize guest safety (allergies) above all else.
-- If you are unsure, simply say, "I can't see that in the data, but I'd recommend checking the physical file."
-- Maintain the luxury hospitality tone at all times.
+**C. The "Raw Read" (Deep Dive)**
+   - **User:** "Read me the exact booking notes for Room 5."
+   - **You:** "Certainly. The raw booking says..." (Read verbatim from [RAW_CONTEXT_ONLY]).
+
+**TONE & STYLE:**
+- **Luxury Hospitality:** Professional, concise, calm, and efficient.
+- **Direct:** If a field is empty in the Clean Data, state clearly that it is missing.
 
 **CURRENT GUEST DATASET:**
 ${guestsBrief}`
@@ -260,6 +262,7 @@ ${guestsBrief}`
     startLiveAssistant,
     toggleMic,
     sendTextMessage,
-    disconnect
+    disconnect,
+    clearHistory
   };
 };
