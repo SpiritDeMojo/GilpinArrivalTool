@@ -99,6 +99,69 @@ export function subscribeToSession(
 }
 
 /**
+ * Fetch a full session from Firebase (one-time read)
+ * Used when a device joins via URL and needs to load existing data
+ */
+export function fetchSession(
+    sessionId: string,
+    onResult: (session: ArrivalSession | null) => void
+): void {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        onResult(null);
+        return;
+    }
+
+    const sessionRef = ref(db, `sessions/${sessionId}`);
+    onValue(sessionRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            // Ensure guests is an array
+            if (data.guests && !Array.isArray(data.guests)) {
+                data.guests = Object.values(data.guests);
+            }
+            console.log('📥 Fetched session from Firebase:', sessionId, '- Guests:', data.guests?.length || 0);
+            onResult(data as ArrivalSession);
+        } else {
+            console.log('📭 No session found in Firebase for:', sessionId);
+            onResult(null);
+        }
+        off(sessionRef);
+    }, { onlyOnce: true });
+}
+
+/**
+ * Subscribe to full session updates (not just guests)
+ * Used for cross-device sync where the joining device needs the complete session
+ */
+export function subscribeToFullSession(
+    sessionId: string,
+    onUpdate: (session: ArrivalSession) => void
+): () => void {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        return () => { };
+    }
+
+    const sessionRef = ref(db, `sessions/${sessionId}`);
+
+    const unsubscribe = onValue(sessionRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            // Ensure guests is an array
+            if (data.guests && !Array.isArray(data.guests)) {
+                data.guests = Object.values(data.guests);
+            }
+            onUpdate(data as ArrivalSession);
+        }
+    }, (error) => {
+        console.error('Firebase full session subscription error:', error);
+    });
+
+    return () => off(sessionRef);
+}
+
+/**
  * Sync entire session to Firebase
  * @param session - The session to sync
  */

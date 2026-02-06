@@ -8,6 +8,8 @@ import {
   initializeFirebase,
   isFirebaseEnabled,
   subscribeToSession,
+  subscribeToFullSession,
+  fetchSession,
   syncSession
 } from '../services/firebaseService';
 import {
@@ -111,7 +113,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     return { valid: true, formatted: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}` };
   };
 
-  // 3. Initialize Firebase on mount
+  // 3. Initialize Firebase on mount + auto-join shared sessions
   useEffect(() => {
     setConnectionStatus('connecting');
     const enabled = initializeFirebase();
@@ -120,12 +122,44 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
     if (enabled) {
       console.log('🔥 Firebase real-time sync enabled');
+
+      // If we joined via URL and don't have this session locally, fetch it from Firebase
+      if (urlSessionId) {
+        const hasSessionLocally = sessions.some(s => s.id === urlSessionId);
+        if (!hasSessionLocally) {
+          console.log('📱 Joining shared session - fetching from Firebase:', urlSessionId);
+          fetchSession(urlSessionId, (remoteSession) => {
+            if (remoteSession) {
+              console.log('✅ Loaded shared session:', remoteSession.label, '-', remoteSession.guests?.length, 'guests');
+              setSessions(prev => {
+                // Double-check it wasn't added while we were fetching
+                if (prev.some(s => s.id === urlSessionId)) return prev;
+                return [...prev, remoteSession];
+              });
+              setActiveSessionId(urlSessionId);
+            } else {
+              console.log('📭 Shared session not found in Firebase, creating placeholder');
+              // Create placeholder - will be populated when the source PC syncs
+              setSessions(prev => {
+                if (prev.some(s => s.id === urlSessionId)) return prev;
+                return [...prev, {
+                  id: urlSessionId,
+                  label: 'Loading shared session...',
+                  dateObj: new Date().toISOString(),
+                  guests: [],
+                  lastModified: Date.now()
+                }];
+              });
+            }
+          });
+        }
+      }
     } else {
       console.log('📱 Running in offline mode (localStorage only)');
     }
   }, []);
 
-  // 4. Subscribe to active session updates from Firebase
+  // 4. Subscribe to active session updates from Firebase (full session sync)
   useEffect(() => {
     // Clean up previous subscription
     if (unsubscribeRef.current) {
@@ -135,15 +169,21 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
     if (!firebaseEnabled || !activeSessionId) return;
 
-    // Subscribe to session updates
-    unsubscribeRef.current = subscribeToSession(activeSessionId, (remoteGuests) => {
+    // Subscribe to FULL session updates (label, guests, everything)
+    unsubscribeRef.current = subscribeToFullSession(activeSessionId, (remoteSession) => {
       // Prevent infinite loops - only update if this is a remote change
       if (isRemoteUpdate.current) return;
 
       isRemoteUpdate.current = true;
       setSessions(prev => prev.map(s =>
         s.id === activeSessionId
-          ? { ...s, guests: remoteGuests, lastModified: Date.now() }
+          ? {
+            ...s,
+            guests: remoteSession.guests || [],
+            label: remoteSession.label || s.label,
+            dateObj: remoteSession.dateObj || s.dateObj,
+            lastModified: Date.now()
+          }
           : s
       ));
 
