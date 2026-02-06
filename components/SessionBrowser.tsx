@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { subscribeToSessionList, SessionSummary, isFirebaseEnabled, initializeFirebase, fetchSession } from '../services/firebaseService';
+import { subscribeToSessionList, SessionSummary, isFirebaseEnabled, initializeFirebase, fetchSession, deleteSessionFromFirebase, subscribeToPresence } from '../services/firebaseService';
 import { ArrivalSession } from '../types';
 
 interface SessionBrowserProps {
@@ -12,7 +12,10 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
     const [sessions, setSessions] = useState<SessionSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [joining, setJoining] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState<string | null>(null);
+    const [presenceMap, setPresenceMap] = useState<Record<string, number>>({});
     const unsubRef = useRef<(() => void) | null>(null);
+    const presenceUnsubRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
         // Initialize Firebase if not already
@@ -26,8 +29,14 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
             setLoading(false);
         });
 
+        // Subscribe to presence data
+        presenceUnsubRef.current = subscribeToPresence((map) => {
+            setPresenceMap(map);
+        });
+
         return () => {
             if (unsubRef.current) unsubRef.current();
+            if (presenceUnsubRef.current) presenceUnsubRef.current();
         };
     }, []);
 
@@ -41,6 +50,23 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
                 alert('Could not load session. It may have been deleted.');
             }
         });
+    };
+
+    const handleDelete = async (e: React.MouseEvent, sessionId: string, label: string) => {
+        e.stopPropagation(); // Don't trigger join
+
+        const confirmed = window.confirm(`Delete session "${label}"?\n\nThis will remove it from all devices.`);
+        if (!confirmed) return;
+
+        setDeleting(sessionId);
+        try {
+            await deleteSessionFromFirebase(sessionId);
+            // Session list will auto-update via subscription
+        } catch (error) {
+            alert('Failed to delete session');
+        } finally {
+            setDeleting(null);
+        }
     };
 
     const formatTime = (timestamp: number) => {
@@ -128,86 +154,160 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
                         </p>
                     </div>
                 ) : (
-                    sessions.map(s => (
-                        <button
-                            key={s.id}
-                            onClick={() => handleJoin(s.id)}
-                            disabled={joining !== null}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '16px',
-                                padding: '20px 24px',
-                                background: joining === s.id
-                                    ? 'rgba(197, 160, 101, 0.2)'
-                                    : 'var(--surface)',
-                                border: '1px solid var(--border-ui)',
-                                borderRadius: '16px',
-                                cursor: joining ? 'wait' : 'pointer',
-                                textAlign: 'left',
-                                width: '100%',
-                                transition: 'all 0.2s ease',
-                                color: 'var(--text-main)',
-                                opacity: joining && joining !== s.id ? 0.5 : 1,
-                                boxShadow: 'var(--shadow-lux)'
-                            }}
-                            onMouseOver={(e) => {
-                                if (!joining) e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseOut={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                        >
-                            {/* Icon */}
-                            <div style={{
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: '12px',
-                                background: 'linear-gradient(135deg, rgba(197,160,101,0.2), rgba(197,160,101,0.05))',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '1.4rem',
-                                flexShrink: 0
-                            }}>
-                                {s.guestCount > 0 ? '📋' : '📝'}
-                            </div>
+                    sessions.map(s => {
+                        const activeViewers = presenceMap[s.id] || 0;
+                        const isDeleting = deleting === s.id;
 
-                            {/* Info */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                    fontWeight: 700,
-                                    fontSize: '1.05rem',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                }}>
-                                    {s.label}
-                                </div>
-                                <div style={{
-                                    fontSize: '0.85rem',
-                                    color: 'var(--text-muted)',
-                                    marginTop: '4px',
+                        return (
+                            <div
+                                key={s.id}
+                                style={{
                                     display: 'flex',
+                                    alignItems: 'center',
                                     gap: '12px',
-                                    flexWrap: 'wrap'
-                                }}>
-                                    {s.dateObj && <span>📅 {formatDate(s.dateObj)}</span>}
-                                    <span>👥 {s.guestCount} guests</span>
-                                    <span>🕐 {formatTime(s.lastModified)}</span>
-                                </div>
-                            </div>
+                                    padding: '20px 24px',
+                                    background: joining === s.id
+                                        ? 'rgba(197, 160, 101, 0.2)'
+                                        : isDeleting
+                                            ? 'rgba(239, 68, 68, 0.1)'
+                                            : 'var(--surface)',
+                                    border: '1px solid var(--border-ui)',
+                                    borderRadius: '16px',
+                                    width: '100%',
+                                    transition: 'all 0.2s ease',
+                                    color: 'var(--text-main)',
+                                    opacity: (joining && joining !== s.id) || isDeleting ? 0.5 : 1,
+                                    boxShadow: 'var(--shadow-lux)'
+                                }}
+                            >
+                                {/* Clickable area - join session */}
+                                <button
+                                    onClick={() => handleJoin(s.id)}
+                                    disabled={joining !== null || isDeleting}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '16px',
+                                        flex: 1,
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: joining || isDeleting ? 'wait' : 'pointer',
+                                        textAlign: 'left',
+                                        color: 'inherit',
+                                        padding: 0
+                                    }}
+                                >
+                                    {/* Icon */}
+                                    <div style={{
+                                        width: '48px',
+                                        height: '48px',
+                                        borderRadius: '12px',
+                                        background: 'linear-gradient(135deg, rgba(197,160,101,0.2), rgba(197,160,101,0.05))',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '1.4rem',
+                                        flexShrink: 0
+                                    }}>
+                                        {s.guestCount > 0 ? '📋' : '📝'}
+                                    </div>
 
-                            {/* Arrow / Loading */}
-                            <div style={{
-                                fontSize: '1.2rem',
-                                color: 'var(--gilpin-gold)',
-                                flexShrink: 0
-                            }}>
-                                {joining === s.id ? '⏳' : '→'}
+                                    {/* Info */}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{
+                                            fontWeight: 700,
+                                            fontSize: '1.05rem',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            {s.label}
+                                        </div>
+                                        <div style={{
+                                            fontSize: '0.85rem',
+                                            color: 'var(--text-muted)',
+                                            marginTop: '4px',
+                                            display: 'flex',
+                                            gap: '12px',
+                                            flexWrap: 'wrap'
+                                        }}>
+                                            {s.dateObj && <span>📅 {formatDate(s.dateObj)}</span>}
+                                            <span>👥 {s.guestCount} guests</span>
+                                            <span>🕐 {formatTime(s.lastModified)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Active viewers badge */}
+                                    {activeViewers > 0 && (
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            padding: '4px 10px',
+                                            background: 'rgba(34, 197, 94, 0.15)',
+                                            color: '#22c55e',
+                                            borderRadius: '20px',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 700,
+                                            flexShrink: 0
+                                        }}>
+                                            <span style={{
+                                                width: '6px', height: '6px', borderRadius: '50%',
+                                                background: '#22c55e',
+                                                display: 'inline-block',
+                                                animation: 'pulse 2s infinite'
+                                            }}></span>
+                                            {activeViewers} online
+                                        </div>
+                                    )}
+
+                                    {/* Arrow / Loading */}
+                                    <div style={{
+                                        fontSize: '1.2rem',
+                                        color: 'var(--gilpin-gold)',
+                                        flexShrink: 0
+                                    }}>
+                                        {joining === s.id ? '⏳' : '→'}
+                                    </div>
+                                </button>
+
+                                {/* Delete button */}
+                                <button
+                                    onClick={(e) => handleDelete(e, s.id, s.label)}
+                                    disabled={joining !== null || isDeleting}
+                                    title="Delete session"
+                                    style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        borderRadius: '10px',
+                                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                                        background: 'rgba(239, 68, 68, 0.05)',
+                                        color: '#ef4444',
+                                        cursor: isDeleting ? 'wait' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '1rem',
+                                        transition: 'all 0.2s ease',
+                                        flexShrink: 0,
+                                        opacity: joining ? 0.3 : 1
+                                    }}
+                                    onMouseOver={(e) => {
+                                        if (!joining && !isDeleting) {
+                                            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                                            e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                                        }
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
+                                        e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+                                    }}
+                                >
+                                    {isDeleting ? '⏳' : '🗑️'}
+                                </button>
                             </div>
-                        </button>
-                    ))
+                        );
+                    })
                 )}
             </div>
 
@@ -289,6 +389,14 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
                     {loading ? 'Connecting...' : `Firebase Connected • ${sessions.length} active sessions`}
                 </div>
             </div>
+
+            {/* Pulse animation for presence indicator */}
+            <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+      `}</style>
         </div>
     );
 };

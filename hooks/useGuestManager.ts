@@ -10,7 +10,8 @@ import {
   subscribeToSession,
   subscribeToFullSession,
   fetchSession,
-  syncSession
+  syncSession,
+  trackPresence
 } from '../services/firebaseService';
 import {
   isPMSConfigured,
@@ -64,6 +65,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const [firebaseEnabled, setFirebaseEnabled] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('offline');
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const presenceCleanupRef = useRef<(() => void) | null>(null);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRemoteUpdate = useRef(false);
 
@@ -196,6 +198,32 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     return () => {
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
+      }
+    };
+  }, [firebaseEnabled, activeSessionId]);
+
+  // 4b. Track presence in active session
+  useEffect(() => {
+    // Clean up previous presence
+    if (presenceCleanupRef.current) {
+      presenceCleanupRef.current();
+      presenceCleanupRef.current = null;
+    }
+
+    if (!firebaseEnabled || !activeSessionId) return;
+
+    // Generate a unique device ID
+    let deviceId = localStorage.getItem('gilpin_device_id');
+    if (!deviceId) {
+      deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('gilpin_device_id', deviceId);
+    }
+
+    presenceCleanupRef.current = trackPresence(activeSessionId, deviceId);
+
+    return () => {
+      if (presenceCleanupRef.current) {
+        presenceCleanupRef.current();
       }
     };
   }, [firebaseEnabled, activeSessionId]);

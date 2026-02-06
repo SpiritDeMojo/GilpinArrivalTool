@@ -5,6 +5,8 @@ import {
     set,
     onValue,
     update,
+    remove,
+    onDisconnect,
     Database,
     off,
     serverTimestamp,
@@ -448,4 +450,91 @@ export function subscribeToSessionList(
     });
 
     return () => off(sessionsRef);
+}
+
+/**
+ * Delete a session from Firebase
+ */
+export async function deleteSessionFromFirebase(sessionId: string): Promise<void> {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        return;
+    }
+
+    try {
+        const sessionRef = ref(db, `sessions/${sessionId}`);
+        await remove(sessionRef);
+        // Also clean up presence data
+        const presenceRef = ref(db, `presence/${sessionId}`);
+        await remove(presenceRef);
+        console.log('🗑️ Deleted session from Firebase:', sessionId);
+    } catch (error) {
+        console.error('Failed to delete session from Firebase:', error);
+        throw error;
+    }
+}
+
+/**
+ * Track user presence in a session
+ * Registers this device as active in the session and auto-removes on disconnect
+ */
+export function trackPresence(sessionId: string, deviceId: string): () => void {
+    if (!db) return () => { };
+
+    const presenceRef = ref(db, `presence/${sessionId}/${deviceId}`);
+
+    // Set presence
+    set(presenceRef, {
+        joinedAt: Date.now(),
+        lastSeen: Date.now(),
+        userAgent: navigator.userAgent.includes('Mobile') ? '📱' : '💻'
+    });
+
+    // Auto-remove on disconnect
+    onDisconnect(presenceRef).remove();
+
+    // Heartbeat - update lastSeen every 30s
+    const interval = setInterval(() => {
+        update(presenceRef, { lastSeen: Date.now() });
+    }, 30000);
+
+    return () => {
+        clearInterval(interval);
+        remove(presenceRef);
+    };
+}
+
+/**
+ * Subscribe to presence data for all sessions
+ * Returns a map of sessionId -> number of active viewers
+ */
+export function subscribeToPresence(
+    onUpdate: (presenceMap: Record<string, number>) => void
+): () => void {
+    if (!db) {
+        onUpdate({});
+        return () => { };
+    }
+
+    const presenceRef = ref(db, 'presence');
+
+    const unsubscribe = onValue(presenceRef, (snapshot) => {
+        const result: Record<string, number> = {};
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            for (const [sessionId, viewers] of Object.entries(data)) {
+                if (viewers && typeof viewers === 'object') {
+                    // Filter out stale entries (older than 2 minutes)
+                    const now = Date.now();
+                    const activeViewers = Object.values(viewers as Record<string, any>).filter(
+                        (v: any) => now - (v.lastSeen || 0) < 120000
+                    );
+                    result[sessionId] = activeViewers.length;
+                }
+            }
+        }
+        onUpdate(result);
+    });
+
+    return () => off(presenceRef);
 }
