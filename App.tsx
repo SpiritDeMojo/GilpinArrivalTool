@@ -29,6 +29,7 @@ import AnalyticsView from './components/AnalyticsView';
 import ETATimeline from './components/ETATimeline';
 import ConflictDetector from './components/ConflictDetector';
 import ErrorBoundary from './components/ErrorBoundary';
+import SessionBrowser from './components/SessionBrowser';
 
 // Housekeeping Dashboard Components
 import HousekeepingDashboard from './components/HousekeepingDashboard';
@@ -53,9 +54,13 @@ const App: React.FC = () => {
     isProcessing, progressMsg, currentBatch, totalBatches,
     handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest, onExcelExport,
     sessions, activeSessionId, switchSession, deleteSession, createNewSession,
+    joinSession,
     firebaseEnabled, connectionStatus,
     shareSession, getShareUrl
   } = useGuestManager(DEFAULT_FLAGS);
+
+  // Show session browser when no active session
+  const showSessionBrowser = sessions.length === 0 && !isProcessing;
 
   // Apply property filter
   const propertyFilteredGuests = useMemo(() => {
@@ -217,6 +222,22 @@ const App: React.FC = () => {
 
   const stickyStyle = isSticky ? `fixed left-0 right-0 z-[1000] bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-[#c5a065]/20` : '';
   const stickyTop = isSticky ? { top: `${NAV_HEIGHT}px` } : {};
+
+  // Early return: Show Session Browser lobby when no sessions exist
+  if (showSessionBrowser) {
+    return (
+      <div className="min-h-screen transition-colors duration-500">
+        <SessionBrowser
+          onJoinSession={joinSession}
+          onCreateNew={createNewSession}
+          onUploadPDF={(e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (file) handleFileUpload(file);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen transition-colors duration-500 print:!pt-0" style={{ paddingTop: mainPaddingTop + 'px' }}>

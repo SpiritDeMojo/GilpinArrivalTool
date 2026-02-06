@@ -397,3 +397,55 @@ export function getDefaultRoomStatus(): RoomStatus {
 export function getDefaultGuestStatus(): GuestStatus {
     return 'pre_arrival';
 }
+
+/**
+ * Session summary for the session browser
+ */
+export interface SessionSummary {
+    id: string;
+    label: string;
+    dateObj?: string;
+    guestCount: number;
+    lastModified: number;
+}
+
+/**
+ * Subscribe to the list of all sessions in Firebase
+ * Returns summary info (not full guest data) for the session browser
+ */
+export function subscribeToSessionList(
+    onUpdate: (sessions: SessionSummary[]) => void
+): () => void {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        onUpdate([]);
+        return () => { };
+    }
+
+    const sessionsRef = ref(db, 'sessions');
+
+    const unsubscribe = onValue(sessionsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            const summaries: SessionSummary[] = Object.entries(data).map(([id, session]: [string, any]) => ({
+                id,
+                label: session.label || id,
+                dateObj: session.dateObj,
+                guestCount: session.guests ? (Array.isArray(session.guests) ? session.guests.length : Object.keys(session.guests).length) : 0,
+                lastModified: session.lastModified || 0
+            }));
+
+            // Sort by lastModified, most recent first
+            summaries.sort((a, b) => b.lastModified - a.lastModified);
+
+            console.log('📋 Session list updated:', summaries.length, 'sessions');
+            onUpdate(summaries);
+        } else {
+            onUpdate([]);
+        }
+    }, (error) => {
+        console.error('Firebase session list subscription error:', error);
+    });
+
+    return () => off(sessionsRef);
+}

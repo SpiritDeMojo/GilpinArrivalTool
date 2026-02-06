@@ -571,8 +571,23 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     return url.toString();
   }, [activeSessionId]);
 
+  // Join an existing session from Firebase (used by SessionBrowser)
+  const joinSession = useCallback((session: ArrivalSession) => {
+    console.log('📱 Joining session:', session.id, session.label);
+    setSessions(prev => {
+      // Don't duplicate if already exists
+      if (prev.some(s => s.id === session.id)) {
+        return prev.map(s => s.id === session.id ? session : s);
+      }
+      return [...prev, session];
+    });
+    setActiveSessionId(session.id);
+    updateURLWithSession(session.id);
+  }, []);
+
   return {
     sessions, activeSessionId, switchSession: setActiveSessionId, deleteSession, createNewSession,
+    joinSession,
     guests, filteredGuests, arrivalDateStr, isOldFile, activeFilter, setActiveFilter,
     isProcessing, progressMsg, currentBatch, totalBatches,
     handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest,
