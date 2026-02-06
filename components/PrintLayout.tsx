@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Guest, PrintMode } from '../types';
 import { GILPIN_LOGO_URL } from '../constants';
@@ -44,7 +45,14 @@ const PrintHeader: React.FC<PrintHeaderProps> = ({ mode, arrivalDateStr, guests 
 
       {/* RIGHT: Stats */}
       <div className="justify-self-end transform scale-[0.65] origin-bottom-right">
-        <Dashboard guests={guests} activeFilter="all" onFilterChange={() => {}} />
+        {/* Fix: Added missing propertyFilter and onPropertyChange props to satisfy DashboardProps interface */}
+        <Dashboard 
+          guests={guests} 
+          activeFilter="all" 
+          onFilterChange={() => {}} 
+          propertyFilter="total" 
+          onPropertyChange={() => {}} 
+        />
       </div>
     </div>
   );

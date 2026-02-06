@@ -1,13 +1,19 @@
 import React from 'react';
-import { Guest, FilterType } from '../types';
+import { Guest, FilterType, PropertyFilter } from '../types';
 
 interface DashboardProps {
   guests: Guest[];
   activeFilter: FilterType;
   onFilterChange: (filter: FilterType) => void;
+  propertyFilter: PropertyFilter;
+  onPropertyChange: (filter: PropertyFilter) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ guests, activeFilter, onFilterChange }) => {
+const Dashboard: React.FC<DashboardProps> = ({ 
+  guests, 
+  activeFilter, 
+  onFilterChange
+}) => {
   const getStats = () => {
     const total = guests.length;
     
@@ -39,25 +45,28 @@ const Dashboard: React.FC<DashboardProps> = ({ guests, activeFilter, onFilterCha
   };
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      {getStats().map(stat => (
-        <div
-          key={stat.id}
-          onClick={() => onFilterChange(stat.id)}
-          className={`px-6 py-2 cursor-pointer transition-all duration-300 rounded-full flex flex-col items-center justify-center border border-transparent ${
-            activeFilter === stat.id 
-            ? 'bg-[#c5a065] text-white shadow-lg' 
-            : 'hover:bg-black/5 dark:hover:bg-white/5'
-          }`}
-        >
-          <span className={`text-[9px] font-black uppercase tracking-widest ${activeFilter === stat.id ? 'text-white' : 'text-slate-400'}`}>
-            {stat.label}
-          </span>
-          <span className={`text-lg font-black ${activeFilter === stat.id ? 'text-white' : stat.color}`}>
-            {stat.val}
-          </span>
-        </div>
-      ))}
+    <div className="flex flex-col items-center gap-6 w-full">
+      {/* Stat Cards */}
+      <div className="flex items-center justify-center gap-2">
+        {getStats().map(stat => (
+          <div
+            key={stat.id}
+            onClick={() => onFilterChange(stat.id)}
+            className={`px-6 py-2 cursor-pointer transition-all duration-300 rounded-full flex flex-col items-center justify-center border border-transparent ${
+              activeFilter === stat.id 
+              ? 'bg-[#c5a065] text-white shadow-lg' 
+              : 'hover:bg-black/5 dark:hover:bg-white/5'
+            }`}
+          >
+            <span className={`text-[9px] font-black uppercase tracking-widest ${activeFilter === stat.id ? 'text-white' : 'text-slate-400'}`}>
+              {stat.label}
+            </span>
+            <span className={`text-lg font-black ${activeFilter === stat.id ? 'text-white' : stat.color}`}>
+              {stat.val}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

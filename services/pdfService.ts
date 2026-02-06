@@ -206,6 +206,20 @@ export class PDFService {
       }
     }
 
+    // --- 1.1 ROOM TYPE CODE EXTRACTION ---
+    // Codes: MR, CR, JS, GR, SL, SS, LHC, LHM, LHS, LHSS
+    // Often appears near departure date, e.g., "04/01/26 MR"
+    let roomType = "";
+    const roomTypeRegex = /\d{2}\/\d{2}\/\d{2,4}\s+(MR|CR|JS|GR|SL|SS|LHC|LHM|LHS|LHSS)\b/i;
+    const typeMatch = singleLineText.match(roomTypeRegex);
+    if (typeMatch) {
+      roomType = typeMatch[1].toUpperCase();
+    } else {
+      // Fallback: look for codes on their own if they are uppercase
+      const looseTypeMatch = singleLineText.match(/\b(MR|CR|JS|GR|SL|SS|LHC|LHM|LHS|LHSS)\b/);
+      if (looseTypeMatch) roomType = looseTypeMatch[1].toUpperCase();
+    }
+
     // --- 2. GUEST NAME ---
     let nameRaw = "";
     const line0Items = block.lines[0].items;
@@ -339,7 +353,8 @@ export class PDFService {
       preferences: "",
       packageName: rateCode,
       rateCode,
-      rawHtml: rawTextLines.join("\n")
+      rawHtml: rawTextLines.join("\n"),
+      roomType
     };
   }
 }

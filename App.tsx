@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { FilterType, PrintMode } from './types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { FilterType, PrintMode, PropertyFilter } from './types';
 import { DEFAULT_FLAGS, NAV_HEIGHT, ALERT_HEIGHT } from './constants';
 
 import { useGuestManager } from './hooks/useGuestManager';
@@ -22,12 +22,24 @@ const App: React.FC = () => {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [printMode, setPrintMode] = useState<PrintMode>('master');
+  const [propertyFilter, setPropertyFilter] = useState<PropertyFilter>('total');
 
   const {
     guests, filteredGuests, arrivalDateStr, isOldFile, activeFilter, setActiveFilter,
     isProcessing, progressMsg, handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, onExcelExport,
     sessions, activeSessionId, switchSession, deleteSession, createNewSession
   } = useGuestManager(DEFAULT_FLAGS);
+
+  // Apply property filter to the already filtered guest list for the UI
+  const propertyFilteredGuests = useMemo(() => {
+    if (propertyFilter === 'total') return filteredGuests;
+    return filteredGuests.filter(g => {
+      const rNum = parseInt(g.room.split(' ')[0]);
+      if (propertyFilter === 'main') return rNum > 0 && rNum <= 31;
+      if (propertyFilter === 'lake') return rNum >= 51 && rNum <= 60;
+      return true;
+    });
+  }, [filteredGuests, propertyFilter]);
 
   const {
     isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput,
@@ -97,10 +109,16 @@ const App: React.FC = () => {
       {guests.length > 0 && (
         <div className="no-print relative my-6">
           <div 
-            className={`dashboard-container no-print py-4 transition-all ${stickyStyle}`}
+            className={`dashboard-container no-print py-6 transition-all ${stickyStyle}`}
             style={stickyTop}
           >
-            <Dashboard guests={guests} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+            <Dashboard 
+              guests={guests} 
+              activeFilter={activeFilter} 
+              onFilterChange={setActiveFilter}
+              propertyFilter={propertyFilter}
+              onPropertyChange={setPropertyFilter}
+            />
           </div>
         </div>
       )}
@@ -115,7 +133,11 @@ const App: React.FC = () => {
         />
 
         {showAnalytics && (
-          <AnalyticsView activeGuests={guests} allSessions={sessions} />
+          <AnalyticsView 
+            activeGuests={guests} 
+            allSessions={sessions} 
+            activeFilter={activeFilter}
+          />
         )}
 
         {guests.length === 0 ? (
@@ -147,7 +169,7 @@ const App: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-stone-800/40">
-                  {filteredGuests.map(g => (
+                  {propertyFilteredGuests.map(g => (
                     <GuestRow 
                       key={g.id} guest={g} isEditMode={true} 
                       onUpdate={(u) => updateGuest(g.id, u)} 
@@ -163,7 +185,7 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <PrintLayout printMode={printMode} dateStr={arrivalDateStr} guests={filteredGuests} />
+      <PrintLayout printMode={printMode} dateStr={arrivalDateStr} guests={propertyFilteredGuests} />
 
       <LiveChatWidget 
         isLiveActive={isLiveActive}

@@ -15,6 +15,7 @@ export interface Guest {
   packageName?: string;
   stayHistoryCount?: number;
   isManual?: boolean;
+  roomType?: string;
 }
 
 export interface ArrivalSession {
@@ -42,6 +43,7 @@ export interface Flag {
   keys: string[];
 }
 
+export type PropertyFilter = 'total' | 'main' | 'lake';
 export type FilterType = 'all' | 'main' | 'lake' | 'vip' | 'allergy' | 'return';
 export type PrintMode = 'master' | 'greeter' | 'delivery';
 export type RefinementField = 'notes' | 'facilities' | 'inRoomItems' | 'preferences' | 'packages' | 'history';

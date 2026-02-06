@@ -4,8 +4,7 @@ import { GlobalAnalyticsData, ArrivalSession } from "../types";
 export class AnalyticsService {
   static async generateGlobalAnalytics(sessions: ArrivalSession[]): Promise<GlobalAnalyticsData | null> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    // Using user-requested model name
-    const modelName = 'gemini-2.0-flash';
+    const modelName = 'gemini-3-flash-preview';
 
     const systemInstruction = `**ROLE:** Gilpin Strategic Data Analyst.
 **MISSION:** Synthesize all arrival manifests into high-level business intelligence.
@@ -22,7 +21,7 @@ export class AnalyticsService {
 **METRICS:**
 - loyaltyRate: Integer percentage of guests with "Yes" in L&L.
 - vipIntensity: Integer percentage of VIP guests.
-- strategicInsights: 2 punchy tactical sentences.
+- strategicInsights: 2 punchy tactical sentences focusing on the current manifest property mix.
 
 **OUTPUT:** Pure JSON. No markdown backticks.`;
 
@@ -32,56 +31,70 @@ GUESTS:
 ${s.guests.map(g => `- ${g.name} | Rm: ${g.room} | LL: ${g.ll} | Nts: ${g.prefillNotes}`).join('\n')}`;
     }).join('\n\n---\n\n');
 
-    try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: `Analyze this portfolio and populate the dashboard:\n\n${summaryPayload}`,
-        config: {
-          systemInstruction: systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              strategicMix: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: { name: { type: Type.STRING }, value: { type: Type.NUMBER } },
-                  required: ["name", "value"]
-                }
-              },
-              occupancyPulse: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: { date: { type: Type.STRING }, count: { type: Type.NUMBER } },
-                  required: ["date", "count"]
-                }
-              },
-              riskAnalysis: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: { name: { type: Type.STRING }, value: { type: Type.NUMBER } },
-                  required: ["name", "value"]
-                }
-              },
-              strategicInsights: { type: Type.STRING },
-              loyaltyRate: { type: Type.NUMBER },
-              vipIntensity: { type: Type.NUMBER }
-            },
-            required: ["strategicMix", "occupancyPulse", "riskAnalysis", "strategicInsights", "loyaltyRate", "vipIntensity"]
-          }
-        }
-      });
+    let retries = 3;
+    let delay = 2000;
 
-      const text = response.text || "";
-      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson || "null");
-      return parsed ? { ...parsed, lastUpdated: Date.now() } : null;
-    } catch (error) {
-      console.error("Analytics AI Error:", error);
-      return null;
+    while (retries > 0) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: `Analyze this portfolio and populate the dashboard:\n\n${summaryPayload}`,
+          config: {
+            systemInstruction: systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                strategicMix: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: { name: { type: Type.STRING }, value: { type: Type.NUMBER } },
+                    required: ["name", "value"]
+                  }
+                },
+                occupancyPulse: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: { date: { type: Type.STRING }, count: { type: Type.NUMBER } },
+                    required: ["date", "count"]
+                  }
+                },
+                riskAnalysis: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: { name: { type: Type.STRING }, value: { type: Type.NUMBER } },
+                    required: ["name", "value"]
+                  }
+                },
+                strategicInsights: { type: Type.STRING },
+                loyaltyRate: { type: Type.NUMBER },
+                vipIntensity: { type: Type.NUMBER }
+              },
+              required: ["strategicMix", "occupancyPulse", "riskAnalysis", "strategicInsights", "loyaltyRate", "vipIntensity"]
+            }
+          }
+        });
+
+        const text = response.text || "";
+        const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanJson || "null");
+        return parsed ? { ...parsed, lastUpdated: Date.now() } : null;
+      } catch (error: any) {
+        const isTransient = error.status === 503 || error.status === 429 || error.message?.toLowerCase().includes('overloaded');
+        if (retries > 1 && isTransient) {
+          console.warn(`Analytics Service overloaded (Status ${error.status}). Retrying in ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+          retries--;
+          delay *= 2;
+          continue;
+        }
+        console.error("Analytics AI Error:", error);
+        return null;
+      }
     }
+    return null;
   }
 }
