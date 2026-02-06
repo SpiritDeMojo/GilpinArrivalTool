@@ -53,7 +53,8 @@ const App: React.FC = () => {
     isProcessing, progressMsg, currentBatch, totalBatches,
     handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest, onExcelExport,
     sessions, activeSessionId, switchSession, deleteSession, createNewSession,
-    firebaseEnabled, connectionStatus
+    firebaseEnabled, connectionStatus,
+    shareSession, getShareUrl
   } = useGuestManager(DEFAULT_FLAGS);
 
   // Apply property filter

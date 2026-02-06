@@ -22,7 +22,25 @@ export type ConnectionStatus = 'connected' | 'connecting' | 'offline';
 // Data source type
 export type DataSource = 'pdf' | 'pms';
 
+// Helper to get session ID from URL
+const getSessionIdFromURL = (): string | null => {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('session');
+};
+
+// Helper to update URL with session ID (without page reload)
+const updateURLWithSession = (sessionId: string) => {
+  if (sessionId) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('session', sessionId);
+    window.history.replaceState({}, '', url.toString());
+  }
+};
+
 export const useGuestManager = (initialFlags: Flag[]) => {
+  // Check URL for shared session ID first
+  const urlSessionId = getSessionIdFromURL();
+
   // 1. Initialize from LocalStorage
   const [sessions, setSessions] = useState<ArrivalSession[]>(() => {
     try {
@@ -32,6 +50,11 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   });
 
   const [activeSessionId, setActiveSessionId] = useState<string>(() => {
+    // Priority: URL session ID > localStorage > empty
+    if (urlSessionId) {
+      console.log('📱 Joining shared session from URL:', urlSessionId);
+      return urlSessionId;
+    }
     return localStorage.getItem('gilpin_active_id_v5') || "";
   });
 
@@ -164,6 +187,11 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     if (sessions.length > 0) {
       localStorage.setItem('gilpin_sessions_v5', JSON.stringify(sessions));
       localStorage.setItem('gilpin_active_id_v5', activeSessionId);
+
+      // Update URL with current session ID for easy sharing
+      if (activeSessionId) {
+        updateURLWithSession(activeSessionId);
+      }
 
       // Sync active session to Firebase
       if (activeSession && !isRemoteUpdate.current) {
@@ -474,6 +502,35 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     return true;
   }), [guests, activeFilter]);
 
+  // Share session - copies URL with session ID to clipboard
+  const shareSession = useCallback(async (): Promise<string> => {
+    if (!activeSessionId) {
+      console.warn('No active session to share');
+      return '';
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('session', activeSessionId);
+    const shareUrl = url.toString();
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      console.log('📋 Session URL copied:', shareUrl);
+    } catch (e) {
+      console.log('📋 Share URL:', shareUrl);
+    }
+
+    return shareUrl;
+  }, [activeSessionId]);
+
+  // Get current share URL (for QR code, etc.)
+  const getShareUrl = useCallback((): string => {
+    if (!activeSessionId) return '';
+    const url = new URL(window.location.href);
+    url.searchParams.set('session', activeSessionId);
+    return url.toString();
+  }, [activeSessionId]);
+
   return {
     sessions, activeSessionId, switchSession: setActiveSessionId, deleteSession, createNewSession,
     guests, filteredGuests, arrivalDateStr, isOldFile, activeFilter, setActiveFilter,
@@ -484,6 +541,9 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     // Firebase status
     firebaseEnabled,
     connectionStatus,
+    // Session sharing
+    shareSession,
+    getShareUrl,
     // PMS integration
     dataSource,
     toggleDataSource,
