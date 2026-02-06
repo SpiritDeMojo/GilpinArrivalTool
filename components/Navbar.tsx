@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GILPIN_LOGO_URL } from '../constants';
 
 interface NavbarProps {
@@ -22,18 +22,24 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({
   arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP, isLiveActive, isMicEnabled, onToggleLive, hasGuests, onAIRefine, onToggleAnalytics, showAnalytics
 }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   return (
-    <nav className="navbar no-print">
+    <nav className="navbar no-print h-[72px] md:h-[72px] px-4 md:px-12">
       <div className="flex items-center">
-        <button className="nav-logo-bubble" onClick={() => window.location.reload()}>
+        <button className="nav-logo-bubble scale-75 md:scale-100" onClick={() => window.location.reload()}>
           <img src={GILPIN_LOGO_URL} alt="Gilpin" className="nav-logo-img" />
         </button>
-        <div className="ml-12">
-          <h1 className="text-3xl font-black heading-font uppercase tracking-tighter leading-none mb-1">Gilpin Hotel</h1>
-          <div className="font-black text-[#c5a065] text-[10px] tracking-[0.4em] uppercase">{arrivalDateStr}</div>
+        <div className="ml-4 md:ml-12">
+          <h1 className="text-xl md:text-3xl font-black heading-font uppercase tracking-tighter leading-none mb-1">Gilpin Hotel</h1>
+          <div className="font-black text-[#c5a065] text-[8px] md:text-[10px] tracking-[0.2em] md:tracking-[0.4em] uppercase truncate max-w-[120px] md:max-w-none">
+            {arrivalDateStr}
+          </div>
         </div>
       </div>
-      <div className="flex items-center gap-4">
+
+      {/* --- Desktop Actions --- */}
+      <div className="hidden lg:flex items-center gap-4">
         <button onClick={toggleTheme} className="px-6 py-2.5 rounded-full border-2 border-[#c5a065]/30 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-[#c5a065]/10">
           {isDark ? 'Obsidian' : 'Ivory'}
         </button>
@@ -86,9 +92,59 @@ const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        <input id="file-upload-nav" type="file" className="hidden" accept=".pdf" onChange={onFileUpload} />
         <button onClick={onOpenSOP} className="w-10 h-10 rounded-full border-2 border-[#c5a065]/30 flex items-center justify-center font-bold transition-all hover:bg-[#c5a065]/10">?</button>
       </div>
+
+      {/* --- Mobile Actions --- */}
+      <div className="flex lg:hidden items-center gap-2">
+        {hasGuests && (
+          <button 
+            onClick={onToggleLive} 
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-indigo-600 shadow-lg scale-105' : 'bg-slate-900'} active:scale-95`}
+          >
+            <span className="text-xl leading-none">{isLiveActive ? (isMicEnabled ? '🎙️' : '🤖') : '🤖'}</span>
+          </button>
+        )}
+        <button 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="w-10 h-10 rounded-xl bg-[#c5a065] text-white flex items-center justify-center shadow-lg active:scale-90"
+        >
+          <span className="text-xl">{isMenuOpen ? '✕' : '☰'}</span>
+        </button>
+      </div>
+
+      {/* --- Mobile Slide-out Menu --- */}
+      {isMenuOpen && (
+        <div className="lg:hidden fixed inset-0 top-[72px] bg-slate-950/90 backdrop-blur-xl z-[3000] p-6 flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="grid grid-cols-2 gap-3">
+             <button onClick={() => { onAddManual(); setIsMenuOpen(false); }} className="bg-[#c5a065] text-white p-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2">➕ Add Manual</button>
+             <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} className="bg-slate-800 text-white p-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-slate-700">{isDark ? '☀️ Ivory' : '🌙 Obsidian'}</button>
+          </div>
+
+          {hasGuests && (
+            <>
+              <button onClick={() => { onAIRefine(); setIsMenuOpen(false); }} className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl">✨ AI Audit Refine</button>
+              <button onClick={() => { onToggleAnalytics(); setIsMenuOpen(false); }} className={`${showAnalytics ? 'bg-[#c5a065]' : 'bg-slate-800'} text-white p-4 rounded-2xl font-black uppercase text-[11px] tracking-widest border border-slate-700`}>📊 Strategic Analytics</button>
+              
+              <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-800 space-y-3">
+                <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] mb-2">Print Hub</p>
+                <div className="flex flex-col gap-2">
+                   <button onClick={() => { onPrint('main'); setIsMenuOpen(false); }} className="text-left py-2 text-sm text-white font-bold flex items-center gap-3">🖨️ Master List</button>
+                   <button onClick={() => { onPrint('greeter'); setIsMenuOpen(false); }} className="text-left py-2 text-sm text-white font-bold flex items-center gap-3">🖨️ Greeter List</button>
+                   <button onClick={() => { onPrint('inroom'); setIsMenuOpen(false); }} className="text-left py-2 text-sm text-white font-bold flex items-center gap-3">🖨️ Delivery Manifest</button>
+                </div>
+              </div>
+
+              <button onClick={() => { onExcel(); setIsMenuOpen(false); }} className="bg-emerald-600 text-white p-4 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl">⬇️ Export Excel</button>
+            </>
+          )}
+
+          <button onClick={() => { document.getElementById('file-upload-nav')?.click(); setIsMenuOpen(false); }} className="bg-slate-100 dark:bg-stone-800 text-slate-900 dark:text-white p-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2">📁 Upload PDF</button>
+          <button onClick={() => { onOpenSOP(); setIsMenuOpen(false); }} className="mt-auto border-2 border-[#c5a065]/30 text-[#c5a065] p-4 rounded-2xl font-black uppercase text-[11px] tracking-widest">? Titanium Manual</button>
+        </div>
+      )}
+
+      <input id="file-upload-nav" type="file" className="hidden" accept=".pdf" onChange={onFileUpload} />
     </nav>
   );
 };

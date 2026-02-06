@@ -9,6 +9,7 @@ import Navbar from './components/Navbar';
 import SessionBar from './components/SessionBar';
 import Dashboard from './components/Dashboard';
 import GuestRow from './components/GuestRow';
+import GuestMobileCard from './components/GuestMobileCard';
 import SOPModal from './components/SOPModal';
 import LiveChatWidget from './components/LiveChatWidget';
 import LoadingHub from './components/LoadingHub';
@@ -30,7 +31,6 @@ const App: React.FC = () => {
     sessions, activeSessionId, switchSession, deleteSession, createNewSession
   } = useGuestManager(DEFAULT_FLAGS);
 
-  // Apply property filter to the already filtered guest list for the UI
   const propertyFilteredGuests = useMemo(() => {
     if (propertyFilter === 'total') return filteredGuests;
     return filteredGuests.filter(g => {
@@ -101,15 +101,15 @@ const App: React.FC = () => {
       />
 
       {isOldFile && guests.length > 0 && (
-        <div className="no-print pulsate-alert text-white text-center font-black py-1 tracking-widest text-[10px] fixed w-full z-[1009]" style={{ top: NAV_HEIGHT + 'px' }}>
+        <div className="no-print pulsate-alert text-white text-center font-black py-1 tracking-widest text-[8px] md:text-[10px] fixed w-full z-[1009]" style={{ top: NAV_HEIGHT + 'px' }}>
           ⚠️ HISTORICAL FILE DETECTED • {arrivalDateStr}
         </div>
       )}
 
       {guests.length > 0 && (
-        <div className="no-print relative my-6">
+        <div className="no-print relative my-2 md:my-6">
           <div 
-            className={`dashboard-container no-print py-6 transition-all ${stickyStyle}`}
+            className={`dashboard-container no-print py-4 md:py-6 transition-all ${stickyStyle}`}
             style={stickyTop}
           >
             <Dashboard 
@@ -123,7 +123,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main className="max-w-[1800px] mx-auto px-10 pb-32 no-print">
+      <main className="max-w-[1800px] mx-auto px-4 md:px-10 pb-32 no-print">
         <SessionBar 
           sessions={sessions}
           activeId={activeSessionId}
@@ -141,47 +141,65 @@ const App: React.FC = () => {
         )}
 
         {guests.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[60vh]">
-            <div className="p-24 border-2 border-dashed border-[#c5a065]/40 rounded-[3rem] bg-white/50 dark:bg-white/5 backdrop-blur flex flex-col items-center gap-8 cursor-pointer hover:border-[#c5a065] transition-all" onClick={() => document.getElementById('file-upload-nav')?.click()}>
-              <span className="text-6xl animate-bounce">📁</span>
+          <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+            <div className="w-full max-w-md p-10 md:p-24 border-2 border-dashed border-[#c5a065]/40 rounded-[2.5rem] md:rounded-[3rem] bg-white/50 dark:bg-white/5 backdrop-blur flex flex-col items-center gap-6 md:gap-8 cursor-pointer hover:border-[#c5a065] transition-all" onClick={() => document.getElementById('file-upload-nav')?.click()}>
+              <span className="text-4xl md:text-6xl animate-bounce">📁</span>
               <div className="text-center">
-                <h2 className="heading-font text-5xl font-black uppercase tracking-tighter mb-2">Arrivals Hub</h2>
-                <p className="text-[#c5a065] font-black uppercase tracking-[0.4em] text-sm">Deploy Arrivals Stream</p>
+                <h2 className="heading-font text-3xl md:text-5xl font-black uppercase tracking-tighter mb-2">Arrivals Hub</h2>
+                <p className="text-[#c5a065] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-[10px] md:text-sm">Deploy Arrivals Stream</p>
               </div>
             </div>
           </div>
         ) : (
-          <div className="bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-white/5 overflow-hidden">
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse table-fixed min-w-[2000px]">
-                <thead className="bg-slate-900 text-white uppercase text-[10px] font-black tracking-widest">
-                  <tr>
-                    <th className="w-[50px] p-5 text-center"></th>
-                    <th className="w-[120px] p-5">Room</th>
-                    <th className="w-[280px] p-5">Identity</th>
-                    <th className="w-[90px] p-5 text-center">Nts</th>
-                    <th className="w-[160px] p-5">Vehicle</th>
-                    <th className="w-[90px] p-5 text-center">L&L</th>
-                    <th className="w-[300px] p-5">Facilities</th>
-                    <th className="w-[100px] p-5 text-center">ETA</th>
-                    <th className="p-5">Intelligence</th>
-                    <th className="w-[280px] p-5 text-indigo-400">Tactical Strategy</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-stone-800/40">
-                  {propertyFilteredGuests.map(g => (
-                    <GuestRow 
-                      key={g.id} guest={g} isEditMode={true} 
-                      onUpdate={(u) => updateGuest(g.id, u)} 
-                      onDelete={() => deleteGuest(g.id)} 
-                      isExpanded={expandedRows.has(g.id)} 
-                      onToggleExpand={() => toggleExpand(g.id)} 
-                    />
-                  ))}
-                </tbody>
-              </table>
+          <>
+            {/* --- Desktop Table View --- */}
+            <div className="hidden lg:block bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/20 dark:border-white/5 overflow-hidden">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse table-fixed min-w-[2000px]">
+                  <thead className="bg-slate-900 text-white uppercase text-[10px] font-black tracking-widest sticky top-0 z-10">
+                    <tr>
+                      <th className="w-[50px] p-5 text-center"></th>
+                      <th className="w-[120px] p-5">Room</th>
+                      <th className="w-[280px] p-5">Identity</th>
+                      <th className="w-[90px] p-5 text-center">Nts</th>
+                      <th className="w-[160px] p-5">Vehicle</th>
+                      <th className="w-[90px] p-5 text-center">L&L</th>
+                      <th className="w-[300px] p-5">Facilities</th>
+                      <th className="w-[100px] p-5 text-center">ETA</th>
+                      <th className="p-5">Intelligence</th>
+                      <th className="w-[280px] p-5 text-indigo-400">Tactical Strategy</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-stone-800/40">
+                    {propertyFilteredGuests.map(g => (
+                      <GuestRow 
+                        key={g.id} guest={g} isEditMode={true} 
+                        onUpdate={(u) => updateGuest(g.id, u)} 
+                        onDelete={() => deleteGuest(g.id)} 
+                        isExpanded={expandedRows.has(g.id)} 
+                        onToggleExpand={() => toggleExpand(g.id)} 
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+
+            {/* --- Mobile Card List View --- */}
+            <div className="lg:hidden space-y-4">
+              {propertyFilteredGuests.map(g => (
+                <GuestMobileCard 
+                  key={g.id} 
+                  guest={g} 
+                  onUpdate={(u) => updateGuest(g.id, u)} 
+                  onDelete={() => deleteGuest(g.id)} 
+                />
+              ))}
+              {propertyFilteredGuests.length === 0 && (
+                <div className="text-center p-20 opacity-40 italic text-sm">No arrivals found for this filter.</div>
+              )}
+            </div>
+          </>
         )}
       </main>
 

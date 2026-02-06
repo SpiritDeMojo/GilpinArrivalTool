@@ -45,23 +45,23 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full">
-      {/* Stat Cards */}
-      <div className="flex items-center justify-center gap-2">
+    <div className="flex flex-col items-center gap-6 w-full px-2 md:px-0">
+      {/* Stat Cards: Wrapping logic for mobile */}
+      <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
         {getStats().map(stat => (
           <div
             key={stat.id}
             onClick={() => onFilterChange(stat.id)}
-            className={`px-6 py-2 cursor-pointer transition-all duration-300 rounded-full flex flex-col items-center justify-center border border-transparent ${
+            className={`px-3 md:px-6 py-2 md:py-3 cursor-pointer transition-all duration-300 rounded-[1.25rem] md:rounded-full flex flex-col items-center justify-center border min-w-[70px] md:min-w-[110px] ${
               activeFilter === stat.id 
-              ? 'bg-[#c5a065] text-white shadow-lg' 
-              : 'hover:bg-black/5 dark:hover:bg-white/5'
+              ? 'bg-[#c5a065] text-white border-[#c5a065] shadow-lg scale-105 z-10' 
+              : 'bg-white/50 dark:bg-stone-900/50 border-slate-200 dark:border-stone-800 hover:border-[#c5a065]/50'
             }`}
           >
-            <span className={`text-[9px] font-black uppercase tracking-widest ${activeFilter === stat.id ? 'text-white' : 'text-slate-400'}`}>
+            <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.1em] md:tracking-widest ${activeFilter === stat.id ? 'text-white' : 'text-slate-400'}`}>
               {stat.label}
             </span>
-            <span className={`text-lg font-black ${activeFilter === stat.id ? 'text-white' : stat.color}`}>
+            <span className={`text-base md:text-xl font-black ${activeFilter === stat.id ? 'text-white' : stat.color}`}>
               {stat.val}
             </span>
           </div>
