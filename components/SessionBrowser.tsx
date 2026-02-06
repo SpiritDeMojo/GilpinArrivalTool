@@ -18,18 +18,15 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
     const presenceUnsubRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
-        // Initialize Firebase if not already
         if (!isFirebaseEnabled()) {
             initializeFirebase();
         }
 
-        // Subscribe to session list
         unsubRef.current = subscribeToSessionList((list) => {
             setSessions(list);
             setLoading(false);
         });
 
-        // Subscribe to presence data
         presenceUnsubRef.current = subscribeToPresence((map) => {
             setPresenceMap(map);
         });
@@ -53,15 +50,13 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
     };
 
     const handleDelete = async (e: React.MouseEvent, sessionId: string, label: string) => {
-        e.stopPropagation(); // Don't trigger join
-
+        e.stopPropagation();
         const confirmed = window.confirm(`Delete session "${label}"?\n\nThis will remove it from all devices.`);
         if (!confirmed) return;
 
         setDeleting(sessionId);
         try {
             await deleteSessionFromFirebase(sessionId);
-            // Session list will auto-update via subscription
         } catch (error) {
             alert('Failed to delete session');
         } finally {
@@ -86,70 +81,31 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
         if (!dateObj) return '';
         try {
             return new Date(dateObj).toLocaleDateString('en-GB', {
-                weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+                weekday: 'short', day: '2-digit', month: 'short'
             });
         } catch { return ''; }
     };
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px',
-            fontFamily: 'Inter, sans-serif'
-        }}>
+        <div className="session-browser">
             {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                <h1 style={{
-                    fontFamily: 'Playfair Display, serif',
-                    fontSize: '2.5rem',
-                    fontWeight: 800,
-                    color: 'var(--text-main)',
-                    marginBottom: '8px'
-                }}>
-                    Gilpin Intelligence Hub
-                </h1>
-                <p style={{
-                    color: 'var(--text-muted)',
-                    fontSize: '1.1rem',
-                    letterSpacing: '0.05em'
-                }}>
-                    Select a session or create a new one
-                </p>
+            <div className="session-browser__header">
+                <h1 className="session-browser__title heading-font">Gilpin Intelligence Hub</h1>
+                <p className="session-browser__subtitle">Select a session or create a new one</p>
             </div>
 
             {/* Session List */}
-            <div style={{
-                width: '100%',
-                maxWidth: '600px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-            }}>
+            <div className="session-browser__list">
                 {loading ? (
-                    <div style={{
-                        textAlign: 'center',
-                        padding: '40px',
-                        color: 'var(--text-muted)'
-                    }}>
+                    <div className="session-browser__empty">
                         <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🔄</div>
                         Connecting to Firebase...
                     </div>
                 ) : sessions.length === 0 ? (
-                    <div style={{
-                        textAlign: 'center',
-                        padding: '40px',
-                        color: 'var(--text-muted)',
-                        background: 'var(--surface)',
-                        borderRadius: '16px',
-                        border: '1px solid var(--border-ui)'
-                    }}>
+                    <div className="session-browser__empty session-browser__empty--boxed">
                         <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📭</div>
                         <p style={{ fontWeight: 600 }}>No active sessions</p>
-                        <p style={{ fontSize: '0.9rem', marginTop: '8px' }}>
+                        <p style={{ fontSize: '0.85rem', marginTop: '8px', opacity: 0.7 }}>
                             Upload a PDF or create a new session to get started.
                         </p>
                     </div>
@@ -161,112 +117,40 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
                         return (
                             <div
                                 key={s.id}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '20px 24px',
-                                    background: joining === s.id
-                                        ? 'rgba(197, 160, 101, 0.2)'
-                                        : isDeleting
-                                            ? 'rgba(239, 68, 68, 0.1)'
-                                            : 'var(--surface)',
-                                    border: '1px solid var(--border-ui)',
-                                    borderRadius: '16px',
-                                    width: '100%',
-                                    transition: 'all 0.2s ease',
-                                    color: 'var(--text-main)',
-                                    opacity: (joining && joining !== s.id) || isDeleting ? 0.5 : 1,
-                                    boxShadow: 'var(--shadow-lux)'
-                                }}
+                                className={`session-card ${joining === s.id ? 'session-card--joining' : ''} ${isDeleting ? 'session-card--deleting' : ''}`}
+                                style={{ opacity: (joining && joining !== s.id) || isDeleting ? 0.5 : 1 }}
                             >
-                                {/* Clickable area - join session */}
+                                {/* Clickable area */}
                                 <button
                                     onClick={() => handleJoin(s.id)}
                                     disabled={joining !== null || isDeleting}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '16px',
-                                        flex: 1,
-                                        background: 'none',
-                                        border: 'none',
-                                        cursor: joining || isDeleting ? 'wait' : 'pointer',
-                                        textAlign: 'left',
-                                        color: 'inherit',
-                                        padding: 0
-                                    }}
+                                    className="session-card__main"
                                 >
                                     {/* Icon */}
-                                    <div style={{
-                                        width: '48px',
-                                        height: '48px',
-                                        borderRadius: '12px',
-                                        background: 'linear-gradient(135deg, rgba(197,160,101,0.2), rgba(197,160,101,0.05))',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '1.4rem',
-                                        flexShrink: 0
-                                    }}>
+                                    <div className="session-card__icon">
                                         {s.guestCount > 0 ? '📋' : '📝'}
                                     </div>
 
                                     {/* Info */}
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{
-                                            fontWeight: 700,
-                                            fontSize: '1.05rem',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
-                                        }}>
-                                            {s.label}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '0.85rem',
-                                            color: 'var(--text-muted)',
-                                            marginTop: '4px',
-                                            display: 'flex',
-                                            gap: '12px',
-                                            flexWrap: 'wrap'
-                                        }}>
+                                    <div className="session-card__info">
+                                        <div className="session-card__label">{s.label}</div>
+                                        <div className="session-card__meta">
                                             {s.dateObj && <span>📅 {formatDate(s.dateObj)}</span>}
-                                            <span>👥 {s.guestCount} guests</span>
+                                            <span>👥 {s.guestCount}</span>
                                             <span>🕐 {formatTime(s.lastModified)}</span>
                                         </div>
                                     </div>
 
                                     {/* Active viewers badge */}
                                     {activeViewers > 0 && (
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            padding: '4px 10px',
-                                            background: 'rgba(34, 197, 94, 0.15)',
-                                            color: '#22c55e',
-                                            borderRadius: '20px',
-                                            fontSize: '0.8rem',
-                                            fontWeight: 700,
-                                            flexShrink: 0
-                                        }}>
-                                            <span style={{
-                                                width: '6px', height: '6px', borderRadius: '50%',
-                                                background: '#22c55e',
-                                                display: 'inline-block',
-                                                animation: 'pulse 2s infinite'
-                                            }}></span>
-                                            {activeViewers} online
+                                        <div className="session-card__presence">
+                                            <span className="session-card__presence-dot"></span>
+                                            {activeViewers}
                                         </div>
                                     )}
 
-                                    {/* Arrow / Loading */}
-                                    <div style={{
-                                        fontSize: '1.2rem',
-                                        color: 'var(--gilpin-gold)',
-                                        flexShrink: 0
-                                    }}>
+                                    {/* Arrow */}
+                                    <div className="session-card__arrow">
                                         {joining === s.id ? '⏳' : '→'}
                                     </div>
                                 </button>
@@ -275,33 +159,8 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
                                 <button
                                     onClick={(e) => handleDelete(e, s.id, s.label)}
                                     disabled={joining !== null || isDeleting}
+                                    className="session-card__delete"
                                     title="Delete session"
-                                    style={{
-                                        width: '36px',
-                                        height: '36px',
-                                        borderRadius: '10px',
-                                        border: '1px solid rgba(239, 68, 68, 0.2)',
-                                        background: 'rgba(239, 68, 68, 0.05)',
-                                        color: '#ef4444',
-                                        cursor: isDeleting ? 'wait' : 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '1rem',
-                                        transition: 'all 0.2s ease',
-                                        flexShrink: 0,
-                                        opacity: joining ? 0.3 : 1
-                                    }}
-                                    onMouseOver={(e) => {
-                                        if (!joining && !isDeleting) {
-                                            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
-                                            e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-                                        }
-                                    }}
-                                    onMouseOut={(e) => {
-                                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
-                                        e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.2)';
-                                    }}
                                 >
                                     {isDeleting ? '⏳' : '🗑️'}
                                 </button>
@@ -312,29 +171,9 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
             </div>
 
             {/* Action Buttons */}
-            <div style={{
-                display: 'flex',
-                gap: '12px',
-                marginTop: '32px',
-                flexWrap: 'wrap',
-                justifyContent: 'center'
-            }}>
-                {/* Upload PDF */}
-                <label style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '14px 28px',
-                    background: 'linear-gradient(135deg, #c5a065, #d4b47a)',
-                    color: '#000',
-                    borderRadius: '12px',
-                    fontWeight: 700,
-                    fontSize: '0.95rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 12px rgba(197,160,101,0.3)'
-                }}>
-                    📄 Upload Arrivals PDF
+            <div className="session-browser__actions">
+                <label className="session-browser__btn session-browser__btn--primary">
+                    📄 Upload PDF
                     <input
                         type="file"
                         accept=".pdf"
@@ -343,58 +182,334 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
                     />
                 </label>
 
-                {/* Create New */}
-                <button
-                    onClick={onCreateNew}
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '14px 28px',
-                        background: 'var(--surface)',
-                        color: 'var(--text-main)',
-                        border: '1px solid var(--border-ui)',
-                        borderRadius: '12px',
-                        fontWeight: 700,
-                        fontSize: '0.95rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    ✏️ New Empty Session
+                <button onClick={onCreateNew} className="session-browser__btn session-browser__btn--secondary">
+                    ✏️ New Session
                 </button>
             </div>
 
             {/* Footer */}
-            <div style={{
-                marginTop: '40px',
-                color: 'var(--text-muted)',
-                fontSize: '0.8rem',
-                textAlign: 'center'
-            }}>
-                <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 16px',
-                    background: 'var(--surface)',
-                    borderRadius: '20px',
-                    border: '1px solid var(--border-ui)'
-                }}>
-                    <span style={{
-                        width: '8px', height: '8px', borderRadius: '50%',
-                        background: sessions.length >= 0 && !loading ? '#22c55e' : '#ef4444',
-                        display: 'inline-block'
-                    }}></span>
-                    {loading ? 'Connecting...' : `Firebase Connected • ${sessions.length} active sessions`}
+            <div className="session-browser__footer">
+                <div className="session-browser__status">
+                    <span className="session-browser__status-dot" style={{ background: !loading ? '#22c55e' : '#ef4444' }}></span>
+                    {loading ? 'Connecting...' : `Connected • ${sessions.length} sessions`}
                 </div>
             </div>
 
-            {/* Pulse animation for presence indicator */}
             <style>{`
-        @keyframes pulse {
+        .session-browser {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          font-family: 'Inter', sans-serif;
+        }
+
+        .session-browser__header {
+          text-align: center;
+          margin-bottom: 32px;
+        }
+
+        .session-browser__title {
+          font-size: 1.8rem;
+          font-weight: 800;
+          color: var(--text-main, #0f172a);
+          margin-bottom: 6px;
+          line-height: 1.2;
+        }
+
+        .session-browser__subtitle {
+          color: var(--text-muted, #94a3b8);
+          font-size: 0.9rem;
+          letter-spacing: 0.04em;
+        }
+
+        .session-browser__list {
+          width: 100%;
+          max-width: 560px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .session-browser__empty {
+          text-align: center;
+          padding: 32px 20px;
+          color: var(--text-muted, #94a3b8);
+        }
+
+        .session-browser__empty--boxed {
+          background: var(--surface, rgba(255,255,255,0.7));
+          border-radius: 16px;
+          border: 1px solid var(--border-ui, #c5a065);
+        }
+
+        /* Session Card */
+        .session-card {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 14px 16px;
+          background: var(--surface, rgba(255,255,255,0.7));
+          border: 1px solid var(--border-ui, #c5a065);
+          border-radius: 16px;
+          width: 100%;
+          transition: all 0.2s ease;
+          color: var(--text-main, #0f172a);
+          box-shadow: var(--shadow-lux, 0 20px 40px -10px rgba(0,0,0,0.08));
+        }
+
+        .session-card--joining {
+          background: rgba(197, 160, 101, 0.2);
+        }
+
+        .session-card--deleting {
+          background: rgba(239, 68, 68, 0.1);
+        }
+
+        .session-card__main {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex: 1;
+          background: none;
+          border: none;
+          cursor: pointer;
+          text-align: left;
+          color: inherit;
+          padding: 0;
+          min-height: 48px;
+          font-family: inherit;
+        }
+
+        .session-card__main:disabled {
+          cursor: wait;
+        }
+
+        .session-card__icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 10px;
+          background: linear-gradient(135deg, rgba(197,160,101,0.2), rgba(197,160,101,0.05));
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.2rem;
+          flex-shrink: 0;
+        }
+
+        .session-card__info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .session-card__label {
+          font-weight: 700;
+          font-size: 0.95rem;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .session-card__meta {
+          font-size: 0.75rem;
+          color: var(--text-muted, #94a3b8);
+          margin-top: 3px;
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .session-card__presence {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 8px;
+          background: rgba(34, 197, 94, 0.15);
+          color: #22c55e;
+          border-radius: 20px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          flex-shrink: 0;
+        }
+
+        .session-card__presence-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #22c55e;
+          display: inline-block;
+          animation: sb-pulse 2s infinite;
+        }
+
+        .session-card__arrow {
+          font-size: 1.1rem;
+          color: var(--gilpin-gold, #c5a065);
+          flex-shrink: 0;
+          margin-left: 4px;
+        }
+
+        .session-card__delete {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          background: rgba(239, 68, 68, 0.05);
+          color: #ef4444;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.9rem;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .session-card__delete:active {
+          background: rgba(239, 68, 68, 0.2);
+          transform: scale(0.95);
+        }
+
+        .session-card__delete:disabled {
+          opacity: 0.3;
+          cursor: wait;
+        }
+
+        /* Action Buttons */
+        .session-browser__actions {
+          display: flex;
+          gap: 10px;
+          margin-top: 28px;
+          width: 100%;
+          max-width: 560px;
+          justify-content: center;
+        }
+
+        .session-browser__btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 14px 24px;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          min-height: 48px;
+          flex: 1;
+          max-width: 260px;
+          border: none;
+          font-family: inherit;
+        }
+
+        .session-browser__btn--primary {
+          background: linear-gradient(135deg, #c5a065, #d4b47a);
+          color: #000;
+          box-shadow: 0 4px 12px rgba(197,160,101,0.3);
+        }
+
+        .session-browser__btn--primary:active {
+          transform: scale(0.97);
+        }
+
+        .session-browser__btn--secondary {
+          background: var(--surface, rgba(255,255,255,0.7));
+          color: var(--text-main, #0f172a);
+          border: 1px solid var(--border-ui, #c5a065);
+        }
+
+        .session-browser__btn--secondary:active {
+          transform: scale(0.97);
+        }
+
+        /* Footer */
+        .session-browser__footer {
+          margin-top: 32px;
+          color: var(--text-muted, #94a3b8);
+          font-size: 0.75rem;
+          text-align: center;
+        }
+
+        .session-browser__status {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 5px 14px;
+          background: var(--surface, rgba(255,255,255,0.7));
+          border-radius: 20px;
+          border: 1px solid var(--border-ui, #c5a065);
+        }
+
+        .session-browser__status-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          display: inline-block;
+        }
+
+        @keyframes sb-pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.4; }
+        }
+
+        /* Desktop overrides */
+        @media (min-width: 768px) {
+          .session-browser {
+            padding: 24px;
+          }
+
+          .session-browser__title {
+            font-size: 2.5rem;
+          }
+
+          .session-browser__subtitle {
+            font-size: 1.1rem;
+          }
+
+          .session-browser__header {
+            margin-bottom: 40px;
+          }
+
+          .session-card {
+            padding: 20px 24px;
+            gap: 12px;
+          }
+
+          .session-card__icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            font-size: 1.4rem;
+          }
+
+          .session-card__label {
+            font-size: 1.05rem;
+          }
+
+          .session-card__meta {
+            font-size: 0.85rem;
+            gap: 12px;
+          }
+
+          .session-card__presence {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+          }
+
+          .session-browser__actions {
+            margin-top: 32px;
+          }
+
+          .session-browser__btn {
+            padding: 14px 28px;
+            font-size: 0.95rem;
+          }
+
+          .session-browser__footer {
+            margin-top: 40px;
+          }
         }
       `}</style>
         </div>
