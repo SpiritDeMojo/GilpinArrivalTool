@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Guest } from '../types';
-import { HighlightedRaw } from './GuestRow';
+import BookingStream from './BookingStream';
 
 interface GuestMobileCardProps {
   guest: Guest;
@@ -132,9 +132,7 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
                 />
               </div>
               <div className="p-4 bg-slate-900 rounded-2xl overflow-x-auto">
-                <div className="font-mono text-[9px] text-white/80 leading-relaxed whitespace-pre-wrap">
-                  <HighlightedRaw text={guest.rawHtml} />
-                </div>
+                <BookingStream guest={guest} />
               </div>
             </div>
           )}

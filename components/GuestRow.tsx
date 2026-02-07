@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Guest } from '../types';
+import BookingStream from './BookingStream';
 
 interface GuestRowProps {
   guest: Guest;
@@ -230,7 +231,7 @@ const GuestRow: React.FC<GuestRowProps> = ({
           </div>
           {isExpanded && (
             <div className="raw-intel-box p-5 mb-5 rounded-2xl border border-[#c5a065]/20 bg-[#c5a065]/5 animate-in fade-in slide-in-from-top-1">
-              <HighlightedRaw text={guest.rawHtml} />
+              <BookingStream guest={guest} />
             </div>
           )}
         </td>
