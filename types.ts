@@ -57,6 +57,22 @@ export interface Guest {
 
   // Legacy field for backwards compatibility
   roomStatus?: RoomStatus;
+
+  // ==========================================
+  // AUDIT & TRACKING FIELDS
+  // ==========================================
+
+  /** Activity log for audit trail */
+  activityLog?: AuditEntry[];
+
+  /** Room move history */
+  roomMoves?: RoomMove[];
+
+  /** Previous room (set after a room move) */
+  previousRoom?: string;
+
+  /** AI-generated tags from sentiment analysis */
+  aiTags?: string[];
 }
 
 export interface ArrivalSession {
@@ -87,7 +103,8 @@ export interface Flag {
 export type PropertyFilter = 'total' | 'main' | 'lake';
 export type FilterType = 'all' | 'main' | 'lake' | 'vip' | 'allergy' | 'return';
 export type PrintMode = 'master' | 'greeter' | 'delivery';
-export type RefinementField = 'notes' | 'facilities' | 'inRoomItems' | 'preferences' | 'packages' | 'history';
+export type NavPrintMode = 'main' | 'greeter' | 'inroom';
+export type RefinementField = 'notes' | 'facilities' | 'inRoomItems' | 'preferences' | 'packages' | 'history' | 'car';
 
 export interface RoomMapping {
   [key: string]: number;
@@ -146,6 +163,7 @@ export type RoomStatus =
 export type GuestStatus =
   | 'pre_arrival'
   | 'on_site'
+  | 'off_site'
   | 'awaiting_room'
   | 'room_ready_notified'
   | 'checked_in'
@@ -178,6 +196,31 @@ export interface StatusUpdateEvent {
   newValue: string | boolean;
   updatedBy: string;
   timestamp: number;
+}
+
+/**
+ * Audit log entry for tracking all guest changes
+ */
+export interface AuditEntry {
+  id: string;
+  timestamp: number;
+  action: string;
+  field: string;
+  oldValue?: string;
+  newValue: string;
+  performedBy: string;
+}
+
+/**
+ * Room move record for red-lining
+ */
+export interface RoomMove {
+  id: string;
+  timestamp: number;
+  fromRoom: string;
+  toRoom: string;
+  movedBy: string;
+  reason?: string;
 }
 
 /**
@@ -228,6 +271,7 @@ export const ROOM_STATUS_INFO: Record<RoomStatus, { label: string; emoji: string
 export const GUEST_STATUS_INFO: Record<GuestStatus, { label: string; emoji: string; color: string }> = {
   pre_arrival: { label: 'Pre-Arrival', emoji: '📅', color: '#94a3b8' },
   on_site: { label: 'On Site', emoji: '🚗', color: '#3b82f6' },
+  off_site: { label: 'Off Site', emoji: '🚶', color: '#64748b' },
   awaiting_room: { label: 'Awaiting Room', emoji: '⏳', color: '#f59e0b' },
   room_ready_notified: { label: 'Room Ready - Notified', emoji: '📱', color: '#8b5cf6' },
   checked_in: { label: 'Checked In', emoji: '🔑', color: '#22c55e' },

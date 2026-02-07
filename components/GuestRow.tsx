@@ -108,6 +108,11 @@ const GuestRow: React.FC<GuestRowProps> = ({
         </td>
         <td className="p-1 align-top">
           <ResizableTextArea field="room" value={guest.room} bold onUpdate={onUpdate} className="uppercase text-[#c5a065] font-black" />
+          {guest.previousRoom && (
+            <span className="ml-2 text-[8px] font-bold bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded-full" title={`Moved from Room ${guest.previousRoom}`}>
+              ← {guest.previousRoom}
+            </span>
+          )}
         </td>
         <td className="p-1 align-top">
           <div className="flex flex-col">
@@ -135,10 +140,19 @@ const GuestRow: React.FC<GuestRowProps> = ({
           <ResizableTextArea field="eta" value={guest.eta} center onUpdate={onUpdate} className="font-bold" />
         </td>
         <td className="p-1 align-top">
-          <ResizableTextArea field="prefillNotes" value={guest.prefillNotes} onUpdate={onUpdate} className="italic text-slate-500" />
+          <ResizableTextArea field="prefillNotes" value={guest.prefillNotes} onUpdate={onUpdate} className="italic text-slate-600 dark:text-slate-400" />
         </td>
         <td className="p-1 align-top">
           <ResizableTextArea field="preferences" value={guest.preferences} onUpdate={onUpdate} className="text-indigo-700 dark:text-indigo-300 font-semibold" />
+          {guest.aiTags && guest.aiTags.length > 0 && (
+            <div className="flex flex-wrap gap-1 px-2 mt-1">
+              {guest.aiTags.map((tag, i) => (
+                <span key={i} className="text-[7px] font-black uppercase tracking-wider bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 py-0.5 rounded-full border border-violet-500/20">
+                  🏷️ {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </td>
       </tr>
       <tr className="no-print">

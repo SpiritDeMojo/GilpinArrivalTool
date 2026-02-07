@@ -57,7 +57,7 @@ const ETATimeline: React.FC<ETATimelineProps> = ({ guests, onGuestClick }) => {
         if (guest.ll.toLowerCase().includes('yes')) return 'bg-blue-500';
 
         const rNum = parseInt(guest.room.split(' ')[0]);
-        if (rNum >= 51 && rNum <= 60) return 'bg-emerald-500';
+        if (rNum >= 51 && rNum <= 58) return 'bg-emerald-500';
         return 'bg-slate-700';
     };
 

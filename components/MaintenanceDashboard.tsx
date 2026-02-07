@@ -5,6 +5,7 @@ import {
   RoomNote,
   MAINTENANCE_STATUS_INFO,
   NOTE_PRIORITY_INFO,
+  GUEST_STATUS_INFO,
   getRoomReadinessInfo
 } from '../types';
 import { getRoomNumber } from '../constants';
@@ -14,13 +15,15 @@ interface MaintenanceDashboardProps {
   onUpdateMaintenanceStatus: (guestId: string, status: MaintenanceStatus) => void;
   onAddRoomNote: (guestId: string, note: Omit<RoomNote, 'id' | 'timestamp'>) => void;
   onResolveNote: (guestId: string, noteId: string, resolvedBy: string) => void;
+  onViewAuditLog?: (guest: Guest) => void;
 }
 
 const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
   guests,
   onUpdateMaintenanceStatus,
   onAddRoomNote,
-  onResolveNote
+  onResolveNote,
+  onViewAuditLog
 }) => {
   const [statusFilter, setStatusFilter] = useState<'all' | MaintenanceStatus>('all');
   const [showOnlyWithNotes, setShowOnlyWithNotes] = useState(false);
@@ -39,7 +42,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
     // Property filter
     result = result.filter(g => {
       const roomNum = getRoomNumber(g.room);
-      const isLakeHouse = roomNum >= 51 && roomNum <= 60;
+      const isLakeHouse = roomNum >= 51 && roomNum <= 58;
       if (isLakeHouse) return showLakeHouse;
       return showMainHotel;
     });
@@ -154,7 +157,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
           </label>
           <label className="toggle-label">
             <input type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
-            <span>🏡 Lake (51-60)</span>
+            <span>🏡 Lake (51-58)</span>
           </label>
         </div>
       </div>
@@ -186,6 +189,13 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
                     <span className="room-number">{guest.room}</span>
                     <span className="guest-name">{guest.name}</span>
                     <span className="eta-badge">ETA {guest.eta || 'N/A'}</span>
+                    {guest.guestStatus && guest.guestStatus !== 'pre_arrival' && (
+                      <span className={`guest-presence-chip ${guest.guestStatus === 'off_site' ? 'off-site' : 'on-site'}`}>
+                        {guest.guestStatus === 'off_site'
+                          ? '🔴 Off Site'
+                          : '🟢 On Site'}
+                      </span>
+                    )}
                   </div>
 
                   {/* Status Badges */}
@@ -580,6 +590,27 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
           border-radius: 16px;
           padding: 20px;
           transition: all 0.2s;
+        }
+
+        /* Guest Presence Chip */
+        .guest-presence-chip {
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 10px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .guest-presence-chip.on-site {
+          background: rgba(34, 197, 94, 0.12);
+          color: #16a34a;
+          border: 1px solid rgba(34, 197, 94, 0.25);
+        }
+
+        .guest-presence-chip.off-site {
+          background: rgba(100, 116, 139, 0.12);
+          color: #64748b;
+          border: 1px solid rgba(100, 116, 139, 0.25);
         }
 
         .room-row.urgent {

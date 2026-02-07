@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { 
-  PieChart, Pie, Cell, ResponsiveContainer, 
+import {
+  PieChart, Pie, Cell, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
   AreaChart, Area, CartesianGrid
 } from 'recharts';
@@ -27,8 +27,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
       guests: session.guests.filter(g => {
         const rNum = parseInt(g.room.split(' ')[0]);
         const isMain = rNum > 0 && rNum <= 31;
-        const isLake = rNum >= 51 && rNum <= 60;
-        
+        const isLake = rNum >= 51 && rNum <= 58;
+
         if (activeFilter === 'main') return isMain;
         if (activeFilter === 'lake') return isLake;
         if (activeFilter === 'vip') return g.prefillNotes.includes('⭐') || g.prefillNotes.includes('VIP') || g.packageName === 'POB_STAFF';
@@ -82,7 +82,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
       "Lake House Spa Suite": 0,
       "Other": 0
     };
-    
+
     const allGuests = filteredSessions.flatMap(s => s.guests);
     allGuests.forEach(g => {
       const type = g.roomType?.toUpperCase();
@@ -120,16 +120,16 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
     if (!data?.occupancyPulse) return [];
     const seen = new Set();
     const result: { date: string, count: number }[] = [];
-    
+
     data.occupancyPulse.forEach(item => {
       if (!seen.has(item.date)) {
         seen.add(item.date);
         result.push(item);
       }
     });
-    
+
     if (result.length === 1) {
-       return [{ date: 'Start', count: 0 }, ...result, { date: 'End', count: 0 }];
+      return [{ date: 'Start', count: 0 }, ...result, { date: 'End', count: 0 }];
     }
     return result;
   }, [data?.occupancyPulse]);
@@ -195,21 +195,21 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
 
   return (
     <div className="space-y-6 mb-10 animate-in fade-in duration-700">
-      
+
       <div className="flex justify-between items-end px-2">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-[#c5a065]/10 rounded-2xl flex items-center justify-center text-2xl border border-[#c5a065]/20 shadow-inner">🧠</div>
           <div>
             <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-[#c5a065]">Strategic Intelligence Feed</h2>
             <p className="text-[10px] text-slate-400 font-medium tracking-tight">
-              Synthesizing {filteredSessions.reduce((acc, s) => acc + s.guests.length, 0)} arrivals • 
+              Synthesizing {filteredSessions.reduce((acc, s) => acc + s.guests.length, 0)} arrivals •
               <span className="text-[#c5a065] ml-1 uppercase font-black">
                 {activeFilter === 'all' ? 'Full Estate' : activeFilter.toUpperCase()}
               </span>
             </p>
           </div>
         </div>
-        <button 
+        <button
           onClick={fetchAnalytics}
           disabled={isLoading}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-full border border-[#c5a065]/30 text-[9px] font-black uppercase tracking-[0.2em] transition-all shadow-lg ${isLoading ? 'bg-[#c5a065]/10 animate-pulse cursor-wait' : 'hover:bg-[#c5a065] hover:text-white hover:scale-105 active:scale-95 bg-white dark:bg-stone-900'}`}
@@ -260,16 +260,16 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
                     <AreaChart data={uniqueOccupancyData} key={`area-pulse-${data.lastUpdated}-${activeFilter}`}>
                       <defs>
                         <linearGradient id="pulseFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#c5a065" stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor="#c5a065" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#c5a065" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#c5a065" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(197, 160, 101, 0.1)" />
-                      <XAxis 
-                        dataKey="date" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} 
+                      <XAxis
+                        dataKey="date"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }}
                         tickFormatter={formatDateLabel}
                         interval={0}
                       />
@@ -300,9 +300,9 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
                         ))}
                       </Pie>
                       <Tooltip content={<CustomTooltip />} />
-                      <Legend 
-                        verticalAlign="bottom" align="center" 
-                        formatter={(v) => <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{v}</span>} 
+                      <Legend
+                        verticalAlign="bottom" align="center"
+                        formatter={(v) => <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{v}</span>}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -322,13 +322,13 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
                     <BarChart data={categoryStats} layout="vertical" margin={{ left: 10, right: 30 }} key={`cat-bar-${data.lastUpdated}-${activeFilter}`}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.05)" />
                       <XAxis type="number" hide />
-                      <YAxis 
-                        dataKey="name" 
-                        type="category" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        width={140} 
-                        style={{ fontSize: '9px', fontWeight: 800, fill: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }} 
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        axisLine={false}
+                        tickLine={false}
+                        width={140}
+                        style={{ fontSize: '9px', fontWeight: 800, fill: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}
                       />
                       <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(197, 160, 101, 0.05)' }} />
                       <Bar dataKey="value" radius={[0, 12, 12, 0]} barSize={18} animationDuration={1000}>
@@ -347,7 +347,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
             <div className="bg-slate-900 text-white rounded-[3rem] p-10 shadow-2xl flex flex-col h-[450px] relative overflow-hidden group">
               <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-[#c5a065]/10 rounded-full blur-3xl group-hover:bg-[#c5a065]/20 transition-all"></div>
               <h3 className="text-[11px] font-black uppercase tracking-[0.35em] text-[#c5a065] mb-8 text-center">Operational Stream Focus</h3>
-              
+
               <div className="flex-1 flex flex-col justify-center relative z-10 text-center space-y-8">
                 <div>
                   <div className="text-7xl font-black text-[#c5a065] tabular-nums mb-2">
@@ -364,8 +364,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
               </div>
 
               <div className="mt-8 flex items-center justify-center gap-3">
-                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Live strategic stream sync active</span>
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Live strategic stream sync active</span>
               </div>
             </div>
           </div>

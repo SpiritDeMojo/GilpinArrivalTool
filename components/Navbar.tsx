@@ -17,10 +17,12 @@ interface NavbarProps {
   onAIRefine: () => void;
   onToggleAnalytics: () => void;
   showAnalytics: boolean;
+  isMuted: boolean;
+  onToggleMute: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
-  arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP, isLiveActive, isMicEnabled, onToggleLive, hasGuests, onAIRefine, onToggleAnalytics, showAnalytics
+  arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP, isLiveActive, isMicEnabled, onToggleLive, hasGuests, onAIRefine, onToggleAnalytics, showAnalytics, isMuted, onToggleMute
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -81,6 +83,14 @@ const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-xl leading-none">{isLiveActive ? (isMicEnabled ? '🎙️' : '🤖') : '🤖'}</span>
                 {isMicEnabled && <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping"></div>}
               </button>
+
+              <button
+                onClick={onToggleMute}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-600' : 'bg-slate-900 hover:bg-black'} shadow-lg active:scale-90`}
+                title={isMuted ? 'Notifications muted' : 'Notifications on'}
+              >
+                <span className="text-xl leading-none">{isMuted ? '🔕' : '🔔'}</span>
+              </button>
             </>
           )}
 
@@ -98,12 +108,20 @@ const Navbar: React.FC<NavbarProps> = ({
       {/* --- Mobile Actions (touch-safe: min 44px targets, 8px gaps) --- */}
       <div className="flex lg:hidden items-center gap-2 flex-shrink-0">
         {hasGuests && (
-          <button
-            onClick={onToggleLive}
-            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-indigo-600 shadow-lg scale-105' : 'bg-slate-800'} active:scale-95`}
-          >
-            <span className="text-lg leading-none">{isLiveActive ? (isMicEnabled ? '🎙️' : '🤖') : '🤖'}</span>
-          </button>
+          <>
+            <button
+              onClick={onToggleLive}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-indigo-600 shadow-lg scale-105' : 'bg-slate-800'} active:scale-95`}
+            >
+              <span className="text-lg leading-none">{isLiveActive ? (isMicEnabled ? '🎙️' : '🤖') : '🤖'}</span>
+            </button>
+            <button
+              onClick={onToggleMute}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-600' : 'bg-slate-800'} active:scale-95`}
+            >
+              <span className="text-lg leading-none">{isMuted ? '🔕' : '🔔'}</span>
+            </button>
+          </>
         )}
         <button
           onClick={() => setIsMenuOpen(!isMenuOpen)}

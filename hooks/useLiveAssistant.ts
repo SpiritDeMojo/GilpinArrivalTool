@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Guest } from '../types';
+import { Guest, RoomNote } from '../types';
 
 // --- AUDIO PROTOCOLS ---
 // Custom base64 decoding implementation as per guidelines
@@ -37,7 +37,12 @@ export interface Transcription {
   role: 'user' | 'model';
 }
 
-export const useLiveAssistant = (guests: Guest[]) => {
+export interface UseLiveAssistantOptions {
+  guests: Guest[];
+  onAddRoomNote?: (guestId: string, note: Omit<RoomNote, 'id' | 'timestamp'>) => void;
+}
+
+export const useLiveAssistant = ({ guests, onAddRoomNote }: UseLiveAssistantOptions) => {
   const [isLiveActive, setIsLiveActive] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(false);
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
@@ -54,6 +59,36 @@ export const useLiveAssistant = (guests: Guest[]) => {
   useEffect(() => {
     micEnabledRef.current = isMicEnabled;
   }, [isMicEnabled]);
+
+  // Parse AI output for note actions
+  const parseNoteActions = useCallback((text: string) => {
+    const actionRegex = /\[ACTION:ADD_NOTE\](\{[^}]+\})/g;
+    let match;
+    while ((match = actionRegex.exec(text)) !== null) {
+      try {
+        const noteData = JSON.parse(match[1]);
+        if (noteData.room && noteData.message && onAddRoomNote) {
+          // Find guest by room number
+          const guest = guests.find(g => {
+            const roomNum = g.room.replace(/\D/g, '');
+            const targetNum = String(noteData.room).replace(/\D/g, '');
+            return roomNum === targetNum;
+          });
+          if (guest) {
+            onAddRoomNote(guest.id, {
+              author: 'AI Assistant',
+              department: 'reception',
+              priority: noteData.priority || 'medium',
+              category: noteData.category || 'request',
+              message: noteData.message,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse AI note action:', e);
+      }
+    }
+  }, [guests, onAddRoomNote]);
 
   const clearHistory = () => setTranscriptions([]);
 
@@ -99,7 +134,7 @@ export const useLiveAssistant = (guests: Guest[]) => {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
       if (!apiKey) {
-        setError('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.');
+        console.error('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.');
         return;
       }
 
@@ -107,7 +142,7 @@ export const useLiveAssistant = (guests: Guest[]) => {
 
       const guestsBrief = guests.map(g => {
         const rNum = parseInt(g.room.split(' ')[0]);
-        const location = (rNum >= 51 && rNum <= 60) ? 'Lake House' : 'Main Hotel';
+        const location = (rNum >= 51 && rNum <= 58) ? 'Lake House' : 'Main Hotel';
         return `--- GUEST START ---
 [CLEAN DATA]
 ROOM: ${g.room}
@@ -184,7 +219,13 @@ ${g.rawHtml}
             }
             if (msg.serverContent?.turnComplete) {
               if (currentInput) setTranscriptions(p => [...p, { text: currentInput, role: 'user' }]);
-              if (currentOutput) setTranscriptions(p => [...p, { text: currentOutput, role: 'model' }]);
+              if (currentOutput) {
+                // Strip action blocks from displayed text
+                const displayText = currentOutput.replace(/\[ACTION:ADD_NOTE\]\{[^}]+\}/g, '').trim();
+                if (displayText) setTranscriptions(p => [...p, { text: displayText, role: 'model' }]);
+                // Parse and execute note actions
+                parseNoteActions(currentOutput);
+              }
               currentInput = ""; currentOutput = ""; setInterimInput(""); setInterimOutput("");
             }
             if (msg.serverContent?.interrupted) {
@@ -233,6 +274,17 @@ You operate on a strict hierarchy to ensure the team can trust the edited data:
 **3. General/Live Operations**
    - **Duration:** Answer "How long is [Guest] staying?" using the DURATION field.
    - **Traffic Control:** If asked "Who is arriving next?", order guests chronologically by the ETA in [CLEAN DATA]. 
+
+**4. Note-Taking Mode**
+   When the user says things like "Note for Room X: ...", "Room X requested ...", "Add a note for Room X ...", or "Room X needs ...":
+   - First, confirm the note conversationally (e.g., "Got it, I'll add a note for Room 5 about extra pillows.")
+   - Then, at the END of your response text, output a structured action in this exact format:
+     [ACTION:ADD_NOTE]{"room":"5","message":"Guest requested extra pillows","priority":"medium","category":"request"}
+   - Valid priorities: "low", "medium", "high", "urgent"
+   - Valid categories: "request", "issue", "info"
+   - Use "request" for guest preferences/requests, "issue" for problems, "info" for general notes.
+   - The room number should match the room number from the guest data (just the number itself).
+   - IMPORTANT: Always include the [ACTION:ADD_NOTE] block so the system can automatically create the note.
 
 
 ${guestsBrief}`

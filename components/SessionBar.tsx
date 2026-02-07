@@ -30,7 +30,7 @@ const SessionBar: React.FC<SessionBarProps> = ({ sessions, activeId, onSwitch, o
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm("Delete this list?")) onDelete(session.id);
+                if (window.confirm(`Delete "${session.label || session.id}"?\n\nThis will remove it from all devices.`)) onDelete(session.id);
               }}
               className={`
                 w-6 h-6 md:w-5 md:h-5 flex items-center justify-center rounded-full transition-colors text-xs font-bold ml-1

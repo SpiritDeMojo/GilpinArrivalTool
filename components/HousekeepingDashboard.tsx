@@ -5,22 +5,26 @@ import {
   RoomNote,
   HK_STATUS_INFO,
   NOTE_PRIORITY_INFO,
+  GUEST_STATUS_INFO,
   getRoomReadinessInfo
 } from '../types';
 import { getRoomNumber } from '../constants';
+import { GeminiService } from '../services/geminiService';
 
 interface HousekeepingDashboardProps {
   guests: Guest[];
   onUpdateHKStatus: (guestId: string, status: HKStatus) => void;
   onAddRoomNote: (guestId: string, note: Omit<RoomNote, 'id' | 'timestamp'>) => void;
   onResolveNote: (guestId: string, noteId: string, resolvedBy: string) => void;
+  onViewAuditLog?: (guest: Guest) => void;
 }
 
 const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
   guests,
   onUpdateHKStatus,
   onAddRoomNote,
-  onResolveNote
+  onResolveNote,
+  onViewAuditLog
 }) => {
   const [statusFilter, setStatusFilter] = useState<'all' | HKStatus>('all');
   const [showMainHotel, setShowMainHotel] = useState(true);
@@ -30,6 +34,9 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
   const [notePriority, setNotePriority] = useState<RoomNote['priority']>('medium');
   const [noteCategory, setNoteCategory] = useState<RoomNote['category']>('issue');
   const [authorName, setAuthorName] = useState('');
+  const [aiPriorityRooms, setAiPriorityRooms] = useState<string[]>([]);
+  const [aiReasoning, setAiReasoning] = useState('');
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
 
   // Filter and sort guests
   const filteredGuests = useMemo(() => {
@@ -37,7 +44,7 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
 
     result = result.filter(g => {
       const roomNum = getRoomNumber(g.room);
-      const isLakeHouse = roomNum >= 51 && roomNum <= 60;
+      const isLakeHouse = roomNum >= 51 && roomNum <= 58;
       if (isLakeHouse) return showLakeHouse;
       return showMainHotel;
     });
@@ -143,16 +150,47 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           ))}
         </div>
         <div className="property-toggles">
+          <button
+            className={`ai-priority-btn ${isLoadingAI ? 'loading' : ''} ${aiPriorityRooms.length > 0 ? 'active' : ''}`}
+            disabled={isLoadingAI}
+            onClick={async () => {
+              if (aiPriorityRooms.length > 0) {
+                setAiPriorityRooms([]);
+                setAiReasoning('');
+                return;
+              }
+              setIsLoadingAI(true);
+              const result = await GeminiService.suggestCleaningOrder(guests);
+              setIsLoadingAI(false);
+              if (result) {
+                setAiPriorityRooms(result.roomOrder);
+                setAiReasoning(result.reasoning);
+              }
+            }}
+          >
+            {isLoadingAI ? '⏳' : '🤖'} {isLoadingAI ? 'Thinking...' : aiPriorityRooms.length > 0 ? 'Clear AI' : 'AI Priority'}
+          </button>
           <label className="toggle-label">
             <input type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
-            <span>Main (1-31)</span>
+            <span>🏨 Main (1-31)</span>
           </label>
           <label className="toggle-label">
             <input type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
-            <span>Lake (51-60)</span>
+            <span>🏡 Lake (51-58)</span>
           </label>
         </div>
       </div>
+
+      {/* AI Reasoning Banner */}
+      {aiPriorityRooms.length > 0 && aiReasoning && (
+        <div className="ai-reasoning-banner">
+          <span className="ai-icon">🤖</span>
+          <div>
+            <div className="ai-reasoning-title">AI Cleaning Priority</div>
+            <p className="ai-reasoning-text">{aiReasoning}</p>
+          </div>
+        </div>
+      )}
 
       {/* Room Grid */}
       <div className="room-grid">
@@ -171,12 +209,21 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
             const unresolvedNotes = getUnresolvedNotesCount(guest);
             const roomNotes = (guest.roomNotes || []).filter(n => !n.resolved);
 
+            const aiPriorityIndex = aiPriorityRooms.findIndex(r => r.toLowerCase() === guest.room.toLowerCase());
+
             return (
               <div
                 key={guest.id}
-                className="room-card"
+                className={`room-card ${aiPriorityIndex >= 0 ? 'ai-highlighted' : ''}`}
                 style={{ '--card-accent': hkInfo.color } as React.CSSProperties}
               >
+                {/* AI Priority Badge */}
+                {aiPriorityIndex >= 0 && (
+                  <div className="ai-priority-badge">
+                    #{aiPriorityIndex + 1}
+                  </div>
+                )}
+
                 {/* Card Header */}
                 <div className="card-header">
                   <div className="room-info">
@@ -186,6 +233,15 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
                         📝 {unresolvedNotes}
                       </span>
                     )}
+                    {onViewAuditLog && (guest.activityLog?.length || 0) > 0 && (
+                      <button
+                        className="audit-btn"
+                        onClick={() => onViewAuditLog(guest)}
+                        title="View activity log"
+                      >
+                        📜 {guest.activityLog!.length}
+                      </button>
+                    )}
                   </div>
                   <span
                     className="status-badge"
@@ -194,6 +250,18 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
                     {hkInfo.emoji} {hkInfo.label}
                   </span>
                 </div>
+
+                {/* Guest Presence Indicator — any status beyond pre_arrival shows presence */}
+                {guest.guestStatus && guest.guestStatus !== 'pre_arrival' && (
+                  <div className={`guest-presence-badge ${guest.guestStatus === 'off_site' ? 'off-site' : 'on-site'}`}>
+                    <span className="presence-dot"></span>
+                    <span className="presence-text">
+                      {guest.guestStatus === 'off_site'
+                        ? '🔴 Guest Off Site'
+                        : '🟢 Guest On Site'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Guest Info */}
                 <div className="guest-info">
@@ -493,13 +561,17 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           align-items: center;
           gap: 8px;
           font-size: 13px;
+          font-weight: 600;
           cursor: pointer;
+          padding: 8px 12px;
+          border-radius: 20px;
+          background: var(--bg-color);
+          border: 1px solid var(--border-color);
+          transition: border-color 0.2s;
         }
 
-        .toggle-label input {
-          width: 18px;
-          height: 18px;
-          accent-color: #c5a065;
+        .toggle-label:hover {
+          border-color: var(--gilpin-gold, #c5a065);
         }
 
         /* Room Grid */
@@ -542,6 +614,45 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           border-radius: 16px;
           padding: 20px;
           transition: all 0.2s;
+        }
+
+        /* Guest Presence Badge */
+        .guest-presence-badge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 10px;
+          font-size: 11px;
+          font-weight: 700;
+          margin-bottom: 8px;
+        }
+
+        .guest-presence-badge.on-site {
+          background: rgba(34, 197, 94, 0.1);
+          color: #16a34a;
+          border: 1px solid rgba(34, 197, 94, 0.25);
+        }
+
+        .guest-presence-badge.off-site {
+          background: rgba(100, 116, 139, 0.1);
+          color: #64748b;
+          border: 1px solid rgba(100, 116, 139, 0.25);
+        }
+
+        .presence-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+        }
+
+        .guest-presence-badge.on-site .presence-dot {
+          background: #22c55e;
+          box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+        }
+
+        .guest-presence-badge.off-site .presence-dot {
+          background: #94a3b8;
         }
 
         .room-card:hover {
@@ -913,6 +1024,87 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           cursor: not-allowed;
         }
 
+        .ai-priority-btn {
+          padding: 8px 16px;
+          border-radius: 20px;
+          border: 2px solid #8b5cf6;
+          background: rgba(139, 92, 246, 0.08);
+          color: #8b5cf6;
+          font-weight: 700;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .ai-priority-btn:hover { background: rgba(139, 92, 246, 0.15); }
+        .ai-priority-btn.loading { opacity: 0.6; cursor: wait; }
+        .ai-priority-btn.active {
+          background: #8b5cf6;
+          color: white;
+        }
+
+        .ai-reasoning-banner {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 14px 20px;
+          margin-bottom: 16px;
+          background: rgba(139, 92, 246, 0.06);
+          border: 1px solid rgba(139, 92, 246, 0.2);
+          border-radius: 16px;
+        }
+        .ai-icon { font-size: 20px; margin-top: 2px; }
+        .ai-reasoning-title {
+          font-size: 10px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.15em;
+          color: #8b5cf6;
+          margin-bottom: 4px;
+        }
+        .ai-reasoning-text {
+          font-size: 12px;
+          color: var(--text-main);
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .room-card.ai-highlighted {
+          border: 2px solid #8b5cf6 !important;
+          box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+          position: relative;
+        }
+
+        .ai-priority-badge {
+          position: absolute;
+          top: -10px;
+          right: -6px;
+          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+          color: white;
+          font-weight: 900;
+          font-size: 11px;
+          padding: 3px 10px;
+          border-radius: 20px;
+          z-index: 1;
+          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+        }
+
+        .audit-btn {
+          padding: 2px 8px;
+          border-radius: 12px;
+          border: 1px solid rgba(197, 160, 101, 0.2);
+          background: rgba(197, 160, 101, 0.06);
+          color: #c5a065;
+          font-size: 10px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .audit-btn:hover {
+          background: rgba(197, 160, 101, 0.15);
+        }
+
         @media (max-width: 768px) {
           .hk-header {
             flex-direction: column;
@@ -936,6 +1128,18 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
 
           .property-toggles {
             justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+          
+          .ai-priority-btn {
+            width: 100%;
+            justify-content: center;
+          }
+          
+          .ai-reasoning-banner {
+            flex-direction: column;
+            gap: 8px;
           }
 
           .room-grid {

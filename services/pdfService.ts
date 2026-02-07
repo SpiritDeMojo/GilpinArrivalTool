@@ -34,7 +34,7 @@ export class PDFService {
       return a.x - b.x;
     });
 
-    // Extract Arrival Date from header
+    // Extract Arrival Date from header — handle date in same or separate text item
     const headerItem = rawItems.find(i => i.str.match(/Arrival List|Guest Greeter/i) && i.str.match(/\d{2}\/\d{2}\/\d{4}/i));
     if (headerItem) {
       const m = headerItem.str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
@@ -42,6 +42,24 @@ export class PDFService {
         arrivalDateObj = new Date(`${m[3]}-${m[2]}-${m[1]}`);
         arrivalDateObj.setHours(0, 0, 0, 0);
         arrivalDateStr = arrivalDateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      }
+    } else {
+      // Fallback: date might be a separate text item near the "Arrival List" text
+      const titleItem = rawItems.find(i => /Arrival List|Guest Greeter/i.test(i.str));
+      if (titleItem) {
+        const nearbyDate = rawItems.find(i =>
+          i.page === titleItem.page &&
+          Math.abs(i.y - titleItem.y) < 10 &&
+          /\d{2}\/\d{2}\/\d{4}/.test(i.str)
+        );
+        if (nearbyDate) {
+          const m = nearbyDate.str.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+          if (m) {
+            arrivalDateObj = new Date(`${m[3]}-${m[2]}-${m[1]}`);
+            arrivalDateObj.setHours(0, 0, 0, 0);
+            arrivalDateStr = arrivalDateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+          }
+        }
       }
     }
 
@@ -58,10 +76,10 @@ export class PDFService {
     });
     if (currentLine.items.length > 0) lines.push(currentLine);
 
-    // Filter noise lines
+    // Filter noise lines (headers, footers, page numbers, repeated headings)
     lines = lines.filter(l => {
       const text = l.items.map((i: any) => i.str).join(" ");
-      return !text.match(/^ID\s+Guest Name|Req\.\s+Vip|Page\s+\d+|JHunt\/Gilpin|Total Rate:/i);
+      return !text.match(/^ID\s+Guest Name|Req\.\s+Vip|Page\s+\d+\s+of\s+\d+|JHunt\/Gilpin|dkarakonstantinou\s*\/|Total Rate:|^Arrivals$/i);
     });
 
     // Group lines into Guest Blocks by 5-digit ID
@@ -87,6 +105,54 @@ export class PDFService {
     });
 
     return { guests, arrivalDateStr, arrivalDateObj };
+  }
+
+  /**
+   * Parse a flexible time string into HH:MM format.
+   * Handles: "3pm", "2:30pm", "15:00", "1500", "14", "2:30", etc.
+   */
+  private static parseTimeString(raw: string): string {
+    let str = raw.trim();
+
+    // Handle pm/am variants
+    const pmMatch = str.match(/(\d{1,2})(?::(\d{2}))?\s*pm/i);
+    if (pmMatch) {
+      let hours = parseInt(pmMatch[1]);
+      const mins = pmMatch[2] ? parseInt(pmMatch[2]) : 0;
+      if (hours < 12) hours += 12;
+      return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    }
+
+    const amMatch = str.match(/(\d{1,2})(?::(\d{2}))?\s*am/i);
+    if (amMatch) {
+      let hours = parseInt(amMatch[1]);
+      const mins = amMatch[2] ? parseInt(amMatch[2]) : 0;
+      if (hours === 12) hours = 0;
+      return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    }
+
+    // Plain time: "15:00", "9:30"
+    const colonMatch = str.match(/^(\d{1,2}):(\d{2})$/);
+    if (colonMatch) {
+      const hours = parseInt(colonMatch[1]);
+      const mins = parseInt(colonMatch[2]);
+      if (hours >= 0 && hours <= 23 && mins >= 0 && mins <= 59) {
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+      }
+    }
+
+    // Bare number: "15" -> "15:00", "1500" -> "15:00"
+    const cleanNum = str.replace(/[^0-9]/g, '');
+    if (cleanNum.length >= 1 && cleanNum.length <= 4) {
+      const padded = cleanNum.padStart(4, '0');
+      const hours = parseInt(padded.substring(0, 2));
+      const mins = parseInt(padded.substring(2, 4));
+      if (hours >= 0 && hours <= 23 && mins >= 0 && mins <= 59) {
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+      }
+    }
+
+    return ""; // Unparseable
   }
 
   private static extractSection(text: string, startMarker: string, endMarkers: string[]): string {
@@ -119,13 +185,18 @@ export class PDFService {
       { key: "Source", icon: "🍽️" },
       { key: "Treatments", icon: "💆" },
       { key: "Massage", icon: "💆" },
+      { key: "Aromatherapy", icon: "💆" },
       { key: "Afternoon Tea", icon: "🍰" },
       { key: "Bento", icon: "🍱" },
       { key: "Spa Use", icon: "♨️" },
+      { key: "Spa Hamper", icon: "♨️" },
       { key: "Lake House", icon: "🍰" },
       { key: "GH Pure", icon: "💆" },
+      { key: "Pure Lakes", icon: "💆" },
+      { key: "Pure Couples", icon: "💆" },
       { key: "Pure", icon: "💆" },
-      { key: "Pure Couples", icon: "💆" }
+      { key: "Dinner", icon: "🍽️" },
+      { key: "Lunch", icon: "🍽️" }
     ];
 
     const parts = text.split('/');
@@ -136,17 +207,17 @@ export class PDFService {
       if (!p) return;
 
       const dateMatch = p.match(/(\d{2}\/\d{2})/);
-      const timeMatch = p.match(/(\d{2}:\d{2})/);
+      const timeMatch = p.match(/(\d{1,2}:\d{2})/);
       const tableMatch = p.match(/Table for (\d+)/i);
 
       const date = dateMatch ? dateMatch[1] : "";
       const time = timeMatch ? `@ ${timeMatch[1]}` : "";
       const pax = tableMatch ? `(T-${tableMatch[1]})` : "";
 
-      let cleanDetails = p.replace(/\d{2}\/\d{2}/, "")
-        .replace(/\d{2}:\d{2}/, "")
+      let cleanDetails = p.replace(/\d{2}\/\d{2}(?:\/\d{2,4})?/, "")
+        .replace(/\d{1,2}:\d{2}/, "")
         .replace(/Table for \d+/i, "")
-        .replace(/^[:\s\-]+|[:\s\-]+$/g, "")
+        .replace(/^[:\s\-@]+|[:\s\-@]+$/g, "")
         .trim();
 
       let emoji = "🔹";
@@ -158,7 +229,7 @@ export class PDFService {
       }
 
       if (cleanDetails) {
-        result.push(`${emoji} ${cleanDetails} ${pax} (${date}${time})`.replace(/\s+/g, " ").trim());
+        result.push(`${emoji} ${cleanDetails} ${pax} ${date ? `(${date}${time})` : time}`.replace(/\s+/g, " ").trim());
       }
     });
 
@@ -240,99 +311,135 @@ export class PDFService {
       .replace(/(\s(Mr|Mrs|Miss|Ms|Dr|&|Sir|Lady|\+)+)+[*]*$/i, "")
       .trim();
 
-    // --- 3. FACILITIES (Slash-Based Deep Scan) ---
-    const facilityMatches = singleLineText.match(/\/(Spice|Source|The Lake House|GH\s+Pure|GH\s+ESPA|Pure|Massage|Treatments|Steam|Couples|Tea|Afternoon|Spa|Mud|Bento)[^/]+/gi) || [];
-    const facilitiesFormatted = this.formatFacilities(facilityMatches.join(" "));
+    // --- 3. FACILITIES (Slash-Based Deep Scan + Standalone Dinner/Spa Lines) ---
+    const facilityMatches = singleLineText.match(/\/(Spice|Source|The Lake House|GH\s+Pure|GH\s+ESPA|Pure\s*Lakes?|Pure|Massage|Aromatherapy|Treatments|Steam|Couples|Tea|Afternoon|Spa|Mud|Bento)[^/]+/gi) || [];
+
+    // Also capture standalone "Dinner for X" and "Spa In-Room Hamper" lines
+    // These appear as free-text below booking notes, not behind a /Slash prefix
+    const standaloneFacilities: string[] = [];
+    for (const line of rawTextLines) {
+      // "Dinner for 2 on 07/02/26 at 18:30 in SOURCE at Gilpin Hotel for £210.00"
+      const dinnerMatch = line.match(/Dinner\s+for\s+\d+\s+on\s+[\d/]+\s+at\s+[\d:]+\s+in\s+.+/i);
+      if (dinnerMatch) {
+        standaloneFacilities.push(dinnerMatch[0].trim());
+      }
+      // "Spa In-Room Hamper on 07/02/26 for £0.00"
+      const spaMatch = line.match(/Spa\s+In-Room\s+Hamper\s+on\s+[\d/]+/i);
+      if (spaMatch) {
+        standaloneFacilities.push(spaMatch[0].trim());
+      }
+      // "Champagne on 02/01/26 for £95.00"
+      const champMatch = line.match(/(Champagne|Prosecco|Wine|Flowers)\s+on\s+[\d/]+\s+for\s+£[\d.]+/i);
+      if (champMatch) {
+        standaloneFacilities.push(champMatch[0].trim());
+      }
+    }
+
+    const allFacilityText = [...facilityMatches, ...standaloneFacilities.map(s => `/${s}`)].join(" ");
+    const facilitiesFormatted = this.formatFacilities(allFacilityText);
 
     // --- 4. CAR REGISTRATION ---
+    // UK plate formats: AB12 CDE (new), A123 BCD (prefix), M88 HCT (personalised)
+    // PMS often prefixes with * (e.g., "*M88 HCT") — strip these.
+    // Car reg is ALWAYS on the first line (header row), last column. Never on subsequent lines.
     let car = "";
-    const plateRegex = /\b([A-Z]{2}\d{2}\s?[A-Z]{3}|[A-Z]{1,2}\d{1,4}\s?[A-Z]{0,3})\b/gi;
-    const monthFilter = /\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b/i;
-    const carExclusions = /^(BB[\s_]?\d|APR|RO|COMP|GS|JS|MR|SL|SS|MAG|RATE|ID|PAGE|DATE|ROOM|UNIT|TOKEN|TOTAL|DEPOSIT|NET|VAT|GBP|MAN|UA|AD|CH|GRP)/i;
 
-    const possiblePlates = rawItems.filter(i => i.x > 450 && i.str.match(plateRegex));
-    for (const item of possiblePlates) {
-      const str = item.str.trim().toUpperCase();
-      const cleanStr = str.replace(/\s/g, '');
-      if (cleanStr.length < 4) continue;
-      if (str.match(monthFilter)) continue;
-      if (!str.match(carExclusions)) {
-        car = str;
-        break;
+    const platePatterns = [
+      /\b[A-Z]{2}\d{2}\s?[A-Z]{3}\b/i,         // New format: AB12 CDE, DG18 WXF
+      /\b[A-Z]\d{1,3}\s[A-Z]{3}\b/i,            // Prefix with space: M88 HCT, A123 BCD
+      /\b\d{1,4}\s[A-Z]{2,3}\b/i,               // Numeric prefix: 30 BHJ, 1234 AB (digits first, personalised)
+      /\b[A-Z]{2}\d{2,4}\b/i,                    // Short: LN75, AB1234 (no trailing letters)
+    ];
+    const monthFilter = /^(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)$/i;
+    const carExclusions = /^(BB\d|APR|RO|COMP|GS|JS|GR|MR|CR|SL|SS|LH|MAG|RATE|ID|PAGE|DATE|ROOM|UNIT|TOKEN|TOTAL|DEPOSIT|NET|VAT|GBP|MAN|UA|AD|CH|GRP|DEF|CHI|VAC|MOT|NDR|POB|MIN|CEL|MCT)$/i;
+    // Words that indicate the text is hotel/booking content, not a plate
+    const contentFilter = /table|spice|source|dinner|lunch|spa|hamper|massage|pure|bento|tea|booking|facility|allergy|note|gilpin|hotel|token|billing|deposit|checked|arrival/i;
+
+    // Only scan the FIRST LINE (header row) — car reg column is always there
+    const firstLineItems = block.lines[0]?.items || [];
+    const rightItems = firstLineItems
+      .filter((i: any) => i.x > 480)
+      .sort((a: any, b: any) => a.x - b.x);
+
+    if (rightItems.length > 0) {
+      // Try combining the last N items (plate may be 1-3 items: "DG18 WXF" or "*M88" + "HCT")
+      // Try smallest window first for more precise match, then expand
+      for (const windowSize of [2, 3, 4]) {
+        if (car) break;
+        const lastItems = rightItems.slice(-windowSize);
+        const combinedText = lastItems
+          .map((i: any) => i.str.trim().replace(/^\*+/, ''))
+          .filter((s: string) => s.length > 0 && !contentFilter.test(s))
+          .join(' ')
+          .toUpperCase()
+          .trim();
+
+        if (!combinedText || contentFilter.test(combinedText)) continue;
+
+        for (const pattern of platePatterns) {
+          const match = combinedText.match(pattern);
+          if (match) {
+            const candidate = match[0].trim();
+            const cleanCandidate = candidate.replace(/\s/g, '');
+            if (cleanCandidate.length >= 4 && !monthFilter.test(candidate) && !carExclusions.test(cleanCandidate)) {
+              car = candidate;
+              break;
+            }
+          }
+        }
       }
     }
 
     // --- 5. ETA & DURATION ---
-    // LEGACY APPROACH: 
-    // 1. Check FIRST LINE for 4-digit time (e.g., "1507") or HH:MM format
-    // 2. Fall back to searching ALL text for "ETA:" prefix in booking notes
+    // Priority: Booking notes "ETA:" label > first-line 4-digit time
+    // Booking notes are more reliable since the first-line time is often a status code
     let eta = "";
 
     // Get the first line text
     const firstLineText = rawTextLines[0] || "";
 
-    // Method 1: Look for 4-digit time or HH:MM on first line (like legacy)
-    // Match patterns like "1507" or "15:07" but NOT years like "2026"
-    const topTimeMatch = firstLineText.match(/\b(\d{4}|\d{1,2}:\d{2})\b/);
-    if (topTimeMatch && !topTimeMatch[0].match(/202\d/)) {
-      const t = topTimeMatch[0].replace(":", "");
-      if (t.length === 4) {
-        const hours = parseInt(t.substring(0, 2));
-        const mins = parseInt(t.substring(2, 4));
-        // Validate reasonable time (00:00 - 23:59) and not a room number
-        if (hours >= 0 && hours <= 23 && mins >= 0 && mins <= 59 && hours >= 6) {
-          eta = `${t.substring(0, 2)}:${t.substring(2, 4)}`;
-        }
-      } else if (t.length === 3) {
-        // Handle times like "930" (9:30)
-        const hours = parseInt(t.substring(0, 1));
-        const mins = parseInt(t.substring(1, 3));
-        if (hours >= 6 && hours <= 23 && mins >= 0 && mins <= 59) {
-          eta = `0${hours}:${mins.toString().padStart(2, '0')}`;
+    // Method 1 (Primary): Search ALL text for "ETA:" prefix in booking notes
+    // Handles: "ETA: 2.30-3pm", "ETA: 15-16:00", "ETA: 3pm", "ETA: 1pm", "ETA: 14:00"
+    const etaLabelMatch = singleLineText.match(/ETA:?\s*([\d.:,-]+(?:\s*-\s*[\d.:]+)?(?:\s*(?:pm|am))?|\d{1,2}(?:[.:,]\d{2})?\s*(?:pm|am))/i);
+    if (etaLabelMatch) {
+      let etaStr = etaLabelMatch[1].trim();
+
+      // Handle ranges: take the first time. "2.30-3pm" → "2.30pm", "15-16:00" → "15"
+      // Preserve am/pm suffix from end if the first part doesn't have one
+      const ampmSuffix = etaStr.match(/(am|pm)$/i)?.[1] || '';
+      if (etaStr.includes('-')) {
+        etaStr = etaStr.split('-')[0].trim();
+        // Reattach am/pm if the first part doesn't have it
+        if (ampmSuffix && !etaStr.match(/(am|pm)/i)) {
+          etaStr += ampmSuffix;
         }
       }
+
+      // Normalize dots to colons: "2.30pm" → "2:30pm"
+      etaStr = etaStr.replace(/\./g, ':');
+
+      eta = this.parseTimeString(etaStr);
     }
 
-    // Method 2: Fall back to searching ALL text for "ETA:" prefix (like legacy)
-    // This captures ETAs in "Booking Notes" section like "ETA: 15-16:00" or "ETA: 3pm"
+    // Method 2 (Fallback): Look for 4-digit time or HH:MM on first line
+    // Match patterns like "1435" or "14:35" but NOT years like "2026" or room numbers
     if (!eta) {
-      // Search for ETA: label anywhere in the text
-      const etaMatch = singleLineText.match(/ETA:?\s*([\d:-]+(?:pm|am)?|\d{1,2}(?:pm|am))/i);
-      if (etaMatch) {
-        let etaStr = etaMatch[1].trim();
-        // Handle "15-16:00" -> take the first time "15"
-        if (etaStr.includes('-')) {
-          etaStr = etaStr.split('-')[0];
-        }
-        // Handle "3pm" -> "15:00"
-        if (etaStr.match(/(\d{1,2})(?::(\d{2}))?(?:pm)/i)) {
-          const pmMatch = etaStr.match(/(\d{1,2})(?::(\d{2}))?(?:pm)/i);
-          if (pmMatch) {
-            let hours = parseInt(pmMatch[1]);
-            const mins = pmMatch[2] ? parseInt(pmMatch[2]) : 0;
-            if (hours < 12) hours += 12;
-            eta = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+      const topTimeMatch = firstLineText.match(/\b(\d{4}|\d{1,2}:\d{2})\b/);
+      if (topTimeMatch && !topTimeMatch[0].match(/202\d/)) {
+        const t = topTimeMatch[0].replace(":", "");
+        if (t.length === 4) {
+          const hours = parseInt(t.substring(0, 2));
+          const mins = parseInt(t.substring(2, 4));
+          // Validate reasonable arrival time (06:00 - 23:59) and not a room number
+          if (hours >= 6 && hours <= 23 && mins >= 0 && mins <= 59) {
+            eta = `${t.substring(0, 2)}:${t.substring(2, 4)}`;
           }
-        } else if (etaStr.match(/(\d{1,2})(?::(\d{2}))?(?:am)/i)) {
-          const amMatch = etaStr.match(/(\d{1,2})(?::(\d{2}))?(?:am)/i);
-          if (amMatch) {
-            let hours = parseInt(amMatch[1]);
-            const mins = amMatch[2] ? parseInt(amMatch[2]) : 0;
-            if (hours === 12) hours = 0;
-            eta = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-          }
-        } else {
-          // Plain number like "15" or "1500" or "15:00"
-          const cleanTime = etaStr.replace(/[^0-9:]/g, '');
-          if (cleanTime.includes(':')) {
-            eta = cleanTime;
-          } else if (cleanTime.length >= 2 && cleanTime.length <= 4) {
-            const padded = cleanTime.padStart(4, '0');
-            const hours = parseInt(padded.substring(0, 2));
-            const mins = parseInt(padded.substring(2, 4));
-            if (hours >= 0 && hours <= 23 && mins >= 0 && mins <= 59) {
-              eta = `${padded.substring(0, 2)}:${padded.substring(2, 4)}`;
-            }
+        } else if (t.length === 3) {
+          // Handle times like "930" (9:30)
+          const hours = parseInt(t.substring(0, 1));
+          const mins = parseInt(t.substring(1, 3));
+          if (hours >= 6 && hours <= 23 && mins >= 0 && mins <= 59) {
+            eta = `0${hours}:${mins.toString().padStart(2, '0')}`;
           }
         }
       }
@@ -372,33 +479,81 @@ export class PDFService {
       ll = "Yes";
     }
 
-    // --- 7. CONSOLIDATED NOTES ---
+    // --- 7. ALLERGIES (Specific Extraction) ---
+    let allergies: string[] = [];
+    const allergySection = this.extractSection(singleLineText, "Allergies:", ["HK Notes:", "Guest Notes:", "Unit:", "Page"]);
+    if (allergySection && !/^\s*(NDR|None|N\/A|No\s+Dietary|No\s+known)\s*$/i.test(allergySection.trim())) {
+      // Real allergies found (not just NDR/None)
+      allergies.push(`⚠️ ALLERGY: ${allergySection.trim()}`);
+    }
+    // Also check for allergy keywords scattered in text
+    if (scanLower.includes("nut allergy") && !allergies.some(a => a.toLowerCase().includes('nut'))) allergies.push("🥜 Nut Allergy");
+    if ((scanLower.includes("gluten free") || scanLower.includes("coeliac")) && !allergies.some(a => /gluten|coeliac/i.test(a))) allergies.push("🍞 Gluten Free");
+    if ((scanLower.includes("dairy free") || scanLower.includes("lactose")) && !allergies.some(a => /dairy|lactose/i.test(a))) allergies.push("🧀 Dairy Free");
+    if (scanLower.includes("vegan") && !allergies.some(a => /vegan/i.test(a))) allergies.push("🌱 Vegan");
+    if (scanLower.includes("vegetarian") && !allergies.some(a => /vegetarian/i.test(a))) allergies.push("🥬 Vegetarian");
+
+    // --- 8. OCCASION (Explicit Extraction) ---
+    let occasionNote = "";
+    const occasionSection = this.extractSection(singleLineText, "Occasion:", ["P.O.Nr:", "Traces:", "Contact Details:", "Booking Notes"]);
+    if (occasionSection && occasionSection.trim().length > 1) {
+      occasionNote = `🎉 ${occasionSection.trim()}`;
+    }
+    // Also check "Special Occasion:" in booking notes
+    const specialOccasion = singleLineText.match(/Special Occasion:\s*([^\n]+?)(?=\s*(?:ETA:|Billing:|Been Before:|In Room|Checked:|$))/i);
+    if (specialOccasion && specialOccasion[1].trim().length > 1) {
+      const soText = specialOccasion[1].trim();
+      if (!occasionNote.includes(soText)) {
+        occasionNote = occasionNote ? `${occasionNote} / ${soText}` : `🎉 ${soText}`;
+      }
+    }
+
+    // --- 9. CONSOLIDATED NOTES ---
     const packageRegex = /\b(MIN|MAGESC|BB1|BB2|BB3|BB|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB|LHBB1|LHBB2|RO|CEL|POB_STAFF)\b/i;
     const rateMatch = singleLineText.match(packageRegex);
     const rateCode = rateMatch ? rateMatch[1].toUpperCase() : "";
 
     const noteSections = [
-      this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Booking Notes:"]),
-      this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:", "Booking Notes:"]),
-      this.extractSection(singleLineText, "Booking Notes:", ["Unit:", "Page", "HK Notes:", "Guest Notes:"]),
-      this.extractSection(singleLineText, "Traces:", ["Booking Notes", "Been Before", "Occasion:"]),
-      this.extractSection(singleLineText, "In Room(?: on Arrival)?:", ["Checked:", "8 Day Check", "Billing:"])
+      this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Booking Notes:", "Allergies:"]),
+      this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:", "Booking Notes:", "Allergies:"]),
+      this.extractSection(singleLineText, "Booking Notes:", ["Unit:", "Page", "HK Notes:", "Guest Notes:", "Allergies:", "Facility Bookings:"]),
+      this.extractSection(singleLineText, "Traces:", ["Booking Notes", "Been Before", "Occasion:", "Facility Bookings:"]),
+      this.extractSection(singleLineText, "In Room(?: on Arrival)?:", ["Checked:", "8 Day Check", "4 day Call", "Billing:", "Flowers"])
     ];
 
-    const keywords = ["Ice Bucket", "Glasses", "Dog Bed", "Cot", "Extra Bed", "Topper", "Robes", "Voucher", "Flowers", "Birthday", "Anniversary", "Champage", "Chocolates", "Balloons"];
+    // Expanded in-room keyword list for Gilpin
+    const keywords = [
+      "Ice Bucket", "Glasses", "Dog Bed", "Dog Bowl", "Cot", "Extra Bed", "Extra Pillow",
+      "Topper", "Mattress Topper", "Robes", "Slippers", "Voucher",
+      "Flowers", "Rose Petals", "Balloons",
+      "Birthday", "Anniversary", "Celebration",
+      "Champagne", "Prosecco", "Wine", "Gin", "Whisky",
+      "Chocolates", "Chocolate", "Truffles", "Cake",
+      "Spa Hamper", "Gift", "Candles"
+    ];
     const foundKeywords = keywords.filter(k => scanLower.includes(k.toLowerCase()));
 
     let consolidatedNotes: string[] = [];
-    if (scanLower.includes("nut allergy")) consolidatedNotes.push("🥜 Nut Allergy");
-    if (scanLower.includes("gluten free") || scanLower.includes("coeliac")) consolidatedNotes.push("🍞 Gluten Free");
-    if (scanLower.includes("dairy free") || scanLower.includes("lactose")) consolidatedNotes.push("🧀 Dairy Free");
+
+    // Allergies first (critical visibility)
+    consolidatedNotes.push(...allergies);
+
+    // Occasion next (important for guest experience)
+    if (occasionNote) consolidatedNotes.push(occasionNote);
+
     if (rateCode === "POB_STAFF") consolidatedNotes.push("⭐ VIP (POB Staff)");
+
+    // Staff initials and internal codes to exclude from notes
+    const noisePatterns = /^(NDR|None|N\/A|LV|KW|AM|JS|SL|SS|CB|EW|RH|GRP|DEF|CHI|VAC|Token|Gilpin Hotel|Pay Own Account|Unit:|Deposit:|Total Rate:|Balance|Contact Details:|P\.O\.Nr:|Company:)$/i;
 
     noteSections.forEach(sec => {
       if (!sec) return;
       sec.split(/,|•|&|\n/).forEach(p => {
         const clean = p.trim();
-        if (clean.length > 2 && !/^[A-Z]{2}$/.test(clean) && !/^(NDR|None|N\/A|LV|KW|AM|JS|SL|SS)$/i.test(clean)) {
+        if (clean.length > 2 && !/^[A-Z]{2}$/.test(clean) && !noisePatterns.test(clean)) {
+          // Skip if it's just a date like "02/01/26" or a price like "£95.00"
+          if (/^\d{2}\/\d{2}\/\d{2,4}$/.test(clean)) return;
+          if (/^£[\d.]+$/.test(clean)) return;
           consolidatedNotes.push(clean);
         }
       });

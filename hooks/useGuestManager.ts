@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Guest, Flag, FilterType, ArrivalSession } from '../types';
+import { Guest, Flag, FilterType, ArrivalSession, RoomMove } from '../types';
 import { PDFService } from '../services/pdfService';
 import { GeminiService } from '../services/geminiService';
 import { ExcelService } from '../services/excelService';
@@ -11,7 +11,8 @@ import {
   subscribeToFullSession,
   fetchSession,
   syncSession,
-  trackPresence
+  trackPresence,
+  deleteSessionFromFirebase
 } from '../services/firebaseService';
 import {
   isPMSConfigured,
@@ -273,7 +274,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
   // 7. Actions
 
-  // Robust Synchronous Delete
+  // Robust Synchronous Delete — removes from local state AND Firebase
   const deleteSession = (idToDelete: string) => {
     let nextSessions = sessions.filter(s => s.id !== idToDelete);
     let nextActiveId = activeSessionId;
@@ -281,6 +282,8 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     if (nextSessions.length === 0) {
       // ALLOW EMPTY STATE: If all sessions are deleted, we return to 0 tabs
       nextActiveId = "";
+      // Clean URL when no sessions remain
+      window.history.replaceState({}, '', window.location.pathname);
     } else if (idToDelete === activeSessionId) {
       // If we deleted the active one, find neighbor
       const deletedIndex = sessions.findIndex(s => s.id === idToDelete);
@@ -290,6 +293,13 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
     setSessions(nextSessions);
     setActiveSessionId(nextActiveId);
+
+    // Also delete from Firebase so other devices see the removal
+    if (firebaseEnabled) {
+      deleteSessionFromFirebase(idToDelete).catch(err => {
+        console.error('Firebase delete failed (local already removed):', err);
+      });
+    }
   };
 
   const createNewSession = () => {
@@ -408,7 +418,29 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   };
 
   const updateGuest = (id: string, updates: Partial<Guest>) => {
-    updateActiveSessionGuests(guests.map(g => g.id === id ? { ...g, ...updates } : g));
+    updateActiveSessionGuests(guests.map(g => {
+      if (g.id !== id) return g;
+
+      // Detect room moves
+      if (updates.room && updates.room !== g.room && g.room.trim() !== '') {
+        const roomMove: RoomMove = {
+          id: `move_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          timestamp: Date.now(),
+          fromRoom: g.room,
+          toRoom: updates.room,
+          movedBy: updates.lastStatusUpdatedBy || 'User',
+        };
+        const existingMoves = g.roomMoves || [];
+        return {
+          ...g,
+          ...updates,
+          previousRoom: g.room,
+          roomMoves: [...existingMoves, roomMove],
+        };
+      }
+
+      return { ...g, ...updates };
+    }));
   };
 
   const deleteGuest = (id: string) => {
@@ -477,11 +509,11 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         setCurrentBatch(i + 1);
         setProgressMsg(`AUDITING: ${i + 1}/${chunks.length}...`);
 
-        let refinements = await GeminiService.refineGuestBatch(currentBatchGuests, ['notes', 'facilities']);
+        let refinements = await GeminiService.refineGuestBatch(currentBatchGuests, ['notes', 'facilities', 'car']);
         if (!refinements) {
           console.warn("Batch failed, retrying...");
           await new Promise(r => setTimeout(r, 3000));
-          refinements = await GeminiService.refineGuestBatch(currentBatchGuests, ['notes', 'facilities']);
+          refinements = await GeminiService.refineGuestBatch(currentBatchGuests, ['notes', 'facilities', 'car']);
         }
 
         if (refinements) {
@@ -535,7 +567,9 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                     inRoomItems: ref.inRoomItems || updatedGuests[gIndex].inRoomItems,
                     preferences: ref.preferences || updatedGuests[gIndex].preferences,
                     packageName: correctedPackage || updatedGuests[gIndex].packageName,
-                    ll: ref.history || updatedGuests[gIndex].ll
+                    ll: ref.history || updatedGuests[gIndex].ll,
+                    // AI car only fills in if regex parser didn't find one
+                    car: updatedGuests[gIndex].car || ref.car || updatedGuests[gIndex].car
                   };
                 }
               } else {
@@ -563,7 +597,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     if (activeFilter === 'all') return true;
     const rNum = parseInt(g.room.split(' ')[0]);
     if (activeFilter === 'main') return rNum > 0 && rNum <= 31;
-    if (activeFilter === 'lake') return rNum >= 51 && rNum <= 60;
+    if (activeFilter === 'lake') return rNum >= 51 && rNum <= 58;
     if (activeFilter === 'vip') return g.prefillNotes.includes('⭐') || g.prefillNotes.includes('VIP') || g.packageName === 'POB_STAFF';
     if (activeFilter === 'allergy') return ['⚠️', '🥛', '🥜', '🍞', '🧀'].some(e => g.prefillNotes.includes(e));
     if (activeFilter === 'return') return g.ll.toLowerCase().includes('yes');

@@ -453,7 +453,7 @@ export function subscribeToSessionList(
 }
 
 /**
- * Delete a session from Firebase
+ * Delete a session from Firebase — cleans up all related data nodes
  */
 export async function deleteSessionFromFirebase(sessionId: string): Promise<void> {
     if (!db) {
@@ -461,13 +461,24 @@ export async function deleteSessionFromFirebase(sessionId: string): Promise<void
         return;
     }
 
+    if (!sessionId || typeof sessionId !== 'string') {
+        console.error('Invalid session ID for deletion');
+        return;
+    }
+
     try {
+        // Remove all data associated with this session
         const sessionRef = ref(db, `sessions/${sessionId}`);
-        await remove(sessionRef);
-        // Also clean up presence data
         const presenceRef = ref(db, `presence/${sessionId}`);
-        await remove(presenceRef);
-        console.log('🗑️ Deleted session from Firebase:', sessionId);
+        const chatRef = ref(db, `chat/${sessionId}`);
+
+        await Promise.all([
+            remove(sessionRef),
+            remove(presenceRef),
+            remove(chatRef),
+        ]);
+
+        console.log('🗑️ Deleted session and all related data from Firebase:', sessionId);
     } catch (error) {
         console.error('Failed to delete session from Firebase:', error);
         throw error;
@@ -537,4 +548,67 @@ export function subscribeToPresence(
     });
 
     return () => off(presenceRef);
+}
+
+// === Chat System ===
+
+export interface ChatMessage {
+    id: string;
+    author: string;
+    department: string;
+    text: string;
+    timestamp: number;
+}
+
+/**
+ * Send a chat message to a session
+ */
+export async function sendChatMessage(
+    sessionId: string,
+    message: Omit<ChatMessage, 'id' | 'timestamp'>
+): Promise<void> {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        return;
+    }
+
+    try {
+        const chatRef = ref(db, `chat/${sessionId}`);
+        const newMsgRef = push(chatRef);
+        await set(newMsgRef, {
+            ...message,
+            id: newMsgRef.key,
+            timestamp: Date.now()
+        });
+    } catch (error) {
+        console.error('Failed to send chat message:', error);
+    }
+}
+
+/**
+ * Subscribe to chat messages for a session
+ */
+export function subscribeToChatMessages(
+    sessionId: string,
+    onUpdate: (messages: ChatMessage[]) => void
+): () => void {
+    if (!db) {
+        onUpdate([]);
+        return () => { };
+    }
+
+    const chatRef = ref(db, `chat/${sessionId}`);
+
+    const unsubscribe = onValue(chatRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            const messages: ChatMessage[] = Object.values(data);
+            messages.sort((a, b) => a.timestamp - b.timestamp);
+            onUpdate(messages);
+        } else {
+            onUpdate([]);
+        }
+    });
+
+    return () => off(chatRef);
 }

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gilpin Hotel - Intelligence Hub</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/favicon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -129,7 +131,7 @@
         .hl-ctx-red { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
         .hl-plate { background: #000; color: #fff; font-family: monospace; border: 1px solid #333; }
 
-        /* --- PRINT PROTOCOL V4.0 --- */
+        /* --- PRINT PROTOCOL V5.0 --- */
         @media screen {
             .print-only { display: none !important; }
         }
@@ -143,6 +145,7 @@
                 background-image: none !important; 
                 padding: 0 !important;
                 margin: 0 !important;
+                font-size: 8pt;
             }
             
             .hl-badge { 
@@ -159,20 +162,24 @@
                 table-layout: fixed !important;
             }
             th, td { 
-                border-bottom: 1px solid #ddd !important; 
-                padding: 8px !important; 
+                border-bottom: 0.5pt solid #ddd !important; 
+                padding: 1px 3px !important; 
                 vertical-align: top !important;
                 word-wrap: break-word !important;
+                overflow: hidden !important;
+                line-height: 1.15 !important;
             }
             thead th {
                 background: #f1f1f1 !important;
                 color: black !important;
                 -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                padding: 2px 3px !important;
             }
 
             @page { 
                 size: landscape; 
-                margin: 0.5cm; 
+                margin: 0.2cm 0.3cm; 
             }
 
             /* Column Visibility Logic */
@@ -191,9 +198,13 @@
             .print-mode-delivery .col-inroom, 
             .print-mode-delivery .col-allergies { display: table-cell !important; }
             
-            /* Greeter List specific sizing */
-            .print-mode-greeter td { font-size: 14pt !important; height: 60pt; }
-            .print-mode-greeter td.font-black { font-size: 24pt !important; }
+            /* Greeter: larger text but efficient row height */
+            .print-mode-greeter td { font-size: 11pt !important; padding: 4px 6px !important; }
+            .print-mode-greeter td.font-black { font-size: 18pt !important; }
+
+            /* Page break optimisation */
+            tr { page-break-inside: avoid !important; }
+            thead { display: table-header-group !important; }
         }
 
         /* ============================================

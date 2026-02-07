@@ -79,6 +79,11 @@ export class GeminiService {
 **F. history (Loyalty Tracker)**
 * **FORMAT:** "Yes (x[Count])", "Yes", or "No".
 
+**G. car (Vehicle Registration)**
+* **GOAL:** Extract the guest's vehicle registration / number plate from the raw text.
+* **UK FORMATS:** New (AB12 CDE), Prefix (A123 BCD, M88 HCT), Numeric (30 BHJ), Short (LN75).
+* **RULES:** Strip any leading * characters (PMS marker). Return empty string "" if no plate found. Do NOT return internal codes (JS, SL, MAG, GRP, etc.).
+
 ### 4. OUTPUT REQUIREMENTS
 Return a raw JSON array of objects. No markdown.
 `;
@@ -117,9 +122,10 @@ RAW: ${g.rawHtml}`
                   inRoomItems: { type: Type.STRING },
                   preferences: { type: Type.STRING },
                   packages: { type: Type.STRING },
-                  history: { type: Type.STRING }
+                  history: { type: Type.STRING },
+                  car: { type: Type.STRING }
                 },
-                required: ["notes", "facilities", "inRoomItems", "preferences", "packages", "history"]
+                required: ["notes", "facilities", "inRoomItems", "preferences", "packages", "history", "car"]
               }
             }
           }
@@ -148,5 +154,119 @@ RAW: ${g.rawHtml}`
       }
     }
     return null;
+  }
+
+  /**
+   * AI Smart Cleaning Order: Suggests optimal room cleaning priority
+   * based on ETAs, VIP status, and current housekeeping state.
+   */
+  static async suggestCleaningOrder(
+    guests: Guest[]
+  ): Promise<{ roomOrder: string[]; reasoning: string } | null> {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+    if (!apiKey) {
+      alert('AI features require a Gemini API key. Configure VITE_GEMINI_API_KEY in your .env file.');
+      return null;
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    const guestSummary = guests.map(g =>
+      `Room ${g.room}: ${g.name} | ETA: ${g.eta || 'Unknown'} | VIP: ${g.prefillNotes?.includes('VIP') || g.rawHtml?.includes('VIP') ? 'Yes' : 'No'} | HK Status: ${g.hkStatus || 'pending'} | Rate: ${g.rateCode || 'Standard'}`
+    ).join('\n');
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: `Here are today's arrivals at a luxury hotel:\n\n${guestSummary}\n\nWhich 5 rooms should Housekeeping clean FIRST? Consider: earliest ETAs, VIP guests, and operational efficiency.`,
+        config: {
+          systemInstruction: 'You are a luxury hotel operations expert. Analyze the arrivals and suggest the optimal cleaning order. Be concise but justify each choice.',
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              roomOrder: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+              reasoning: { type: Type.STRING },
+            },
+            required: ['roomOrder', 'reasoning'],
+          },
+        },
+      });
+
+      const text = response.text || '';
+      const clean = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+      return JSON.parse(clean || '{}');
+    } catch (error) {
+      console.error('[AI Cleaning Order] Error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * AI Sentiment Analysis: Auto-tag guests based on their notes/preferences
+   * to surface actionable requirements.
+   */
+  static async analyzeNoteSentiment(
+    guests: { name: string; notes: string; preferences: string; room: string }[]
+  ): Promise<{ guestIndex: number; tags: string[] }[] | null> {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+    if (!apiKey) {
+      alert('AI features require a Gemini API key. Configure VITE_GEMINI_API_KEY in your .env file.');
+      return null;
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    const guestData = guests.map((g, i) =>
+      `[${i}] ${g.name} (Room ${g.room}): "${g.notes}" | Strategy: "${g.preferences}"`
+    ).join('\n');
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: `Analyze these hotel guest notes and generate actionable tags for each:\n\n${guestData}`,
+        config: {
+          systemInstruction: `You are a luxury hotel intelligence system. Analyze each guest's notes and preferences. Generate 1-3 concise, actionable tags per guest from this list:
+- "Quiet Room Required" — if noise complaints or quiet preferences mentioned
+- "Allergy Alert" — if any food allergies or dietary needs present
+- "VIP Treatment" — if VIP, celebrity, or high-profile indicators found
+- "Special Occasion" — if birthday, anniversary, honeymoon mentioned
+- "Accessibility Need" — if mobility, disability, or access requirements noted
+- "Billing Alert" — if payment issues, vouchers, or balance due mentioned
+- "Returning Guest" — if stay history or loyalty indicators found
+- "Pet Friendly" — if dogs, pets mentioned
+- "Dietary Restriction" — if vegetarian, vegan, GF, etc.
+- "Late Arrival" — if very late ETA or after-hours check-in
+Only tag what is clearly supported by the text. Return empty tags array if nothing notable.`,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                guestIndex: { type: Type.NUMBER },
+                tags: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                },
+              },
+              required: ['guestIndex', 'tags'],
+            },
+          },
+        },
+      });
+
+      const text = response.text || '';
+      const clean = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+      return JSON.parse(clean || '[]');
+    } catch (error) {
+      console.error('[AI Sentiment] Error:', error);
+      return null;
+    }
   }
 }

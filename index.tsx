@@ -1,6 +1,9 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { ThemeProvider } from './contexts/ThemeProvider';
+import { ViewProvider } from './contexts/ViewProvider';
+import { HotkeysProvider } from './contexts/HotkeysProvider';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -8,4 +11,12 @@ if (!rootElement) {
 }
 
 const root = createRoot(rootElement);
-root.render(<App />);
+root.render(
+  <ThemeProvider>
+    <ViewProvider>
+      <HotkeysProvider>
+        <App />
+      </HotkeysProvider>
+    </ViewProvider>
+  </ThemeProvider>
+);

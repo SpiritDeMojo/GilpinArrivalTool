@@ -7,8 +7,8 @@ interface ConflictDetectorProps {
 }
 
 interface Conflict {
-    type: 'duplicate_room' | 'missing_eta' | 'missing_room';
-    severity: 'error' | 'warning';
+    type: 'duplicate_room' | 'missing_eta' | 'missing_room' | 'room_move';
+    severity: 'error' | 'warning' | 'info';
     message: string;
     guestIds: string[];
 }
@@ -61,6 +61,19 @@ const ConflictDetector: React.FC<ConflictDetectorProps> = ({ guests, onDismiss }
             });
         }
 
+        // Check for room moves (Red Lining)
+        const movedGuests = guests.filter(g => g.previousRoom);
+        movedGuests.forEach(g => {
+            const latestMove = g.roomMoves?.[g.roomMoves.length - 1];
+            const moveTime = latestMove ? new Date(latestMove.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+            issues.push({
+                type: 'room_move',
+                severity: 'info',
+                message: `🔄 ${g.name}: Room ${g.previousRoom} → Room ${g.room}${moveTime ? ` (moved at ${moveTime})` : ''}`,
+                guestIds: [g.id]
+            });
+        });
+
         return issues;
     }, [guests]);
 
@@ -68,6 +81,7 @@ const ConflictDetector: React.FC<ConflictDetectorProps> = ({ guests, onDismiss }
 
     const errorCount = conflicts.filter(c => c.severity === 'error').length;
     const warningCount = conflicts.filter(c => c.severity === 'warning').length;
+    const infoCount = conflicts.filter(c => c.severity === 'info').length;
 
     return (
         <div className="mb-6 space-y-2">
@@ -83,6 +97,8 @@ const ConflictDetector: React.FC<ConflictDetectorProps> = ({ guests, onDismiss }
                             {errorCount > 0 && <span className="text-red-500 font-bold">{errorCount} error{errorCount > 1 ? 's' : ''}</span>}
                             {errorCount > 0 && warningCount > 0 && ' • '}
                             {warningCount > 0 && <span className="text-amber-500 font-bold">{warningCount} warning{warningCount > 1 ? 's' : ''}</span>}
+                            {(errorCount > 0 || warningCount > 0) && infoCount > 0 && ' • '}
+                            {infoCount > 0 && <span className="text-blue-500 font-bold">{infoCount} room move{infoCount > 1 ? 's' : ''}</span>}
                         </span>
                     </div>
                 </div>
@@ -102,21 +118,26 @@ const ConflictDetector: React.FC<ConflictDetectorProps> = ({ guests, onDismiss }
                     <div
                         key={idx}
                         className={`flex items-start gap-3 px-5 py-3 rounded-xl border backdrop-blur-lg ${conflict.severity === 'error'
-                                ? 'bg-red-500/5 border-red-500/30'
+                            ? 'bg-red-500/5 border-red-500/30'
+                            : conflict.severity === 'info'
+                                ? 'bg-blue-500/5 border-blue-500/20'
                                 : 'bg-amber-500/5 border-amber-500/20'
                             }`}
                     >
                         <span className="mt-0.5">
-                            {conflict.severity === 'error' ? '❌' : '⚠️'}
+                            {conflict.severity === 'error' ? '❌' : conflict.severity === 'info' ? '🔄' : '⚠️'}
                         </span>
                         <div className="flex-1">
                             <span className={`text-sm font-semibold ${conflict.severity === 'error'
-                                    ? 'text-red-600 dark:text-red-400'
+                                ? 'text-red-600 dark:text-red-400'
+                                : conflict.severity === 'info'
+                                    ? 'text-blue-600 dark:text-blue-400'
                                     : 'text-amber-600 dark:text-amber-400'
                                 }`}>
                                 {conflict.type === 'duplicate_room' && 'Duplicate Room Assignment'}
                                 {conflict.type === 'missing_eta' && 'Missing ETA'}
                                 {conflict.type === 'missing_room' && 'Room Not Assigned'}
+                                {conflict.type === 'room_move' && 'Room Move'}
                             </span>
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                                 {conflict.message}

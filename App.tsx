@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTheme } from './contexts/ThemeProvider';
+import { useView } from './contexts/ViewProvider';
+import { useHotkeys } from './contexts/HotkeysProvider';
 import {
   FilterType,
   PrintMode,
+  NavPrintMode,
   PropertyFilter,
   DashboardView,
   HKStatus,
@@ -15,6 +19,8 @@ import { DEFAULT_FLAGS, NAV_HEIGHT, ALERT_HEIGHT } from './constants';
 
 import { useGuestManager } from './hooks/useGuestManager';
 import { useLiveAssistant } from './hooks/useLiveAssistant';
+import { useNotifications } from './hooks/useNotifications';
+import { useAuditLog } from './hooks/useAuditLog';
 
 import Navbar from './components/Navbar';
 import SessionBar from './components/SessionBar';
@@ -30,6 +36,8 @@ import ETATimeline from './components/ETATimeline';
 import ConflictDetector from './components/ConflictDetector';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionBrowser from './components/SessionBrowser';
+import ChatBubble from './components/ChatBubble';
+import ActivityLogPanel from './components/ActivityLogPanel';
 
 // Housekeeping Dashboard Components
 import HousekeepingDashboard from './components/HousekeepingDashboard';
@@ -37,17 +45,15 @@ import MaintenanceDashboard from './components/MaintenanceDashboard';
 import ReceptionDashboard from './components/ReceptionDashboard';
 
 const App: React.FC = () => {
-  const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
+  // Context hooks
+  const { isDark, toggleTheme } = useTheme();
+  const { dashboardView, setDashboardView, showAnalytics, toggleAnalytics, showTimeline } = useView();
+  const { printMode, triggerPrint, registerActions } = useHotkeys();
+
   const [isSticky, setIsSticky] = useState(false);
   const [isSopOpen, setIsSopOpen] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(false);
-  const [showTimeline, setShowTimeline] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [printMode, setPrintMode] = useState<PrintMode>('master');
   const [propertyFilter, setPropertyFilter] = useState<PropertyFilter>('total');
-
-  // Dashboard View State
-  const [dashboardView, setDashboardView] = useState<DashboardView>('arrivals');
 
   const {
     guests, filteredGuests, arrivalDateStr, isOldFile, activeFilter, setActiveFilter,
@@ -70,7 +76,7 @@ const App: React.FC = () => {
       result = result.filter(g => {
         const rNum = parseInt(g.room.split(' ')[0]);
         if (propertyFilter === 'main') return rNum > 0 && rNum <= 31;
-        if (propertyFilter === 'lake') return rNum >= 51 && rNum <= 60;
+        if (propertyFilter === 'lake') return rNum >= 51 && rNum <= 58;
         return true;
       });
     }
@@ -78,15 +84,7 @@ const App: React.FC = () => {
     return result;
   }, [filteredGuests, propertyFilter]);
 
-  const {
-    isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput,
-    startLiveAssistant, toggleMic, sendTextMessage, disconnect, clearHistory
-  } = useLiveAssistant(guests);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  }, [isDark]);
+  // useLiveAssistant is called after handler definitions below
 
   useEffect(() => {
     const handleScroll = () => { if (guests.length > 0) setIsSticky(window.scrollY > 40); };
@@ -94,28 +92,17 @@ const App: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [guests.length]);
 
-  // Keyboard shortcuts
+  const { auditedUpdate } = useAuditLog(guests, updateGuest);
+
+  // State for Activity Log panel
+  const [auditLogGuest, setAuditLogGuest] = useState<Guest | null>(null);
+
+  // Register hotkey actions (ref-based, no re-render)
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-        e.preventDefault();
-        if (guests.length > 0) triggerPrint('master');
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-        e.preventDefault();
-        if (guests.length > 0) onExcelExport();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [guests.length, onExcelExport]);
+    registerActions({ hasGuests: guests.length > 0, onExcelExport });
+  }, [guests.length, onExcelExport, registerActions]);
 
   const mainPaddingTop = isOldFile && guests.length > 0 ? NAV_HEIGHT + ALERT_HEIGHT : NAV_HEIGHT;
-
-  const triggerPrint = (mode: PrintMode) => {
-    setPrintMode(mode);
-    setTimeout(() => { window.print(); }, 300);
-  };
 
   const toggleExpand = (id: string) => {
     setExpandedRows(prev => {
@@ -127,39 +114,39 @@ const App: React.FC = () => {
 
   // === Housekeeping Status Handler ===
   const handleUpdateHKStatus = useCallback((guestId: string, status: HKStatus) => {
-    updateGuest(guestId, {
+    auditedUpdate(guestId, {
       hkStatus: status,
       lastStatusUpdate: Date.now(),
       lastStatusUpdatedBy: 'User'
-    } as Partial<Guest>);
-  }, [updateGuest]);
+    } as Partial<Guest>, 'User');
+  }, [auditedUpdate]);
 
   // === Maintenance Status Handler ===
   const handleUpdateMaintenanceStatus = useCallback((guestId: string, status: MaintenanceStatus) => {
-    updateGuest(guestId, {
+    auditedUpdate(guestId, {
       maintenanceStatus: status,
       lastStatusUpdate: Date.now(),
       lastStatusUpdatedBy: 'User'
-    } as Partial<Guest>);
-  }, [updateGuest]);
+    } as Partial<Guest>, 'User');
+  }, [auditedUpdate]);
 
   // === Guest Status Handler ===
   const handleUpdateGuestStatus = useCallback((guestId: string, status: GuestStatus) => {
-    updateGuest(guestId, {
+    auditedUpdate(guestId, {
       guestStatus: status,
       lastStatusUpdate: Date.now(),
       lastStatusUpdatedBy: 'User'
-    } as Partial<Guest>);
-  }, [updateGuest]);
+    } as Partial<Guest>, 'User');
+  }, [auditedUpdate]);
 
   // === In-Room Delivery Handler ===
   const handleUpdateInRoomDelivery = useCallback((guestId: string, delivered: boolean) => {
-    updateGuest(guestId, {
+    auditedUpdate(guestId, {
       inRoomDelivered: delivered,
       inRoomDeliveredAt: delivered ? Date.now() : undefined,
       inRoomDeliveredBy: delivered ? 'User' : undefined
-    } as Partial<Guest>);
-  }, [updateGuest]);
+    } as Partial<Guest>, 'User');
+  }, [auditedUpdate]);
 
   // === Room Note Handler (Cross-Department) ===
   const handleAddRoomNote = useCallback((guestId: string, note: Omit<RoomNote, 'id' | 'timestamp'>) => {
@@ -180,6 +167,14 @@ const App: React.FC = () => {
       lastStatusUpdatedBy: note.author
     } as Partial<Guest>);
   }, [guests, updateGuest]);
+
+  // === Live Assistant (must be after handleAddRoomNote) ===
+  const {
+    isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput,
+    startLiveAssistant, toggleMic, sendTextMessage, disconnect, clearHistory
+  } = useLiveAssistant({ guests, onAddRoomNote: handleAddRoomNote });
+
+  const { isMuted, toggleMute } = useNotifications(guests);
 
   // === Resolve Room Note Handler ===
   const handleResolveNote = useCallback((guestId: string, noteId: string, resolvedBy: string) => {
@@ -244,9 +239,9 @@ const App: React.FC = () => {
       <Navbar
         arrivalDateStr={arrivalDateStr}
         isDark={isDark}
-        toggleTheme={() => setIsDark(!isDark)}
+        toggleTheme={toggleTheme}
         onFileUpload={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
-        onPrint={(mode: any) => {
+        onPrint={(mode: NavPrintMode) => {
           const mapped: PrintMode = mode === 'main' ? 'master' : mode === 'inroom' ? 'delivery' : mode;
           triggerPrint(mapped);
         }}
@@ -258,8 +253,10 @@ const App: React.FC = () => {
         onToggleLive={startLiveAssistant}
         hasGuests={guests.length > 0}
         onAIRefine={handleAIRefine}
-        onToggleAnalytics={() => setShowAnalytics(!showAnalytics)}
+        onToggleAnalytics={toggleAnalytics}
         showAnalytics={showAnalytics}
+        isMuted={isMuted}
+        onToggleMute={toggleMute}
       />
 
       {isOldFile && guests.length > 0 && (
@@ -269,54 +266,80 @@ const App: React.FC = () => {
       )}
 
       {/* Dashboard View Tabs */}
-      {guests.length > 0 && (
-        <div className="no-print dashboard-view-tabs">
-          <div className="view-tabs-container">
-            <button
-              className={`view-tab ${dashboardView === 'arrivals' ? 'active' : ''}`}
-              onClick={() => setDashboardView('arrivals')}
-            >
-              📋 Arrivals
-            </button>
-            <button
-              className={`view-tab ${dashboardView === 'housekeeping' ? 'active' : ''}`}
-              onClick={() => setDashboardView('housekeeping')}
-            >
-              🧹 Housekeeping
-            </button>
-            <button
-              className={`view-tab ${dashboardView === 'maintenance' ? 'active' : ''}`}
-              onClick={() => setDashboardView('maintenance')}
-            >
-              🔧 Maintenance
-            </button>
-            <button
-              className={`view-tab ${dashboardView === 'reception' ? 'active' : ''}`}
-              onClick={() => setDashboardView('reception')}
-            >
-              🛎️ Reception
-            </button>
+      {guests.length > 0 && (() => {
+        const urgentMaintCount = guests.filter(g =>
+          (g.roomNotes || []).some(n => !n.resolved && (n.priority === 'urgent' || n.priority === 'high'))
+        ).length;
+
+        return (
+          <div className="no-print dashboard-view-tabs">
+            <div className="view-tabs-container">
+              <button
+                className={`view-tab ${dashboardView === 'arrivals' ? 'active' : ''}`}
+                onClick={() => setDashboardView('arrivals')}
+              >
+                📋 Arrivals ({guests.length})
+              </button>
+              <button
+                className={`view-tab ${dashboardView === 'housekeeping' ? 'active' : ''}`}
+                onClick={() => setDashboardView('housekeeping')}
+              >
+                🧹 Housekeeping
+              </button>
+              <button
+                className={`view-tab ${dashboardView === 'maintenance' ? 'active' : ''}`}
+                onClick={() => setDashboardView('maintenance')}
+                style={{ position: 'relative' }}
+              >
+                🔧 Maintenance
+                {urgentMaintCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '9px',
+                    fontWeight: 900,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid var(--bg-color, white)',
+                    animation: 'pulse 2s infinite',
+                  }}>{urgentMaintCount}</span>
+                )}
+              </button>
+              <button
+                className={`view-tab ${dashboardView === 'reception' ? 'active' : ''}`}
+                onClick={() => setDashboardView('reception')}
+              >
+                🛎️ Reception
+              </button>
+            </div>
+            {/* Firebase Connection Status */}
+            <div className="connection-status">
+              {connectionStatus === 'connected' && (
+                <span className="status-badge connected" title="Real-time sync active">
+                  🟢 Synced
+                </span>
+              )}
+              {connectionStatus === 'connecting' && (
+                <span className="status-badge connecting" title="Connecting to Firebase...">
+                  🟡 Connecting...
+                </span>
+              )}
+              {connectionStatus === 'offline' && (
+                <span className="status-badge offline" title="Offline mode - changes saved locally only">
+                  🔴 Offline
+                </span>
+              )}
+            </div>
           </div>
-          {/* Firebase Connection Status */}
-          <div className="connection-status">
-            {connectionStatus === 'connected' && (
-              <span className="status-badge connected" title="Real-time sync active">
-                🟢 Synced
-              </span>
-            )}
-            {connectionStatus === 'connecting' && (
-              <span className="status-badge connecting" title="Connecting to Firebase...">
-                🟡 Connecting...
-              </span>
-            )}
-            {connectionStatus === 'offline' && (
-              <span className="status-badge offline" title="Offline mode - changes saved locally only">
-                🔴 Offline
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {guests.length > 0 && dashboardView === 'arrivals' && (
         <div className="no-print relative my-2 md:my-6">
@@ -428,6 +451,7 @@ const App: React.FC = () => {
                 onUpdateHKStatus={handleUpdateHKStatus}
                 onAddRoomNote={handleAddRoomNote}
                 onResolveNote={handleResolveNote}
+                onViewAuditLog={(g) => setAuditLogGuest(g)}
               />
             )}
 
@@ -438,6 +462,7 @@ const App: React.FC = () => {
                 onUpdateMaintenanceStatus={handleUpdateMaintenanceStatus}
                 onAddRoomNote={handleAddRoomNote}
                 onResolveNote={handleResolveNote}
+                onViewAuditLog={(g: Guest) => setAuditLogGuest(g)}
               />
             )}
 
@@ -448,6 +473,7 @@ const App: React.FC = () => {
                 onUpdateGuestStatus={handleUpdateGuestStatus}
                 onUpdateInRoomDelivery={handleUpdateInRoomDelivery}
                 onAddCourtesyNote={handleAddCourtesyNote}
+                onViewAuditLog={(g: Guest) => setAuditLogGuest(g)}
               />
             )}
           </ErrorBoundary>
@@ -477,9 +503,29 @@ const App: React.FC = () => {
 
       <SOPModal isOpen={isSopOpen} onClose={() => setIsSopOpen(false)} />
 
+      {/* Activity Log Panel */}
+      {auditLogGuest && (
+        <ActivityLogPanel
+          guestName={auditLogGuest.name}
+          activityLog={auditLogGuest.activityLog || []}
+          roomMoves={auditLogGuest.roomMoves}
+          onClose={() => setAuditLogGuest(null)}
+        />
+      )}
+
+      {/* Chat Bubble - scoped to session */}
+      {firebaseEnabled && activeSessionId && guests.length > 0 && (
+        <ChatBubble
+          sessionId={activeSessionId}
+          userName={navigator.userAgent.includes('Mobile') ? 'Mobile User' : 'Desktop User'}
+          department={dashboardView === 'arrivals' || dashboardView === 'reception' ? 'reception' : dashboardView}
+        />
+      )}
+
       <style>{`
         .dashboard-view-tabs {
-          position: relative;
+          position: sticky;
+          top: 72px;
           z-index: 100;
           background: var(--bg-color);
           border-bottom: 3px solid var(--gilpin-gold);
@@ -582,16 +628,23 @@ const App: React.FC = () => {
           50% { opacity: 0.6; }
         }
 
-        .dashboard-view-tabs {
-          position: relative;
-        }
-
         @media (max-width: 768px) {
           .connection-status {
             position: static;
             transform: none;
             text-align: center;
-            margin-top: 10px;
+            margin-top: 8px;
+          }
+
+          .dashboard-view-tabs {
+            top: 56px;
+            padding: 12px 10px 10px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .dashboard-view-tabs {
+            top: 50px;
           }
         }
       `}</style>

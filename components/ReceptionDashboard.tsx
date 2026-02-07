@@ -4,6 +4,8 @@ import {
   GuestStatus,
   CourtesyCallNote,
   GUEST_STATUS_INFO,
+  HK_STATUS_INFO,
+  MAINTENANCE_STATUS_INFO,
   getRoomReadinessInfo
 } from '../types';
 import { getRoomNumber } from '../constants';
@@ -13,6 +15,7 @@ interface ReceptionDashboardProps {
   onUpdateGuestStatus: (guestId: string, status: GuestStatus) => void;
   onUpdateInRoomDelivery: (guestId: string, delivered: boolean) => void;
   onAddCourtesyNote: (guestId: string, note: Omit<CourtesyCallNote, 'id' | 'timestamp'>) => void;
+  onViewAuditLog?: (guest: Guest) => void;
 }
 
 type ViewFilter = 'all' | 'pre_arrival' | 'on_site' | 'checked_in' | 'courtesy_due';
@@ -21,7 +24,8 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
   guests,
   onUpdateGuestStatus,
   onUpdateInRoomDelivery,
-  onAddCourtesyNote
+  onAddCourtesyNote,
+  onViewAuditLog
 }) => {
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [showMainHotel, setShowMainHotel] = useState(true);
@@ -38,7 +42,7 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
     // Property filter
     result = result.filter(g => {
       const roomNum = getRoomNumber(g.room);
-      const isLakeHouse = roomNum >= 51 && roomNum <= 60;
+      const isLakeHouse = roomNum >= 51 && roomNum <= 58;
       if (isLakeHouse) return showLakeHouse;
       return showMainHotel;
     });
@@ -97,6 +101,7 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
     const actions: Record<GuestStatus, { label: string; next: GuestStatus; icon: string } | null> = {
       'pre_arrival': { label: 'Guest Arrived', next: 'on_site', icon: '🚗' },
       'on_site': { label: 'Awaiting Room', next: 'awaiting_room', icon: '⏳' },
+      'off_site': { label: 'Guest Returned', next: 'on_site', icon: '🚗' },
       'awaiting_room': { label: 'Notified', next: 'room_ready_notified', icon: '📱' },
       'room_ready_notified': { label: 'Checked In', next: 'checked_in', icon: '🔑' },
       'checked_in': { label: 'Courtesy Due', next: 'courtesy_call_due', icon: '📞' },
@@ -182,7 +187,7 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
           </label>
           <label className="toggle-label">
             <input type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
-            <span>🏡 Lake (51-60)</span>
+            <span>🏡 Lake (51-58)</span>
           </label>
         </div>
       </div>
@@ -223,6 +228,19 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
                       {guestInfo.emoji} {guestInfo.label}
                     </span>
                   </div>
+                </div>
+
+                {/* Cross-Department Status Badges */}
+                <div className="dept-status-bar">
+                  <span className={`dept-badge ${readiness.hkDone ? 'done' : ''}`}>
+                    🧹 {HK_STATUS_INFO[guest.hkStatus || 'pending'].label}
+                  </span>
+                  <span className={`dept-badge ${readiness.maintDone ? 'done' : ''}`}>
+                    🔧 {MAINTENANCE_STATUS_INFO[guest.maintenanceStatus || 'pending'].label}
+                  </span>
+                  {readiness.ready && (
+                    <span className="dept-badge ready">✅ Room Ready</span>
+                  )}
                 </div>
 
                 {/* Room Readiness Bar */}
@@ -326,6 +344,16 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
                       onClick={() => onUpdateGuestStatus(guest.id, nextAction.next)}
                     >
                       {nextAction.icon} {nextAction.label}
+                    </button>
+                  )}
+
+                  {/* Guest Off-Site Button */}
+                  {(guestStatus === 'on_site' || guestStatus === 'awaiting_room' || guestStatus === 'checked_in') && (
+                    <button
+                      className="action-btn offsite"
+                      onClick={() => onUpdateGuestStatus(guest.id, 'off_site')}
+                    >
+                      🚶 Guest Off Site
                     </button>
                   )}
 
@@ -753,7 +781,43 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
         }
 
         .action-btn.courtesy { background: #8b5cf6; color: white; }
+        .action-btn.offsite { background: #64748b; color: white; }
         .action-btn:hover { transform: translateY(-2px); filter: brightness(110%); }
+
+        /* Cross-Department Status Badges */
+        .dept-status-bar {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-bottom: 12px;
+        }
+
+        .dept-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 12px;
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 700;
+          background: #fef2f2;
+          color: #b91c1c;
+          border: 1px solid rgba(185, 28, 28, 0.15);
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+
+        .dept-badge.done {
+          background: #dcfce7;
+          color: #166534;
+          border-color: rgba(22, 101, 52, 0.15);
+        }
+
+        .dept-badge.ready {
+          background: #22c55e;
+          color: white;
+          border-color: transparent;
+        }
 
         /* Modal */
         .modal-overlay {
@@ -854,8 +918,23 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
         .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
         @media (max-width: 768px) {
-          .rx-header { flex-direction: column; gap: 20px; text-align: center; }
-          .header-stats { flex-wrap: wrap; justify-content: center; }
+          .rx-header { flex-direction: column; gap: 16px; text-align: center; }
+          .header-stats { flex-wrap: wrap; justify-content: center; gap: 8px; }
+          .stat-item { min-width: 55px; padding: 8px 12px; }
+          .stat-number { font-size: 22px; }
+          .stat-label { font-size: 9px; }
+          .filter-tabs {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            gap: 8px;
+            padding: 10px 12px;
+          }
+          .filter-tabs::-webkit-scrollbar { display: none; }
+          .filter-tabs .tab { white-space: nowrap; flex-shrink: 0; padding: 8px 14px; font-size: 12px; }
+          .filter-tabs .property-toggles { flex-shrink: 0; }
           .card-header { flex-direction: column; gap: 12px; }
           .guest-identity { flex-direction: column; text-align: center; }
           .readiness-progress { flex-wrap: wrap; justify-content: center; }
