@@ -37,6 +37,56 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-[#050505]">
           <div className="max-w-5xl mx-auto px-5 md:px-10 py-8 md:py-10 space-y-12 md:space-y-16">
 
+            {/* 00. SIGN IN */}
+            <section>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
+                <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
+                00. Sign In
+                <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
+              </h3>
+
+              <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222]">
+                <div className="text-3xl mb-4">👤</div>
+                <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">Name-Based Identity</h4>
+                <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                  When you open the app, you'll be asked to enter your name. This is <strong>not a password</strong> — it's a simple identity tag so the team knows who made each action.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">💬</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Chat Messages</h5>
+                      <p className="text-[10px] text-slate-400">Your name appears on all chat messages</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">📦</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">In-Room Deliveries</h5>
+                      <p className="text-[10px] text-slate-400">Tracks who delivered items to each room</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">📡</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Live Presence</h5>
+                      <p className="text-[10px] text-slate-400">Other devices see who's currently online</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">📋</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Activity Log</h5>
+                      <p className="text-[10px] text-slate-400">All status changes are attributed to you</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-4">
+                  <strong>To change user:</strong> Click your name badge in the top-right corner of the navbar and press the sign-out button.
+                </p>
+              </div>
+            </section>
+
             {/* 01. THE ANYWHERE WORKFLOW */}
             <section>
               <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">

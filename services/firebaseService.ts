@@ -489,7 +489,7 @@ export async function deleteSessionFromFirebase(sessionId: string): Promise<void
  * Track user presence in a session
  * Registers this device as active in the session and auto-removes on disconnect
  */
-export function trackPresence(sessionId: string, deviceId: string): () => void {
+export function trackPresence(sessionId: string, deviceId: string, userName?: string): () => void {
     if (!db) return () => { };
 
     const presenceRef = ref(db, `presence/${sessionId}/${deviceId}`);
@@ -498,7 +498,8 @@ export function trackPresence(sessionId: string, deviceId: string): () => void {
     set(presenceRef, {
         joinedAt: Date.now(),
         lastSeen: Date.now(),
-        userAgent: navigator.userAgent.includes('Mobile') ? '📱' : '💻'
+        userAgent: navigator.userAgent.includes('Mobile') ? '📱' : '💻',
+        userName: userName || 'Unknown'
     });
 
     // Auto-remove on disconnect

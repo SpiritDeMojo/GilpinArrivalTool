@@ -4,6 +4,7 @@ import App from './App';
 import { ThemeProvider } from './contexts/ThemeProvider';
 import { ViewProvider } from './contexts/ViewProvider';
 import { HotkeysProvider } from './contexts/HotkeysProvider';
+import { UserProvider } from './contexts/UserProvider';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,11 +13,13 @@ if (!rootElement) {
 
 const root = createRoot(rootElement);
 root.render(
-  <ThemeProvider>
-    <ViewProvider>
-      <HotkeysProvider>
-        <App />
-      </HotkeysProvider>
-    </ViewProvider>
-  </ThemeProvider>
+  <UserProvider>
+    <ThemeProvider>
+      <ViewProvider>
+        <HotkeysProvider>
+          <App />
+        </HotkeysProvider>
+      </ViewProvider>
+    </ThemeProvider>
+  </UserProvider>
 );

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTheme } from './contexts/ThemeProvider';
 import { useView } from './contexts/ViewProvider';
 import { useHotkeys } from './contexts/HotkeysProvider';
+import { useUser } from './contexts/UserProvider';
 import {
   FilterType,
   PrintMode,
@@ -38,6 +39,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import SessionBrowser from './components/SessionBrowser';
 import ChatBubble from './components/ChatBubble';
 import ActivityLogPanel from './components/ActivityLogPanel';
+import LoginScreen from './components/LoginScreen';
 
 // Housekeeping Dashboard Components
 import HousekeepingDashboard from './components/HousekeepingDashboard';
@@ -48,6 +50,7 @@ const App: React.FC = () => {
   // Context hooks
   const { isDark, toggleTheme } = useTheme();
   const { dashboardView, setDashboardView, showAnalytics, toggleAnalytics, showTimeline } = useView();
+  const { userName } = useUser();
   const { printMode, triggerPrint, registerActions } = useHotkeys();
 
   const [isSticky, setIsSticky] = useState(false);
@@ -144,9 +147,9 @@ const App: React.FC = () => {
     auditedUpdate(guestId, {
       inRoomDelivered: delivered,
       inRoomDeliveredAt: delivered ? Date.now() : undefined,
-      inRoomDeliveredBy: delivered ? 'User' : undefined
-    } as Partial<Guest>, 'User');
-  }, [auditedUpdate]);
+      inRoomDeliveredBy: delivered ? userName || 'Unknown' : undefined
+    } as Partial<Guest>, userName || 'Unknown');
+  }, [auditedUpdate, userName]);
 
   // === Room Note Handler (Cross-Department) ===
   const handleAddRoomNote = useCallback((guestId: string, note: Omit<RoomNote, 'id' | 'timestamp'>) => {
@@ -217,6 +220,11 @@ const App: React.FC = () => {
 
   const stickyStyle = isSticky ? `fixed left-0 right-0 z-[1000] bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-[#c5a065]/20` : '';
   const stickyTop = isSticky ? { top: `${NAV_HEIGHT}px` } : {};
+
+  // Early return: Show login screen when not authenticated
+  if (!userName) {
+    return <LoginScreen />;
+  }
 
   // Early return: Show Session Browser lobby when no sessions exist
   if (showSessionBrowser) {
@@ -517,7 +525,7 @@ const App: React.FC = () => {
       {firebaseEnabled && activeSessionId && guests.length > 0 && (
         <ChatBubble
           sessionId={activeSessionId}
-          userName={navigator.userAgent.includes('Mobile') ? 'Mobile User' : 'Desktop User'}
+          userName={userName || 'Unknown'}
           department={dashboardView === 'arrivals' || dashboardView === 'reception' ? 'reception' : dashboardView}
         />
       )}

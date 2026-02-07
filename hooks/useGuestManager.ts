@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useUser } from '../contexts/UserProvider';
 import { Guest, Flag, FilterType, ArrivalSession, RoomMove } from '../types';
 import { PDFService } from '../services/pdfService';
 import { GeminiService } from '../services/geminiService';
@@ -42,6 +43,8 @@ const updateURLWithSession = (sessionId: string) => {
 };
 
 export const useGuestManager = (initialFlags: Flag[]) => {
+  // User context
+  const { userName } = useUser();
   // Check URL for shared session ID first
   const urlSessionId = getSessionIdFromURL();
 
@@ -220,14 +223,14 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       localStorage.setItem('gilpin_device_id', deviceId);
     }
 
-    presenceCleanupRef.current = trackPresence(activeSessionId, deviceId);
+    presenceCleanupRef.current = trackPresence(activeSessionId, deviceId, userName);
 
     return () => {
       if (presenceCleanupRef.current) {
         presenceCleanupRef.current();
       }
     };
-  }, [firebaseEnabled, activeSessionId]);
+  }, [firebaseEnabled, activeSessionId, userName]);
 
   // 5. Sync to Firebase when session changes (debounced)
   const syncToFirebase = useCallback((session: ArrivalSession) => {

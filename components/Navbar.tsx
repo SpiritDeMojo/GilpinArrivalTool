@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GILPIN_LOGO_URL } from '../constants';
+import { useUser } from '../contexts/UserProvider';
 
 interface NavbarProps {
   arrivalDateStr: string;
@@ -25,6 +26,7 @@ const Navbar: React.FC<NavbarProps> = ({
   arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP, isLiveActive, isMicEnabled, onToggleLive, hasGuests, onAIRefine, onToggleAnalytics, showAnalytics, isMuted, onToggleMute
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { userName, logout } = useUser();
 
   return (
     <nav className="navbar no-print h-[72px] md:h-[72px] px-3 md:px-12">
@@ -103,6 +105,25 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         <button onClick={onOpenSOP} className="w-10 h-10 rounded-full border-2 border-[#c5a065]/30 flex items-center justify-center font-bold transition-all hover:bg-[#c5a065]/10">?</button>
+
+        {/* User Badge */}
+        {userName && (
+          <div className="flex items-center gap-2 ml-1">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#c5a065]/10 border border-[#c5a065]/30">
+              <div className="w-6 h-6 rounded-full bg-[#c5a065] flex items-center justify-center text-white text-[10px] font-black">
+                {userName.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider">{userName}</span>
+            </div>
+            <button
+              onClick={logout}
+              className="w-8 h-8 rounded-full bg-slate-100 dark:bg-stone-800 flex items-center justify-center text-xs transition-all hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 border border-transparent hover:border-red-300 dark:hover:border-red-800"
+              title="Sign out"
+            >
+              ↪
+            </button>
+          </div>
+        )}
       </div>
 
       {/* --- Mobile Actions (touch-safe: min 44px targets, 8px gaps) --- */}
