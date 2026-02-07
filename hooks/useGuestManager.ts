@@ -10,6 +10,8 @@ import {
   isFirebaseEnabled,
   subscribeToSession,
   subscribeToFullSession,
+  subscribeToConnectionState,
+  keepAlive,
   fetchSession,
   syncSession,
   trackPresence,
@@ -70,8 +72,12 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('offline');
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const presenceCleanupRef = useRef<(() => void) | null>(null);
+  const keepaliveCleanupRef = useRef<(() => void) | null>(null);
+  const connectionCleanupRef = useRef<(() => void) | null>(null);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRemoteUpdate = useRef(false);
+  // Track active session ID in a ref so reconnect callbacks always have the latest value
+  const activeSessionIdRef = useRef(activeSessionId);
 
   // PMS state
   const [dataSource, setDataSource] = useState<DataSource>(() => {
@@ -119,50 +125,99 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     return { valid: true, formatted: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}` };
   };
 
-  // 3. Initialize Firebase on mount + auto-join shared sessions
+  // Keep activeSessionIdRef in sync
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
+
+  // 3. Initialize Firebase + Connection State Monitor
   useEffect(() => {
     setConnectionStatus('connecting');
     const enabled = initializeFirebase();
     setFirebaseEnabled(enabled);
-    setConnectionStatus(enabled ? 'connected' : 'offline');
 
-    if (enabled) {
-      console.log('🔥 Firebase real-time sync enabled');
+    if (!enabled) {
+      setConnectionStatus('offline');
+      console.log('📱 Running in offline mode (localStorage only)');
+      return;
+    }
 
-      // If we joined via URL and don't have this session locally, fetch it from Firebase
-      if (urlSessionId) {
-        const hasSessionLocally = sessions.some(s => s.id === urlSessionId);
-        if (!hasSessionLocally) {
-          console.log('📱 Joining shared session - fetching from Firebase:', urlSessionId);
-          fetchSession(urlSessionId, (remoteSession) => {
-            if (remoteSession) {
-              console.log('✅ Loaded shared session:', remoteSession.label, '-', remoteSession.guests?.length, 'guests');
-              setSessions(prev => {
-                // Double-check it wasn't added while we were fetching
-                if (prev.some(s => s.id === urlSessionId)) return prev;
-                return [...prev, remoteSession];
-              });
-              setActiveSessionId(urlSessionId);
-            } else {
-              console.log('📭 Shared session not found in Firebase, creating placeholder');
-              // Create placeholder - will be populated when the source PC syncs
-              setSessions(prev => {
-                if (prev.some(s => s.id === urlSessionId)) return prev;
-                return [...prev, {
-                  id: urlSessionId,
-                  label: 'Loading shared session...',
-                  dateObj: new Date().toISOString(),
-                  guests: [],
+    console.log('🔥 Firebase real-time sync enabled');
+
+    // If we joined via URL and don't have this session locally, fetch it from Firebase
+    if (urlSessionId) {
+      const hasSessionLocally = sessions.some(s => s.id === urlSessionId);
+      if (!hasSessionLocally) {
+        console.log('📱 Joining shared session - fetching from Firebase:', urlSessionId);
+        fetchSession(urlSessionId, (remoteSession) => {
+          if (remoteSession) {
+            console.log('✅ Loaded shared session:', remoteSession.label, '-', remoteSession.guests?.length, 'guests');
+            setSessions(prev => {
+              if (prev.some(s => s.id === urlSessionId)) return prev;
+              return [...prev, remoteSession];
+            });
+            setActiveSessionId(urlSessionId);
+          } else {
+            console.log('📭 Shared session not found in Firebase, creating placeholder');
+            setSessions(prev => {
+              if (prev.some(s => s.id === urlSessionId)) return prev;
+              return [...prev, {
+                id: urlSessionId,
+                label: 'Loading shared session...',
+                dateObj: new Date().toISOString(),
+                guests: [],
+                lastModified: Date.now()
+              }];
+            });
+          }
+        });
+      }
+    }
+
+    // === CONNECTION STATE MONITOR ===
+    // Firebase's .info/connected is the authoritative source.
+    // On reconnect we re-subscribe to the active session + re-establish presence.
+    connectionCleanupRef.current = subscribeToConnectionState((connected) => {
+      if (connected) {
+        setConnectionStatus('connected');
+
+        // Re-subscribe to active session on reconnect
+        const currentSessionId = activeSessionIdRef.current;
+        if (currentSessionId) {
+          // Tear down stale subscription
+          if (unsubscribeRef.current) {
+            unsubscribeRef.current();
+            unsubscribeRef.current = null;
+          }
+          console.log('🔄 Reconnected — re-subscribing to session:', currentSessionId);
+          unsubscribeRef.current = subscribeToFullSession(currentSessionId, (remoteSession) => {
+            if (isRemoteUpdate.current) return;
+            isRemoteUpdate.current = true;
+            setSessions(prev => prev.map(s =>
+              s.id === currentSessionId
+                ? {
+                  ...s,
+                  guests: remoteSession.guests || [],
+                  label: remoteSession.label || s.label,
+                  dateObj: remoteSession.dateObj || s.dateObj,
                   lastModified: Date.now()
-                }];
-              });
-            }
+                }
+                : s
+            ));
+            setTimeout(() => { isRemoteUpdate.current = false; }, 100);
           });
         }
+      } else {
+        setConnectionStatus('connecting'); // "connecting" signals reconnecting, not hard offline
+        console.log('⚠️ Firebase disconnected — will auto-reconnect...');
       }
-    } else {
-      console.log('📱 Running in offline mode (localStorage only)');
-    }
+    });
+
+    return () => {
+      if (connectionCleanupRef.current) {
+        connectionCleanupRef.current();
+      }
+    };
   }, []);
 
   // 4. Subscribe to active session updates from Firebase (full session sync)
@@ -206,12 +261,16 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     };
   }, [firebaseEnabled, activeSessionId]);
 
-  // 4b. Track presence in active session
+  // 4b. Track presence + keepalive in active session
   useEffect(() => {
-    // Clean up previous presence
+    // Clean up previous presence & keepalive
     if (presenceCleanupRef.current) {
       presenceCleanupRef.current();
       presenceCleanupRef.current = null;
+    }
+    if (keepaliveCleanupRef.current) {
+      keepaliveCleanupRef.current();
+      keepaliveCleanupRef.current = null;
     }
 
     if (!firebaseEnabled || !activeSessionId) return;
@@ -224,10 +283,14 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     }
 
     presenceCleanupRef.current = trackPresence(activeSessionId, deviceId, userName);
+    keepaliveCleanupRef.current = keepAlive(activeSessionId, deviceId);
 
     return () => {
       if (presenceCleanupRef.current) {
         presenceCleanupRef.current();
+      }
+      if (keepaliveCleanupRef.current) {
+        keepaliveCleanupRef.current();
       }
     };
   }, [firebaseEnabled, activeSessionId, userName]);

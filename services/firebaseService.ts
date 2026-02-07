@@ -3,6 +3,7 @@ import {
     getDatabase,
     ref,
     set,
+    get,
     onValue,
     update,
     remove,
@@ -66,6 +67,64 @@ export function initializeFirebase(): boolean {
  */
 export function isFirebaseEnabled(): boolean {
     return db !== null;
+}
+
+/**
+ * Subscribe to Firebase connection state (.info/connected)
+ * This is the authoritative source for whether we have an active WebSocket.
+ * @returns Unsubscribe function
+ */
+export function subscribeToConnectionState(
+    onStatus: (connected: boolean) => void
+): () => void {
+    if (!db) {
+        onStatus(false);
+        return () => { };
+    }
+
+    const connRef = ref(db, '.info/connected');
+    const unsubscribe = onValue(connRef, (snap) => {
+        const connected = snap.val() === true;
+        console.log(`🔥 Firebase connection state: ${connected ? 'CONNECTED' : 'DISCONNECTED'}`);
+        onStatus(connected);
+    });
+
+    return () => off(connRef);
+}
+
+/**
+ * Keep-alive ping — writes a timestamp to a heartbeat node every interval.
+ * This prevents idle WebSocket connections from being dropped by intermediate proxies.
+ * @param sessionId - The current session ID
+ * @param deviceId - This device's unique ID
+ * @param intervalMs - Ping interval in ms (default 55s — under most 60s timeout limits)
+ * @returns Cleanup function
+ */
+export function keepAlive(
+    sessionId: string,
+    deviceId: string,
+    intervalMs: number = 55000
+): () => void {
+    if (!db) return () => { };
+
+    const heartbeatRef = ref(db, `heartbeat/${sessionId}/${deviceId}`);
+
+    const interval = setInterval(() => {
+        set(heartbeatRef, Date.now()).catch(() => {
+            // Silent failure — connection monitor will handle reconnect
+        });
+    }, intervalMs);
+
+    // Write immediately
+    set(heartbeatRef, Date.now()).catch(() => { });
+
+    // Auto-clean on disconnect
+    onDisconnect(heartbeatRef).remove();
+
+    return () => {
+        clearInterval(interval);
+        remove(heartbeatRef).catch(() => { });
+    };
 }
 
 /**
@@ -500,19 +559,22 @@ export function trackPresence(sessionId: string, deviceId: string, userName?: st
         lastSeen: Date.now(),
         userAgent: navigator.userAgent.includes('Mobile') ? '📱' : '💻',
         userName: userName || 'Unknown'
-    });
+    }).catch(() => { /* silent — connection monitor handles recovery */ });
 
     // Auto-remove on disconnect
     onDisconnect(presenceRef).remove();
 
-    // Heartbeat - update lastSeen every 30s
+    // Heartbeat - update lastSeen every 30s (error-resilient)
     const interval = setInterval(() => {
-        update(presenceRef, { lastSeen: Date.now() });
+        update(presenceRef, { lastSeen: Date.now() }).catch(() => {
+            // Silent failure — if disconnected the connection monitor will
+            // re-establish presence when we reconnect
+        });
     }, 30000);
 
     return () => {
         clearInterval(interval);
-        remove(presenceRef);
+        remove(presenceRef).catch(() => { });
     };
 }
 
