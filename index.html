@@ -78,6 +78,7 @@
             padding: 0 48px; box-sizing: border-box; 
             box-shadow: var(--shadow-lux);
             color: var(--nav-text);
+            overflow: visible;
         }
 
         .nav-logo-bubble {
@@ -358,11 +359,19 @@
             }
         }
 
-        /* Safe area for notched devices */
+        /* Safe area for notched devices — responsive to current breakpoint height */
         @supports (padding-top: env(safe-area-inset-top)) {
             .navbar {
                 padding-top: env(safe-area-inset-top);
-                height: calc(72px + env(safe-area-inset-top));
+            }
+            @media (min-width: 769px) {
+                .navbar { height: calc(72px + env(safe-area-inset-top)); }
+            }
+            @media (max-width: 768px) {
+                .navbar { height: calc(56px + env(safe-area-inset-top)); }
+            }
+            @media (max-width: 480px) {
+                .navbar { height: calc(50px + env(safe-area-inset-top)); }
             }
         }
     </style>

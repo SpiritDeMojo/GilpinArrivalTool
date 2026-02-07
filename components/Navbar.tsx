@@ -29,7 +29,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const { userName, logout } = useUser();
 
   return (
-    <nav className="navbar no-print h-[72px] md:h-[72px] px-3 md:px-12 flex justify-between items-center">
+    <nav className="navbar no-print flex justify-between items-center">
       <div className="flex items-center min-w-0">
         <button className="nav-logo-bubble scale-75 md:scale-100 flex-shrink-0" onClick={() => window.location.reload()}>
           <img src={GILPIN_LOGO_URL} alt="Gilpin" className="nav-logo-img" />
@@ -127,7 +127,7 @@ const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* --- Mobile Actions (touch-safe: min 44px targets, 8px gaps) --- */}
-      <div className="flex lg:hidden items-center gap-2 flex-shrink-0">
+      <div className="flex lg:hidden items-center gap-2 flex-shrink-0 relative z-[1015]">
         {hasGuests && (
           <>
             <button
