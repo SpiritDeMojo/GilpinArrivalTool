@@ -29,7 +29,7 @@ import Dashboard from './components/Dashboard';
 import GuestRow from './components/GuestRow';
 import GuestMobileCard from './components/GuestMobileCard';
 import SOPModal from './components/SOPModal';
-import LiveChatWidget from './components/LiveChatWidget';
+import UnifiedChatPanel from './components/UnifiedChatPanel';
 import LoadingHub from './components/LoadingHub';
 import { PrintLayout } from './components/PrintLayout';
 import AnalyticsView from './components/AnalyticsView';
@@ -37,7 +37,7 @@ import ETATimeline from './components/ETATimeline';
 import ConflictDetector from './components/ConflictDetector';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionBrowser from './components/SessionBrowser';
-import ChatBubble from './components/ChatBubble';
+
 import ActivityLogPanel from './components/ActivityLogPanel';
 import LoginScreen from './components/LoginScreen';
 
@@ -171,11 +171,20 @@ const App: React.FC = () => {
     } as Partial<Guest>);
   }, [guests, updateGuest]);
 
+  // === AI-driven guest update handler (used by Live Assistant action protocol) ===
+  const handleAIUpdateGuest = useCallback((guestId: string, updates: Partial<Guest>) => {
+    auditedUpdate(guestId, {
+      ...updates,
+      lastStatusUpdate: Date.now(),
+      lastStatusUpdatedBy: 'AI Assistant'
+    } as Partial<Guest>, 'AI Assistant');
+  }, [auditedUpdate]);
+
   // === Live Assistant (must be after handleAddRoomNote) ===
   const {
-    isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput,
+    isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput, errorMessage, hasMic,
     startLiveAssistant, toggleMic, sendTextMessage, disconnect, clearHistory
-  } = useLiveAssistant({ guests, onAddRoomNote: handleAddRoomNote });
+  } = useLiveAssistant({ guests, onAddRoomNote: handleAddRoomNote, onUpdateGuest: handleAIUpdateGuest });
 
   const { isMuted, toggleMute } = useNotifications(guests);
 
@@ -256,15 +265,13 @@ const App: React.FC = () => {
         onExcel={onExcelExport}
         onAddManual={addManual}
         onOpenSOP={() => setIsSopOpen(true)}
-        isLiveActive={isLiveActive}
-        isMicEnabled={isMicEnabled}
-        onToggleLive={startLiveAssistant}
         hasGuests={guests.length > 0}
         onAIRefine={handleAIRefine}
         onToggleAnalytics={toggleAnalytics}
         showAnalytics={showAnalytics}
         isMuted={isMuted}
         onToggleMute={toggleMute}
+        connectionStatus={connectionStatus}
       />
 
       {isOldFile && guests.length > 0 && (
@@ -326,24 +333,6 @@ const App: React.FC = () => {
               >
                 🛎️ Reception
               </button>
-            </div>
-            {/* Firebase Connection Status */}
-            <div className="connection-status">
-              {connectionStatus === 'connected' && (
-                <span className="status-badge connected" title="Real-time sync active">
-                  🟢 Synced
-                </span>
-              )}
-              {connectionStatus === 'connecting' && (
-                <span className="status-badge connecting" title="Connecting to Firebase...">
-                  🟡 Connecting...
-                </span>
-              )}
-              {connectionStatus === 'offline' && (
-                <span className="status-badge offline" title="Offline mode - changes saved locally only">
-                  🔴 Offline
-                </span>
-              )}
             </div>
           </div>
         );
@@ -490,17 +479,7 @@ const App: React.FC = () => {
 
       <PrintLayout printMode={printMode} dateStr={arrivalDateStr} guests={propertyFilteredGuests} />
 
-      <LiveChatWidget
-        isLiveActive={isLiveActive}
-        isMicEnabled={isMicEnabled}
-        transcriptions={transcriptions}
-        interimInput={interimInput}
-        interimOutput={interimOutput}
-        onToggleMic={toggleMic}
-        onSendMessage={sendTextMessage}
-        onClose={disconnect}
-        onClearHistory={clearHistory}
-      />
+
 
       <LoadingHub
         isVisible={isProcessing}
@@ -521,12 +500,24 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Chat Bubble - scoped to session */}
-      {firebaseEnabled && activeSessionId && guests.length > 0 && (
-        <ChatBubble
+      {/* Unified Chat Panel – Team Chat + AI Assistant */}
+      {guests.length > 0 && (
+        <UnifiedChatPanel
           sessionId={activeSessionId}
           userName={userName || 'Unknown'}
           department={dashboardView === 'arrivals' || dashboardView === 'reception' ? 'reception' : dashboardView}
+          isLiveActive={isLiveActive}
+          isMicEnabled={isMicEnabled}
+          transcriptions={transcriptions}
+          interimInput={interimInput}
+          interimOutput={interimOutput}
+          onToggleMic={toggleMic}
+          onSendAIMessage={sendTextMessage}
+          onStartAssistant={startLiveAssistant}
+          onDisconnect={disconnect}
+          onClearHistory={clearHistory}
+          errorMessage={errorMessage}
+          hasMic={hasMic}
         />
       )}
 

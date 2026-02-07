@@ -40,14 +40,17 @@ export interface Transcription {
 export interface UseLiveAssistantOptions {
   guests: Guest[];
   onAddRoomNote?: (guestId: string, note: Omit<RoomNote, 'id' | 'timestamp'>) => void;
+  onUpdateGuest?: (guestId: string, updates: Partial<Guest>) => void;
 }
 
-export const useLiveAssistant = ({ guests, onAddRoomNote }: UseLiveAssistantOptions) => {
+export const useLiveAssistant = ({ guests, onAddRoomNote, onUpdateGuest }: UseLiveAssistantOptions) => {
   const [isLiveActive, setIsLiveActive] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(false);
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
   const [interimInput, setInterimInput] = useState("");
   const [interimOutput, setInterimOutput] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasMic, setHasMic] = useState(false);
 
   const sessionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -90,6 +93,63 @@ export const useLiveAssistant = ({ guests, onAddRoomNote }: UseLiveAssistantOpti
     }
   }, [guests, onAddRoomNote]);
 
+  // Parse AI output for HK status actions
+  const parseHKActions = useCallback((text: string) => {
+    const actionRegex = /\[ACTION:UPDATE_HK\](\{[^}]+\})/g;
+    let match;
+    while ((match = actionRegex.exec(text)) !== null) {
+      try {
+        const data = JSON.parse(match[1]);
+        if (data.room && data.status && onUpdateGuest) {
+          const guest = guests.find(g => {
+            const roomNum = g.room.replace(/\D/g, '');
+            const targetNum = String(data.room).replace(/\D/g, '');
+            return roomNum === targetNum;
+          });
+          if (guest) {
+            // Map status words to valid HKStatus enum values
+            const statusMap: Record<string, string> = {
+              'cleaned': 'cleaned',
+              'clean': 'cleaned',
+              'inspected': 'inspected',
+              'inspect': 'inspected',
+              'complete': 'complete',
+              'in_progress': 'in_progress',
+              'pending': 'pending',
+            };
+            const hkStatus = statusMap[data.status.toLowerCase()] || data.status;
+            onUpdateGuest(guest.id, { hkStatus: hkStatus as any });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse AI HK action:', e);
+      }
+    }
+  }, [guests, onUpdateGuest]);
+
+  // Parse AI output for guest update actions
+  const parseGuestActions = useCallback((text: string) => {
+    const actionRegex = /\[ACTION:UPDATE_GUEST\](\{[^}]+\})/g;
+    let match;
+    while ((match = actionRegex.exec(text)) !== null) {
+      try {
+        const data = JSON.parse(match[1]);
+        if (data.room && data.field && data.value && onUpdateGuest) {
+          const guest = guests.find(g => {
+            const roomNum = g.room.replace(/\D/g, '');
+            const targetNum = String(data.room).replace(/\D/g, '');
+            return roomNum === targetNum;
+          });
+          if (guest) {
+            onUpdateGuest(guest.id, { [data.field]: data.value } as Partial<Guest>);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse AI guest action:', e);
+      }
+    }
+  }, [guests, onUpdateGuest]);
+
   const clearHistory = () => setTranscriptions([]);
 
   const disconnect = () => {
@@ -130,11 +190,14 @@ export const useLiveAssistant = ({ guests, onAddRoomNote }: UseLiveAssistantOpti
       return;
     }
 
+    setErrorMessage(null);
+
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
       if (!apiKey) {
-        console.error('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.');
+        setErrorMessage('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.');
+        console.error('Gemini API key not configured.');
         return;
       }
 
@@ -159,15 +222,30 @@ ${g.rawHtml}
 --- GUEST END ---`;
       }).join('\n\n');
 
-      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-
-      await inputCtx.resume();
       await outputCtx.resume();
       audioContextRef.current = outputCtx;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
-      mediaStreamRef.current = stream;
+      // Mic is optional — works over HTTPS/localhost only
+      let stream: MediaStream | null = null;
+      let inputCtx: AudioContext | null = null;
+      const hasMicAccess = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+      if (hasMicAccess) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
+          mediaStreamRef.current = stream;
+          inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+          await inputCtx.resume();
+          setHasMic(true);
+        } catch (micErr: any) {
+          console.warn('Mic access denied or unavailable, starting in text-only mode:', micErr);
+          stream = null;
+          inputCtx = null;
+        }
+      } else {
+        console.info('Microphone API unavailable (non-HTTPS context). Starting in text-only mode.');
+      }
 
       let currentInput = "";
       let currentOutput = "";
@@ -176,23 +254,27 @@ ${g.rawHtml}
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
           onopen: () => {
-            const source = inputCtx.createMediaStreamSource(stream);
-            const processor = inputCtx.createScriptProcessor(4096, 1, 1);
-            processor.onaudioprocess = (e) => {
-              if (!micEnabledRef.current) return;
-              const inputData = e.inputBuffer.getChannelData(0);
-              const int16 = new Int16Array(inputData.length);
-              for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
+            // Clear any previous error — we're connected
+            setErrorMessage(null);
+            if (stream && inputCtx) {
+              const source = inputCtx.createMediaStreamSource(stream);
+              const processor = inputCtx.createScriptProcessor(4096, 1, 1);
+              processor.onaudioprocess = (e) => {
+                if (!micEnabledRef.current) return;
+                const inputData = e.inputBuffer.getChannelData(0);
+                const int16 = new Int16Array(inputData.length);
+                for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
 
-              sessionPromise.then(s => s.sendRealtimeInput({
-                media: {
-                  data: encode(new Uint8Array(int16.buffer)),
-                  mimeType: 'audio/pcm;rate=16000'
-                }
-              }));
-            };
-            source.connect(processor);
-            processor.connect(inputCtx.destination);
+                sessionPromise.then(s => s.sendRealtimeInput({
+                  media: {
+                    data: encode(new Uint8Array(int16.buffer)),
+                    mimeType: 'audio/pcm;rate=16000'
+                  }
+                }));
+              };
+              source.connect(processor);
+              processor.connect(inputCtx.destination);
+            }
             setIsLiveActive(true);
           },
           onmessage: async (msg: LiveServerMessage) => {
@@ -220,11 +302,17 @@ ${g.rawHtml}
             if (msg.serverContent?.turnComplete) {
               if (currentInput) setTranscriptions(p => [...p, { text: currentInput, role: 'user' }]);
               if (currentOutput) {
-                // Strip action blocks from displayed text
-                const displayText = currentOutput.replace(/\[ACTION:ADD_NOTE\]\{[^}]+\}/g, '').trim();
+                // Strip all action blocks from displayed text
+                const displayText = currentOutput
+                  .replace(/\[ACTION:ADD_NOTE\]\{[^}]+\}/g, '')
+                  .replace(/\[ACTION:UPDATE_HK\]\{[^}]+\}/g, '')
+                  .replace(/\[ACTION:UPDATE_GUEST\]\{[^}]+\}/g, '')
+                  .trim();
                 if (displayText) setTranscriptions(p => [...p, { text: displayText, role: 'model' }]);
-                // Parse and execute note actions
+                // Parse and execute all actions
                 parseNoteActions(currentOutput);
+                parseHKActions(currentOutput);
+                parseGuestActions(currentOutput);
               }
               currentInput = ""; currentOutput = ""; setInterimInput(""); setInterimOutput("");
             }
@@ -236,8 +324,18 @@ ${g.rawHtml}
               nextStartTimeRef.current = 0;
             }
           },
-          onclose: () => { disconnect(); },
-          onerror: () => { disconnect(); },
+          onclose: (e: any) => {
+            console.warn('Live AI session closed:', e);
+            if (isLiveActive) {
+              setErrorMessage('Session ended unexpectedly.');
+            }
+            disconnect();
+          },
+          onerror: (e: any) => {
+            console.error('Live AI session error:', e);
+            setErrorMessage(`Connection error: ${e?.message || e?.toString?.() || 'Unknown error'}`);
+            disconnect();
+          },
         },
         config: {
           responseModalities: [Modality.AUDIO],
@@ -287,12 +385,27 @@ You operate on a strict hierarchy to ensure the team can trust the edited data:
    - IMPORTANT: Always include the [ACTION:ADD_NOTE] block so the system can automatically create the note.
 
 
-${guestsBrief}`
+${guestsBrief}
+
+**5. Room Operations Mode**
+   When the user says things like "Mark Room 5 as cleaned", "Room 5 is clean", "Room 5 inspection complete":
+   - Confirm conversationally (e.g., "Got it, I've marked Room 5 as cleaned.")
+   - Then at the END of your response, output: [ACTION:UPDATE_HK]{"room":"5","status":"cleaned"}
+   - Valid statuses: "pending", "in_progress", "cleaned", "inspected", "complete"
+
+**6. Guest Operations Mode**
+   When the user says things like "Guest in Room 3 has arrived", "Room 3 is on site", "Check in Room 7":
+   - Confirm conversationally (e.g., "Noted, I've marked the guest in Room 3 as on site.")
+   - Then at the END of your response, output: [ACTION:UPDATE_GUEST]{"room":"3","field":"guestStatus","value":"on_site"}
+   - Valid guestStatus values: "expected", "on_site", "off_site", "checked_out", "no_show", "cancelled"
+`
         }
       });
       sessionRef.current = await sessionPromise;
-    } catch (e) {
+    } catch (e: any) {
+      const msg = e?.message || String(e);
       console.error("Live AI Session Error:", e);
+      setErrorMessage(`Failed to start session: ${msg}`);
       setIsLiveActive(false);
     }
   };
@@ -311,6 +424,8 @@ ${guestsBrief}`
     transcriptions,
     interimInput,
     interimOutput,
+    errorMessage,
+    hasMic,
     startLiveAssistant,
     toggleMic,
     sendTextMessage,

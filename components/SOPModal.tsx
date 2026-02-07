@@ -22,7 +22,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               </h2>
             </div>
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-              Standard Operating Procedures • <span className="text-[#c5a065]">v10.0</span>
+              Standard Operating Procedures • <span className="text-[#c5a065]">v11.0</span>
             </p>
           </div>
           <button
@@ -248,6 +248,64 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     <span className="text-[8px] font-black uppercase bg-violet-500/15 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-full border border-violet-500/20">🏷️ Quiet Room</span>
                     <span className="text-[8px] font-black uppercase bg-violet-500/15 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-full border border-violet-500/20">🏷️ Allergy Alert</span>
                   </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 05b. AI LIVE ASSISTANT */}
+            <section>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
+                <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
+                05b. AI Live Assistant
+                <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
+              </h3>
+
+              <div className="p-6 md:p-8 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-500/20 rounded-[1.5rem] md:rounded-[2rem] mb-6">
+                <div className="flex flex-col md:flex-row items-start gap-6 md:gap-8">
+                  <div className="text-4xl md:text-5xl">🤖</div>
+                  <div className="flex-1">
+                    <h4 className="text-base md:text-lg font-black text-white mb-3">AI Live Assistant</h4>
+                    <p className="text-sm text-slate-400 leading-relaxed mb-4">
+                      Your conversational AI colleague — available via the <strong className="text-indigo-400">💬 Chat Panel → 🤖 Assistant tab</strong>. Supports both voice (microphone) and text input. The assistant has full access to today&apos;s guest manifest and can take real actions on your behalf.
+                    </p>
+                    <p className="text-xs text-slate-500 italic">Tap the 💬 floating button at bottom-right, then switch to the 🤖 Assistant tab.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="p-6 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-500/20 rounded-[1.5rem] md:rounded-[2rem]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">🎙️</span>
+                    <div className="font-black text-sm text-indigo-700 dark:text-indigo-300 uppercase">Voice &amp; Text Commands</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+                    Speak or type any of these commands:
+                  </p>
+                  <ul className="text-xs text-slate-500 space-y-1.5 list-none">
+                    <li><strong className="text-indigo-400">&quot;Morning briefing&quot;</strong> — full overview of today&apos;s arrivals</li>
+                    <li><strong className="text-indigo-400">&quot;What room is [Guest]?&quot;</strong> — guest lookup</li>
+                    <li><strong className="text-indigo-400">&quot;What car is Room 5?&quot;</strong> — car registration lookup</li>
+                    <li><strong className="text-indigo-400">&quot;How long is [Guest] staying?&quot;</strong> — duration check</li>
+                    <li><strong className="text-indigo-400">&quot;Who is arriving next?&quot;</strong> — chronological ETA order</li>
+                  </ul>
+                </div>
+
+                <div className="p-6 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-500/20 rounded-[1.5rem] md:rounded-[2rem]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">⚡</span>
+                    <div className="font-black text-sm text-indigo-700 dark:text-indigo-300 uppercase">AI Actions</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+                    The assistant can take real actions that update the dashboard:
+                  </p>
+                  <ul className="text-xs text-slate-500 space-y-1.5 list-none">
+                    <li><strong className="text-indigo-400">&quot;Note for Room 5: extra pillows&quot;</strong> — adds a room note</li>
+                    <li><strong className="text-indigo-400">&quot;Mark Room 7 as cleaned&quot;</strong> — updates HK status</li>
+                    <li><strong className="text-indigo-400">&quot;Room 3 inspection complete&quot;</strong> — marks as inspected</li>
+                    <li><strong className="text-indigo-400">&quot;Guest in Room 4 has arrived&quot;</strong> — sets guest to on-site</li>
+                    <li><strong className="text-indigo-400">&quot;Check out Room 9&quot;</strong> — marks guest as checked out</li>
+                  </ul>
                 </div>
               </div>
             </section>
@@ -481,15 +539,55 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               </div>
             </section>
 
-            {/* 12. NOTIFICATIONS & TEAM CHAT */}
+            {/* 12. CHAT PANEL & NOTIFICATIONS */}
             <section>
               <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
                 <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
-                12. Notifications & Team Chat
+                12. Chat Panel &amp; Notifications
                 <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
               </h3>
 
+              <div className="p-6 md:p-8 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-500/20 rounded-[1.5rem] md:rounded-[2rem] mb-6">
+                <div className="flex flex-col md:flex-row items-start gap-6 md:gap-8">
+                  <div className="text-4xl md:text-5xl">💬</div>
+                  <div className="flex-1">
+                    <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-3">Unified Chat Panel</h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                      The floating <strong className="text-indigo-400">💬</strong> button in the bottom-right corner opens the Chat Panel with two tabs: <strong>Team Chat</strong> for cross-department messaging, and <strong>🤖 AI Assistant</strong> for voice/text AI commands.
+                    </p>
+                    <p className="text-xs text-slate-500 italic">An unread badge shows on the FAB when new team messages arrive while the panel is closed.</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">💬</span>
+                    <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Team Chat Tab</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+                    Real-time messaging between all team members on the same session. Messages are colour-coded by department. Use the <strong>🗑️</strong> button to clear the entire chat history (with confirmation).
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="text-[8px] font-black uppercase bg-blue-500/15 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/20">Reception</span>
+                    <span className="text-[8px] font-black uppercase bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">Housekeeping</span>
+                    <span className="text-[8px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">Maintenance</span>
+                  </div>
+                </div>
+                <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">🤖</span>
+                    <div className="font-black text-sm text-slate-900 dark:text-white uppercase">AI Assistant Tab</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+                    The AI assistant <strong>auto-connects</strong> when you switch to the Assistant tab — no Start button needed. On HTTPS/localhost, the 🎙️ mic toggle appears for voice input. On HTTP (mobile via IP), the assistant runs in <strong>text-only mode</strong> automatically.
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-500 italic">If the connection fails, an error banner with a Retry button will appear.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-4">
                 <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
                   <div className="flex items-center gap-3 mb-3">
                     <span className="text-xl">🔔</span>
@@ -501,15 +599,16 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                 </div>
                 <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="text-xl">💬</span>
-                    <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Team Chat</div>
+                    <span className="text-xl">🗑️</span>
+                    <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Delete Chat</div>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    The floating 💬 chat bubble in the bottom-right corner enables real-time messaging between all team members viewing the same session. Messages are colour-coded by department. Chat history persists for the duration of the session.
+                    Tap the <strong>🗑️</strong> button to clear the entire chat. A confirmation banner slides in before deletion. Clearing is instant and syncs to all connected devices.
                   </p>
                 </div>
               </div>
             </section>
+
 
             {/* 13. TACTICAL SCENARIOS */}
             <section>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GILPIN_LOGO_URL } from '../constants';
 import { useUser } from '../contexts/UserProvider';
 
@@ -11,26 +11,49 @@ interface NavbarProps {
   onExcel: () => void;
   onAddManual: () => void;
   onOpenSOP: () => void;
-  isLiveActive: boolean;
-  isMicEnabled: boolean;
-  onToggleLive: () => void;
   hasGuests: boolean;
   onAIRefine: () => void;
   onToggleAnalytics: () => void;
   showAnalytics: boolean;
   isMuted: boolean;
   onToggleMute: () => void;
+  connectionStatus?: 'connected' | 'connecting' | 'offline';
 }
 
 const Navbar: React.FC<NavbarProps> = ({
-  arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP, isLiveActive, isMicEnabled, onToggleLive, hasGuests, onAIRefine, onToggleAnalytics, showAnalytics, isMuted, onToggleMute
+  arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP,
+  hasGuests, onAIRefine, onToggleAnalytics, showAnalytics,
+  isMuted, onToggleMute, connectionStatus
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
   const { userName, logout } = useUser();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on route change or escape key
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setIsMenuOpen(false); setIsPrintOpen(false); }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, []);
+
+  // Lock body scroll when menu is open
+  useEffect(() => {
+    document.body.style.overflow = isMenuOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isMenuOpen]);
+
+  const closeMenu = () => setIsMenuOpen(false);
+
+  // Inline styles for mobile div-buttons (bypasses global CSS)
+  const mobBtn: React.CSSProperties = { cursor: 'pointer', minHeight: 'auto', padding: 0 };
+  const mobIcon: React.CSSProperties = { width: 38, height: 38, ...mobBtn };
 
   return (
     <nav className="navbar no-print flex justify-between items-center">
+      {/* LEFT: Logo + Title */}
       <div className="flex items-center min-w-0">
         <div role="button" className="nav-logo-bubble scale-75 md:scale-100 flex-shrink-0" style={{ cursor: 'pointer' }} onClick={() => window.location.reload()}>
           <img src={GILPIN_LOGO_URL} alt="Gilpin" className="nav-logo-img" />
@@ -43,9 +66,24 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
+      {/* CENTER-RIGHT: Sync indicator (visible on all sizes) */}
+      {connectionStatus && (
+        <div className="hidden md:flex items-center mx-4 flex-shrink-0">
+          {connectionStatus === 'connected' && (
+            <span className="status-badge connected" title="Real-time sync active">🟢 Synced</span>
+          )}
+          {connectionStatus === 'connecting' && (
+            <span className="status-badge connecting" title="Connecting...">🟡 Connecting</span>
+          )}
+          {connectionStatus === 'offline' && (
+            <span className="status-badge offline" title="Offline">🔴 Offline</span>
+          )}
+        </div>
+      )}
+
       {/* --- Desktop Actions --- */}
-      <div className="hidden lg:flex items-center gap-4">
-        <button onClick={toggleTheme} className="px-6 py-2.5 rounded-full border-2 border-[#c5a065]/30 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-[#c5a065]/10">
+      <div className="hidden lg:flex items-center gap-3">
+        <button onClick={toggleTheme} className="px-5 py-2 rounded-full border-2 border-[#c5a065]/30 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-[#c5a065]/10">
           {isDark ? 'Obsidian' : 'Ivory'}
         </button>
 
@@ -54,17 +92,17 @@ const Navbar: React.FC<NavbarProps> = ({
             <>
               <button
                 onClick={onToggleAnalytics}
-                className={`${showAnalytics ? 'bg-[#c5a065] text-white' : 'bg-slate-100 dark:bg-stone-800 text-slate-600 dark:text-slate-300'} px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95 border border-[#c5a065]/20`}
+                className={`${showAnalytics ? 'bg-[#c5a065] text-white' : 'bg-slate-100 dark:bg-stone-800 text-slate-600 dark:text-slate-300'} px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95 border border-[#c5a065]/20`}
               >
                 📊 Intelligence
               </button>
 
-              <button onClick={onAIRefine} className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95">
+              <button onClick={onAIRefine} className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95">
                 ✨ AI Audit
               </button>
 
               <div className="relative">
-                <button onClick={() => setIsPrintOpen(!isPrintOpen)} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">
+                <button onClick={() => setIsPrintOpen(!isPrintOpen)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">
                   🖨️ Print
                 </button>
                 {isPrintOpen && (
@@ -78,41 +116,36 @@ const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
-              <button onClick={onExcel} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all">⬇️ Excel</button>
-              <button onClick={onAddManual} className="bg-[#c5a065] text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#b08d54] transition-all">➕ Add</button>
+              <button onClick={onExcel} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all">⬇️ Excel</button>
+              <button onClick={onAddManual} className="bg-[#c5a065] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#b08d54] transition-all">➕ Add</button>
 
-              <button
-                onClick={onToggleLive}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.4)] scale-110' : 'bg-slate-900 hover:bg-black'} shadow-lg active:scale-90`}
-              >
-                <span className="text-xl leading-none">{isLiveActive ? (isMicEnabled ? '🎙️' : '🤖') : '🤖'}</span>
-                {isMicEnabled && <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping"></div>}
-              </button>
+
+
 
               <button
                 onClick={onToggleMute}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-600' : 'bg-slate-900 hover:bg-black'} shadow-lg active:scale-90`}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-600' : 'bg-slate-900 hover:bg-black'} shadow-lg active:scale-90`}
                 title={isMuted ? 'Notifications muted' : 'Notifications on'}
               >
-                <span className="text-xl leading-none">{isMuted ? '🔕' : '🔔'}</span>
+                <span className="text-lg leading-none">{isMuted ? '🔕' : '🔔'}</span>
               </button>
             </>
           )}
 
           <button
             onClick={() => document.getElementById('file-upload-nav')?.click()}
-            className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-stone-800 flex items-center justify-center transition-all hover:bg-slate-200 dark:hover:bg-stone-700 border border-[#c5a065]/20"
+            className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-stone-800 flex items-center justify-center transition-all hover:bg-slate-200 dark:hover:bg-stone-700 border border-[#c5a065]/20"
           >
-            <span className="text-xl">📁</span>
+            <span className="text-lg">📁</span>
           </button>
         </div>
 
-        <button onClick={onOpenSOP} className="w-10 h-10 rounded-full border-2 border-[#c5a065]/30 flex items-center justify-center font-bold transition-all hover:bg-[#c5a065]/10">?</button>
+        <button onClick={onOpenSOP} className="w-9 h-9 rounded-full border-2 border-[#c5a065]/30 flex items-center justify-center font-bold text-sm transition-all hover:bg-[#c5a065]/10">?</button>
 
         {/* User Badge */}
         {userName && (
           <div className="flex items-center gap-2 ml-1">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#c5a065]/10 border border-[#c5a065]/30">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#c5a065]/10 border border-[#c5a065]/30">
               <div className="w-6 h-6 rounded-full bg-[#c5a065] flex items-center justify-center text-white text-[10px] font-black">
                 {userName.charAt(0).toUpperCase()}
               </div>
@@ -120,7 +153,7 @@ const Navbar: React.FC<NavbarProps> = ({
             </div>
             <button
               onClick={logout}
-              className="w-8 h-8 rounded-full bg-slate-100 dark:bg-stone-800 flex items-center justify-center text-xs transition-all hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 border border-transparent hover:border-red-300 dark:hover:border-red-800"
+              className="w-7 h-7 rounded-full bg-slate-100 dark:bg-stone-800 flex items-center justify-center text-xs transition-all hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 border border-transparent hover:border-red-300 dark:hover:border-red-800"
               title="Sign out"
             >
               ↪
@@ -129,66 +162,47 @@ const Navbar: React.FC<NavbarProps> = ({
         )}
       </div>
 
-      {/* --- Mobile Actions: div-based to bypass global button CSS --- */}
-      <div className="flex lg:hidden items-center gap-2 flex-shrink-0 relative z-[1015]">
+      {/* ===== MOBILE ACTIONS BAR ===== */}
+      <div className="flex lg:hidden items-center gap-1.5 flex-shrink-0 relative z-[1015]">
+        {/* Sync dot (mobile: compact) */}
+        {connectionStatus && (
+          <div
+            title={connectionStatus === 'connected' ? 'Synced' : connectionStatus === 'connecting' ? 'Connecting...' : 'Offline'}
+            style={{ width: 10, height: 10, borderRadius: '50%', flexShrink: 0 }}
+            className={connectionStatus === 'connected' ? 'bg-green-500' : connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}
+          />
+        )}
+
         {hasGuests && (
           <>
-            <div
-              role="button"
-              onClick={onToggleLive}
-              style={{ width: 40, height: 40, minHeight: 'auto', padding: 0, cursor: 'pointer' }}
-              className={`rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-indigo-600 shadow-lg scale-105' : 'bg-slate-800'} active:scale-95`}
-            >
-              <span className="text-base leading-none">{isLiveActive ? (isMicEnabled ? '🎙️' : '🤖') : '🤖'}</span>
-            </div>
-            <div
-              role="button"
-              onClick={onToggleMute}
-              style={{ width: 40, height: 40, minHeight: 'auto', padding: 0, cursor: 'pointer' }}
+
+
+            <div role="button" onClick={onToggleMute} style={mobIcon}
               className={`rounded-xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-600' : 'bg-slate-800'} active:scale-95`}
             >
-              <span className="text-base leading-none">{isMuted ? '🔕' : '🔔'}</span>
+              <span className="text-sm leading-none">{isMuted ? '🔕' : '🔔'}</span>
             </div>
 
-            {/* Print — standalone, separate from hamburger */}
+            {/* Print — standalone icon */}
             <div className="relative">
-              <div
-                role="button"
-                onClick={() => { setIsPrintOpen(!isPrintOpen); setIsMenuOpen(false); }}
-                style={{ width: 40, height: 40, minHeight: 'auto', padding: 0, cursor: 'pointer' }}
+              <div role="button" onClick={() => { setIsPrintOpen(!isPrintOpen); setIsMenuOpen(false); }} style={mobIcon}
                 className={`rounded-xl flex items-center justify-center transition-all shadow-lg active:scale-90 ${isPrintOpen ? 'bg-slate-700 ring-2 ring-[#c5a065]' : 'bg-slate-800'}`}
               >
-                <span className="text-base leading-none">🖨️</span>
+                <span className="text-sm leading-none">🖨️</span>
               </div>
-              {/* Print dropdown — positioned below the print icon */}
               {isPrintOpen && (
-                <div className="absolute right-0 top-full mt-2 z-[3000] w-48">
+                <div className="absolute right-0 top-full mt-2 z-[3001] w-48">
                   <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
                     <div className="p-1">
-                      <div
-                        role="button"
-                        onClick={() => { onPrint('main'); setIsPrintOpen(false); }}
-                        style={{ cursor: 'pointer', minHeight: 'auto', padding: '12px 16px' }}
-                        className="text-white text-xs font-bold flex items-center gap-2 rounded-xl active:bg-white/10 transition-colors"
-                      >
-                        📄 Master List
-                      </div>
-                      <div
-                        role="button"
-                        onClick={() => { onPrint('greeter'); setIsPrintOpen(false); }}
-                        style={{ cursor: 'pointer', minHeight: 'auto', padding: '12px 16px' }}
-                        className="text-white text-xs font-bold flex items-center gap-2 rounded-xl active:bg-white/10 transition-colors"
-                      >
-                        👋 Greeter View
-                      </div>
-                      <div
-                        role="button"
-                        onClick={() => { onPrint('inroom'); setIsPrintOpen(false); }}
-                        style={{ cursor: 'pointer', minHeight: 'auto', padding: '12px 16px' }}
-                        className="text-white text-xs font-bold flex items-center gap-2 rounded-xl active:bg-white/10 transition-colors"
-                      >
-                        🛏️ In-Room Delivery
-                      </div>
+                      {(['main', 'greeter', 'inroom'] as const).map((mode) => (
+                        <div key={mode} role="button"
+                          onClick={() => { onPrint(mode); setIsPrintOpen(false); }}
+                          style={{ cursor: 'pointer', minHeight: 'auto', padding: '12px 16px' }}
+                          className="text-white text-xs font-bold flex items-center gap-2 rounded-xl active:bg-white/10 transition-colors"
+                        >
+                          {mode === 'main' ? '📄 Master List' : mode === 'greeter' ? '👋 Greeter View' : '🛏️ In-Room Delivery'}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -197,72 +211,109 @@ const Navbar: React.FC<NavbarProps> = ({
           </>
         )}
 
-        {/* Hamburger — opens slide-out menu, closes print dropdown */}
-        <div
-          role="button"
+        {/* Manual — standalone icon */}
+        <div role="button" onClick={() => { onOpenSOP(); setIsMenuOpen(false); setIsPrintOpen(false); }} style={mobIcon}
+          className="rounded-xl flex items-center justify-center transition-all bg-slate-800 active:scale-95"
+          title="Titanium Manual"
+        >
+          <span className="text-sm leading-none">📖</span>
+        </div>
+
+        {/* Hamburger */}
+        <div role="button"
           onClick={() => { setIsMenuOpen(!isMenuOpen); setIsPrintOpen(false); }}
-          style={{ width: 44, height: 44, minHeight: 'auto', padding: 0, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
-          className={`rounded-xl text-white flex items-center justify-center shadow-lg active:scale-90 flex-shrink-0 select-none ${isMenuOpen ? 'bg-slate-700 ring-2 ring-[#c5a065]' : 'bg-[#c5a065]'}`}
+          style={{ width: 42, height: 42, ...mobBtn, WebkitTapHighlightColor: 'transparent' }}
+          className={`rounded-xl text-white flex items-center justify-center shadow-lg active:scale-90 flex-shrink-0 select-none transition-all ${isMenuOpen ? 'bg-slate-700 ring-2 ring-[#c5a065]' : 'bg-[#c5a065]'}`}
         >
           <span className="text-xl font-bold leading-none">{isMenuOpen ? '✕' : '☰'}</span>
         </div>
       </div>
 
-      {/* Close dropdowns when tapping outside */}
+      {/* Tap-outside dismiss */}
       {(isPrintOpen || isMenuOpen) && (
-        <div
-          className="lg:hidden fixed inset-0 z-[2999]"
-          style={{ top: 0 }}
-          onClick={() => { setIsPrintOpen(false); setIsMenuOpen(false); }}
-        />
+        <div className="lg:hidden fixed inset-0 z-[2999]" onClick={() => { setIsPrintOpen(false); setIsMenuOpen(false); }} />
       )}
 
-      {/* --- Mobile Slide-out Menu (no print — print is separate) --- */}
+      {/* ===== MOBILE SLIDE-OUT MENU (2 compact groups) ===== */}
       {isMenuOpen && (
-        <div className="lg:hidden fixed left-0 right-0 bottom-0 bg-slate-950/95 backdrop-blur-xl z-[3000] overflow-y-auto" style={{ top: 56 }}>
-          <div className="p-5 pb-20 space-y-4 max-w-md mx-auto">
+        <div ref={menuRef} className="lg:hidden fixed left-0 right-0 z-[3000]"
+          style={{
+            top: 56,
+            background: 'rgba(2, 6, 23, 0.97)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            animation: 'menuSlide 0.2s ease-out',
+          }}
+        >
+          <style>{`
+            @keyframes menuSlide {
+              from { opacity: 0; transform: translateY(-8px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-3">
-              <div role="button" onClick={() => { onAddManual(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="bg-[#c5a065] text-white py-4 px-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform">➕ Add Manual</div>
-              <div role="button" onClick={() => { toggleTheme(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="bg-slate-800 text-white py-4 px-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-slate-700 active:scale-95 transition-transform">{isDark ? '☀️ Ivory' : '🌙 Obsidian'}</div>
-            </div>
+          <div className="p-4 space-y-3">
 
-            {hasGuests && (
-              <>
-                {/* AI & Analytics */}
-                <div className="space-y-3">
-                  <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-1">Intelligence</p>
-                  <div role="button" onClick={() => { onAIRefine(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-[0.98] transition-transform">✨ AI Audit Refine</div>
-                  <div role="button" onClick={() => { onToggleAnalytics(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className={`w-full ${showAnalytics ? 'bg-[#c5a065]' : 'bg-slate-800'} text-white py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest border border-slate-700 active:scale-[0.98] transition-transform`}>📊 Strategic Analytics</div>
-                </div>
+            {/* ── GROUP 1: Account ── */}
+            <div className="rounded-2xl border border-slate-700/50 overflow-hidden">
+              <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-4 pt-3 pb-1">Account</p>
 
-                {/* Export */}
-                <div role="button" onClick={() => { onExcel(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="w-full bg-emerald-600 text-white py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-[0.98] transition-transform">⬇️ Export Excel</div>
-              </>
-            )}
-
-            {/* User & Utility */}
-            <div className="pt-2 space-y-3">
+              {/* User */}
               {userName && (
-                <div className="flex items-center justify-between p-4 bg-[#c5a065]/10 border border-[#c5a065]/30 rounded-2xl">
+                <div className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#c5a065] flex items-center justify-center text-white text-sm font-black">
+                    <div className="w-8 h-8 rounded-full bg-[#c5a065] flex items-center justify-center text-white text-xs font-black">
                       {userName.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <p className="text-white font-bold text-sm">{userName}</p>
-                      <p className="text-[10px] text-slate-400">Signed in</p>
-                    </div>
+                    <span className="text-white font-bold text-sm">{userName}</span>
                   </div>
-                  <div role="button" onClick={() => { logout(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="px-4 py-2 rounded-xl bg-slate-800 text-rose-400 text-[10px] font-black uppercase tracking-widest border border-slate-700 active:scale-95 transition-transform">
+                  <div role="button" onClick={() => { logout(); closeMenu(); }} style={{ cursor: 'pointer', minHeight: 'auto' }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 text-rose-400 text-[10px] font-black uppercase tracking-wider border border-rose-500/20 active:scale-95 transition-transform"
+                  >
                     Sign Out
                   </div>
                 </div>
               )}
-              <div role="button" onClick={() => { document.getElementById('file-upload-nav')?.click(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="w-full bg-slate-800 text-white py-4 px-5 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 border border-slate-700 active:scale-[0.98] transition-transform">📁 Upload PDF</div>
-              <div role="button" onClick={() => { onOpenSOP(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="w-full border-2 border-[#c5a065]/30 text-[#c5a065] py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-[0.98] transition-transform">? Titanium Manual</div>
+
+              {/* Theme */}
+              <div role="button" onClick={() => { toggleTheme(); closeMenu(); }} style={{ cursor: 'pointer', minHeight: 'auto' }}
+                className="flex items-center gap-3 px-4 py-3 text-white font-semibold text-sm border-t border-slate-700/30 active:bg-white/5 transition-colors"
+              >
+                <span className="w-6 text-center">{isDark ? '☀️' : '🌙'}</span>
+                <span>{isDark ? 'Ivory Mode' : 'Obsidian Mode'}</span>
+              </div>
             </div>
+
+            {/* ── GROUP 2: Tools ── */}
+            {hasGuests && (
+              <div className="rounded-2xl border border-slate-700/50 overflow-hidden">
+                <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-4 pt-3 pb-1">Tools</p>
+
+                {/* AI Audit */}
+                <div role="button" onClick={() => { onAIRefine(); closeMenu(); }} style={{ cursor: 'pointer', minHeight: 'auto' }}
+                  className="flex items-center gap-3 px-4 py-3 text-white font-semibold text-sm active:bg-white/5 transition-colors"
+                >
+                  <span className="w-6 text-center">✨</span>
+                  <span>AI Audit</span>
+                </div>
+
+                {/* Intelligence */}
+                <div role="button" onClick={() => { onToggleAnalytics(); closeMenu(); }} style={{ cursor: 'pointer', minHeight: 'auto' }}
+                  className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm border-t border-slate-700/30 active:bg-white/5 transition-colors ${showAnalytics ? 'text-[#c5a065]' : 'text-white'}`}
+                >
+                  <span className="w-6 text-center">📊</span>
+                  <span>Intelligence</span>
+                </div>
+
+                {/* New Booking */}
+                <div role="button" onClick={() => { onAddManual(); closeMenu(); }} style={{ cursor: 'pointer', minHeight: 'auto' }}
+                  className="flex items-center gap-3 px-4 py-3 text-[#c5a065] font-semibold text-sm border-t border-slate-700/30 active:bg-white/5 transition-colors"
+                >
+                  <span className="w-6 text-center">➕</span>
+                  <span>New Booking</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -613,3 +613,20 @@ export function subscribeToChatMessages(
 
     return () => off(chatRef);
 }
+
+/**
+ * Clear all chat messages for a session
+ */
+export async function clearChatMessages(sessionId: string): Promise<void> {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        return;
+    }
+    try {
+        const chatRef = ref(db, `chat/${sessionId}`);
+        await remove(chatRef);
+        console.log('🗑️ Cleared chat for session:', sessionId);
+    } catch (error) {
+        console.error('Failed to clear chat:', error);
+    }
+}

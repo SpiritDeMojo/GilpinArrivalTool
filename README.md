@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-Realtime_DB-FFCA28?logo=firebase)](https://firebase.google.com/)
-[![Gemini AI](https://img.shields.io/badge/Gemini_AI-2.0_Flash-4285F4?logo=google)](https://ai.google.dev/)
+[![Gemini AI](https://img.shields.io/badge/Gemini_AI-2.5_Flash-4285F4?logo=google)](https://ai.google.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite)](https://vitejs.dev/)
 
 </div>
@@ -25,7 +25,8 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 - 🤖 **AI-Powered Audit** — Gemini 2.0 Flash refines parsed data: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, and generates actionable greeting strategies
 - 📡 **Fleet Sync (Firebase)** — Real-time multi-device synchronisation via Firebase Realtime Database. Upload a PDF on one device, all connected devices update instantly
 - 🖨️ **Smart Print Layouts** — Three print modes (Master, Greeter, Delivery) with optimised column widths and dense formatting for maximum page utilisation
-- 💬 **Live Chat** — Cross-department messaging system with notification sounds per room
+- 💬 **Unified Chat Panel** — Tabbed interface with cross-department Team Chat and AI Live Assistant (voice & text). Delete chat, auto-connect, HTTPS voice/HTTP text-only modes
+- 🤖 **AI Live Assistant** — Conversational AI colleague powered by Gemini 2.5 Flash native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands
 - 📊 **Department Dashboards** — Purpose-built views for Reception, Housekeeping, and Maintenance with independent status tracking
 
 ---
@@ -65,7 +66,7 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 - **Frontend:** React 19 + TypeScript 5.6 + Tailwind CSS
 - **Build:** Vite 6
 - **PDF Parsing:** pdfjs-dist (Mozilla PDF.js)
-- **AI:** Google Gemini 2.0 Flash (via @google/genai)
+- **AI:** Google Gemini 2.5 Flash (via @google/genai) + Gemini Live API for native audio
 - **Real-time Sync:** Firebase Realtime Database
 - **Testing:** Vitest
 - **Export:** XLSX (SheetJS)

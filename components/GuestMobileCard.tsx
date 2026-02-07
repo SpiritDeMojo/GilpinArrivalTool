@@ -17,11 +17,13 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
       {/* --- Card Header: Room & Name --- */}
       <div className="p-5 flex items-start justify-between border-b border-slate-100 dark:border-stone-800/50">
         <div className="flex items-center gap-4">
-          <div className="bg-[#c5a065]/10 p-3 rounded-2xl border border-[#c5a065]/20">
+          <div className="bg-[#c5a065]/10 p-3 rounded-2xl border border-[#c5a065]/20 flex-shrink-0">
             <input
               value={guest.room}
               onChange={(e) => onUpdate({ room: e.target.value })}
-              className="w-16 bg-transparent text-xl font-black text-[#c5a065] text-center outline-none uppercase"
+              className="bg-transparent text-lg font-black text-[#c5a065] text-center outline-none uppercase"
+              style={{ width: `${Math.max(3, Math.min(guest.room.length + 1, 10))}ch`, maxWidth: '120px', minWidth: '3rem' }}
+              title={guest.room}
             />
             {guest.previousRoom && (
               <div className="text-[8px] font-bold text-blue-500 text-center mt-0.5">← {guest.previousRoom}</div>
