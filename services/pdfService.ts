@@ -76,6 +76,32 @@ export class PDFService {
     });
     if (currentLine.items.length > 0) lines.push(currentLine);
 
+    // === DETECT COLUMN POSITIONS FROM HEADER ROW ===
+    // The header row contains "Car Reg" (or similar) — detect its x-position
+    // before we filter it out, so we know exactly where car reg data lives.
+    let carRegColumnX: { min: number; max: number } | null = null;
+    for (const line of lines) {
+      const lineText = line.items.map((i: any) => i.str).join(' ');
+      if (/^ID\s+Guest Name|Req\.\s+Vip/i.test(lineText)) {
+        // This is a header row — find the Car Reg column
+        for (const item of line.items) {
+          if (/car\s*reg/i.test(item.str)) {
+            // The column spans from this item's x to the next column header's x
+            // Find items to the right to determine column width
+            const sortedItems = [...line.items].sort((a: any, b: any) => a.x - b.x);
+            const idx = sortedItems.findIndex((i: any) => /car\s*reg/i.test(i.str));
+            const nextItem = sortedItems[idx + 1];
+            carRegColumnX = {
+              min: item.x - 5,  // small tolerance
+              max: nextItem ? nextItem.x - 5 : item.x + 150
+            };
+            break;
+          }
+        }
+        if (carRegColumnX) break;
+      }
+    }
+
     // Filter noise lines (headers, footers, page numbers, repeated headings)
     lines = lines.filter(l => {
       const text = l.items.map((i: any) => i.str).join(" ");
@@ -95,7 +121,7 @@ export class PDFService {
     });
     if (currentBlock) guestBlocks.push(currentBlock);
 
-    const guests = guestBlocks.map(block => this.parseBlock(block, arrivalDateObj)).filter(g => g !== null);
+    const guests = guestBlocks.map(block => this.parseBlock(block, arrivalDateObj, carRegColumnX)).filter(g => g !== null);
 
     // Final Sort by Room Number using forced map values
     guests.sort((a, b) => {
@@ -236,7 +262,7 @@ export class PDFService {
     return result.join(" • ");
   }
 
-  private static parseBlock(block: any, arrivalDate: Date | null): Guest {
+  private static parseBlock(block: any, arrivalDate: Date | null, carRegColumnX?: { min: number; max: number } | null): Guest {
     const rawItems = block.lines.flatMap((l: any) => l.items);
     const rawTextLines = block.lines.map((l: any) => l.items.map((i: any) => i.str).join(" "));
     const singleLineText = rawTextLines.join(" ").replace(/\s+/g, " ");
@@ -262,31 +288,26 @@ export class PDFService {
       let foundMatch = false;
       for (const [key, num] of Object.entries(ROOM_MAP)) {
         if (normalizedCandidate.includes(key)) {
-          // FORCE the exact number and name from our master ROOM_MAP
           room = `${num} ${key.toUpperCase()}`;
           foundMatch = true;
           break;
         }
       }
       if (!foundMatch) {
-        // Fallback for custom rooms or cases where map fails: cleanup noise
         room = rawRoomCandidate.replace(/\b(DEF|CHI|GRP|VAC|MR|SS|SL|JS)\b/gi, "")
           .replace(/\b(\d{4}|\d{2}:\d{2})\b/g, "")
-          .replace(/\b(\d+)\s+\1\b/, "$1") // Fix "26 26" duplicate
+          .replace(/\b(\d+)\s+\1\b/, "$1")
           .replace(/\s+/g, " ").trim().toUpperCase();
       }
     }
 
     // --- 1.1 ROOM TYPE CODE EXTRACTION ---
-    // Codes: MR, CR, JS, GR, SL, SS, LHC, LHM, LHS, LHSS
-    // Often appears near departure date, e.g., "04/01/26 MR"
     let roomType = "";
     const roomTypeRegex = /\d{2}\/\d{2}\/\d{2,4}\s+(MR|CR|JS|GR|SL|SS|LHC|LHM|LHS|LHSS)\b/i;
     const typeMatch = singleLineText.match(roomTypeRegex);
     if (typeMatch) {
       roomType = typeMatch[1].toUpperCase();
     } else {
-      // Fallback: look for codes on their own if they are uppercase
       const looseTypeMatch = singleLineText.match(/\b(MR|CR|JS|GR|SL|SS|LHC|LHM|LHS|LHSS)\b/);
       if (looseTypeMatch) roomType = looseTypeMatch[1].toUpperCase();
     }
@@ -299,7 +320,6 @@ export class PDFService {
       const str = item.str.trim();
       if (str === block.id) { foundId = true; continue; }
       if (foundId) {
-        // Break if we hit staff initials, a room pattern, or a rate code
         if (str.length === 2 && str === str.toUpperCase() && !["MR", "MS", "DR"].includes(str)) break;
         if (str.match(roomPattern)) break;
         nameRaw += " " + str;
@@ -308,63 +328,51 @@ export class PDFService {
     let name = nameRaw.trim()
       .replace(/^_Regular.*?(?=\w)/i, "")
       .replace(/VIP\s*-\s*\w+/gi, "")
-      .replace(/(\s(Mr|Mrs|Miss|Ms|Dr|&|Sir|Lady|\+)+)+[*]*$/i, "")
+      .replace(/(\s(Mr|Mrs|Miss|Ms|Dr|\&|Sir|Lady|\+)+)+[*]*$/i, "")
       .trim();
 
-    // --- 3. FACILITIES (Slash-Based Deep Scan + Standalone Dinner/Spa Lines) ---
+    // --- 3. FACILITIES ---
     const facilityMatches = singleLineText.match(/\/(Spice|Source|The Lake House|GH\s+Pure|GH\s+ESPA|Pure\s*Lakes?|Pure|Massage|Aromatherapy|Treatments|Steam|Couples|Tea|Afternoon|Spa|Mud|Bento)[^/]+/gi) || [];
-
-    // Also capture standalone "Dinner for X" and "Spa In-Room Hamper" lines
-    // These appear as free-text below booking notes, not behind a /Slash prefix
     const standaloneFacilities: string[] = [];
     for (const line of rawTextLines) {
-      // "Dinner for 2 on 07/02/26 at 18:30 in SOURCE at Gilpin Hotel for £210.00"
       const dinnerMatch = line.match(/Dinner\s+for\s+\d+\s+on\s+[\d/]+\s+at\s+[\d:]+\s+in\s+.+/i);
-      if (dinnerMatch) {
-        standaloneFacilities.push(dinnerMatch[0].trim());
-      }
-      // "Spa In-Room Hamper on 07/02/26 for £0.00"
+      if (dinnerMatch) standaloneFacilities.push(dinnerMatch[0].trim());
       const spaMatch = line.match(/Spa\s+In-Room\s+Hamper\s+on\s+[\d/]+/i);
-      if (spaMatch) {
-        standaloneFacilities.push(spaMatch[0].trim());
-      }
-      // "Champagne on 02/01/26 for £95.00"
+      if (spaMatch) standaloneFacilities.push(spaMatch[0].trim());
       const champMatch = line.match(/(Champagne|Prosecco|Wine|Flowers)\s+on\s+[\d/]+\s+for\s+£[\d.]+/i);
-      if (champMatch) {
-        standaloneFacilities.push(champMatch[0].trim());
-      }
+      if (champMatch) standaloneFacilities.push(champMatch[0].trim());
     }
-
     const allFacilityText = [...facilityMatches, ...standaloneFacilities.map(s => `/${s}`)].join(" ");
     const facilitiesFormatted = this.formatFacilities(allFacilityText);
 
-    // --- 4. CAR REGISTRATION ---
-    // UK plate formats: AB12 CDE (new), A123 BCD (prefix), M88 HCT (personalised)
-    // PMS often prefixes with * (e.g., "*M88 HCT") — strip these.
-    // Car reg is ALWAYS on the first line (header row), last column. Never on subsequent lines.
+    // --- 4. CAR REGISTRATION (Position-Based + Regex) ---
+    // Strategy: Use the detected column header x-position to precisely locate car reg text.
+    // Falls back to x > 480 if no column header was found.
     let car = "";
 
     const platePatterns = [
       /\b[A-Z]{2}\d{2}\s?[A-Z]{3}\b/i,         // New format: AB12 CDE, DG18 WXF
       /\b[A-Z]\d{1,3}\s[A-Z]{3}\b/i,            // Prefix with space: M88 HCT, A123 BCD
-      /\b\d{1,4}\s[A-Z]{2,3}\b/i,               // Numeric prefix: 30 BHJ, 1234 AB (digits first, personalised)
-      /\b[A-Z]{2}\d{2,4}\b/i,                    // Short: LN75, AB1234 (no trailing letters)
+      /\b\d{1,4}\s[A-Z]{2,3}\b/i,               // Numeric prefix: 30 BHJ
+      /\b[A-Z]{2}\d{2,4}\b/i,                    // Short: LN75, AB1234
     ];
     const monthFilter = /^(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)$/i;
     const carExclusions = /^(BB\d|APR|RO|COMP|GS|JS|GR|MR|CR|SL|SS|LH|MAG|RATE|ID|PAGE|DATE|ROOM|UNIT|TOKEN|TOTAL|DEPOSIT|NET|VAT|GBP|MAN|UA|AD|CH|GRP|DEF|CHI|VAC|MOT|NDR|POB|MIN|CEL|MCT)$/i;
-    // Words that indicate the text is hotel/booking content, not a plate
     const contentFilter = /table|spice|source|dinner|lunch|spa|hamper|massage|pure|bento|tea|booking|facility|allergy|note|gilpin|hotel|token|billing|deposit|checked|arrival/i;
+
+    // Determine the x-range to search for car reg items
+    const carXMin = carRegColumnX ? carRegColumnX.min : 480;
+    const carXMax = carRegColumnX ? carRegColumnX.max : Infinity;
 
     // Only scan the FIRST LINE (header row) — car reg column is always there
     const firstLineItems = block.lines[0]?.items || [];
     const rightItems = firstLineItems
-      .filter((i: any) => i.x > 480)
+      .filter((i: any) => i.x >= carXMin && i.x <= carXMax)
       .sort((a: any, b: any) => a.x - b.x);
 
     if (rightItems.length > 0) {
-      // Try combining the last N items (plate may be 1-3 items: "DG18 WXF" or "*M88" + "HCT")
-      // Try smallest window first for more precise match, then expand
-      for (const windowSize of [2, 3, 4]) {
+      // Try combining the last N items (plate may be split: "DG18" + "WXF" or "*M88" + "HCT")
+      for (const windowSize of [1, 2, 3, 4]) {
         if (car) break;
         const lastItems = rightItems.slice(-windowSize);
         const combinedText = lastItems
@@ -376,6 +384,35 @@ export class PDFService {
 
         if (!combinedText || contentFilter.test(combinedText)) continue;
 
+        for (const pattern of platePatterns) {
+          const match = combinedText.match(pattern);
+          if (match) {
+            const candidate = match[0].trim();
+            const cleanCandidate = candidate.replace(/\s/g, '');
+            if (cleanCandidate.length >= 4 && !monthFilter.test(candidate) && !carExclusions.test(cleanCandidate)) {
+              car = candidate;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback: If column position was used but found nothing, try broad x > 480
+    if (!car && carRegColumnX) {
+      const broadRightItems = firstLineItems
+        .filter((i: any) => i.x > 480)
+        .sort((a: any, b: any) => a.x - b.x);
+      for (const windowSize of [1, 2, 3]) {
+        if (car) break;
+        const lastItems = broadRightItems.slice(-windowSize);
+        const combinedText = lastItems
+          .map((i: any) => i.str.trim().replace(/^\*+/, ''))
+          .filter((s: string) => s.length > 0 && !contentFilter.test(s))
+          .join(' ')
+          .toUpperCase()
+          .trim();
+        if (!combinedText || contentFilter.test(combinedText)) continue;
         for (const pattern of platePatterns) {
           const match = combinedText.match(pattern);
           if (match) {
