@@ -26,14 +26,15 @@ const Navbar: React.FC<NavbarProps> = ({
   arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP, isLiveActive, isMicEnabled, onToggleLive, hasGuests, onAIRefine, onToggleAnalytics, showAnalytics, isMuted, onToggleMute
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPrintOpen, setIsPrintOpen] = useState(false);
   const { userName, logout } = useUser();
 
   return (
     <nav className="navbar no-print flex justify-between items-center">
       <div className="flex items-center min-w-0">
-        <button className="nav-logo-bubble scale-75 md:scale-100 flex-shrink-0" onClick={() => window.location.reload()}>
+        <div role="button" className="nav-logo-bubble scale-75 md:scale-100 flex-shrink-0" style={{ cursor: 'pointer' }} onClick={() => window.location.reload()}>
           <img src={GILPIN_LOGO_URL} alt="Gilpin" className="nav-logo-img" />
-        </button>
+        </div>
         <div className="ml-3 md:ml-12 min-w-0">
           <h1 className="text-lg md:text-3xl font-black heading-font uppercase tracking-tighter leading-none mb-0.5 truncate">Gilpin Hotel</h1>
           <div className="font-black text-[#c5a065] text-[8px] md:text-[10px] tracking-[0.15em] md:tracking-[0.4em] uppercase truncate max-w-[110px] md:max-w-none">
@@ -62,17 +63,19 @@ const Navbar: React.FC<NavbarProps> = ({
                 ✨ AI Audit
               </button>
 
-              <div className="relative group">
-                <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">
+              <div className="relative">
+                <button onClick={() => setIsPrintOpen(!isPrintOpen)} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">
                   🖨️ Print
                 </button>
-                <div className="absolute right-0 top-full pt-2 hidden group-hover:block z-[2000]">
-                  <div className="bg-white dark:bg-stone-900 border border-[#c5a065]/20 shadow-2xl rounded-xl p-2 w-44">
-                    <button onClick={() => onPrint('main')} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Master List</button>
-                    <button onClick={() => onPrint('greeter')} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Greeter View</button>
-                    <button onClick={() => onPrint('inroom')} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">In-Room Assets</button>
+                {isPrintOpen && (
+                  <div className="absolute right-0 top-full pt-2 z-[2000]">
+                    <div className="bg-white dark:bg-stone-900 border border-[#c5a065]/20 shadow-2xl rounded-xl p-2 w-44">
+                      <button onClick={() => { onPrint('main'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Master List</button>
+                      <button onClick={() => { onPrint('greeter'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Greeter View</button>
+                      <button onClick={() => { onPrint('inroom'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">In-Room Assets</button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <button onClick={onExcel} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all">⬇️ Excel</button>
@@ -126,30 +129,36 @@ const Navbar: React.FC<NavbarProps> = ({
         )}
       </div>
 
-      {/* --- Mobile Actions (touch-safe: min 44px targets, 8px gaps) --- */}
+      {/* --- Mobile Actions: using <div> to bypass global button CSS overrides --- */}
       <div className="flex lg:hidden items-center gap-2 flex-shrink-0 relative z-[1015]">
         {hasGuests && (
           <>
-            <button
+            <div
+              role="button"
               onClick={onToggleLive}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-indigo-600 shadow-lg scale-105' : 'bg-slate-800'} active:scale-95`}
+              style={{ width: 44, height: 44, minHeight: 'auto', padding: 0, cursor: 'pointer' }}
+              className={`rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-indigo-600 shadow-lg scale-105' : 'bg-slate-800'} active:scale-95`}
             >
               <span className="text-lg leading-none">{isLiveActive ? (isMicEnabled ? '🎙️' : '🤖') : '🤖'}</span>
-            </button>
-            <button
+            </div>
+            <div
+              role="button"
               onClick={onToggleMute}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-600' : 'bg-slate-800'} active:scale-95`}
+              style={{ width: 44, height: 44, minHeight: 'auto', padding: 0, cursor: 'pointer' }}
+              className={`rounded-xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-600' : 'bg-slate-800'} active:scale-95`}
             >
               <span className="text-lg leading-none">{isMuted ? '🔕' : '🔔'}</span>
-            </button>
+            </div>
           </>
         )}
-        <button
+        <div
+          role="button"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="w-11 h-11 rounded-xl bg-[#c5a065] text-white flex items-center justify-center shadow-lg active:scale-90 flex-shrink-0"
+          style={{ width: 44, height: 44, minHeight: 'auto', padding: 0, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+          className="rounded-xl bg-[#c5a065] text-white flex items-center justify-center shadow-lg active:scale-90 flex-shrink-0 select-none"
         >
-          <span className="text-lg font-bold">{isMenuOpen ? '✕' : '☰'}</span>
-        </button>
+          <span className="text-xl font-bold leading-none">{isMenuOpen ? '✕' : '☰'}</span>
+        </div>
       </div>
 
       {/* --- Mobile Slide-out Menu (full-width, organized sections) --- */}
