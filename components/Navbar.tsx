@@ -29,7 +29,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const { userName, logout } = useUser();
 
   return (
-    <nav className="navbar no-print h-[72px] md:h-[72px] px-3 md:px-12">
+    <nav className="navbar no-print h-[72px] md:h-[72px] px-3 md:px-12 flex justify-between items-center">
       <div className="flex items-center min-w-0">
         <button className="nav-logo-bubble scale-75 md:scale-100 flex-shrink-0" onClick={() => window.location.reload()}>
           <img src={GILPIN_LOGO_URL} alt="Gilpin" className="nav-logo-img" />
@@ -154,7 +154,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
       {/* --- Mobile Slide-out Menu (full-width, organized sections) --- */}
       {isMenuOpen && (
-        <div className="lg:hidden fixed inset-0 top-[72px] bg-slate-950/95 backdrop-blur-xl z-[3000] overflow-y-auto animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="lg:hidden fixed inset-0 top-[56px] md:top-[72px] bg-slate-950/95 backdrop-blur-xl z-[3000] overflow-y-auto animate-in fade-in slide-in-from-right-4 duration-300">
           <div className="p-5 pb-20 space-y-4 max-w-md mx-auto">
 
             {/* Quick Actions */}
@@ -187,8 +187,27 @@ const Navbar: React.FC<NavbarProps> = ({
               </>
             )}
 
-            {/* Utility */}
+            {/* User & Utility */}
             <div className="pt-2 space-y-3">
+              {userName && (
+                <div className="flex items-center justify-between p-4 bg-[#c5a065]/10 border border-[#c5a065]/30 rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-[#c5a065] flex items-center justify-center text-white text-sm font-black">
+                      {userName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-white font-bold text-sm">{userName}</p>
+                      <p className="text-[10px] text-slate-400">Signed in</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { logout(); setIsMenuOpen(false); }}
+                    className="px-4 py-2 rounded-xl bg-slate-800 text-rose-400 text-[10px] font-black uppercase tracking-widest border border-slate-700 active:scale-95 transition-transform"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              )}
               <button onClick={() => { document.getElementById('file-upload-nav')?.click(); setIsMenuOpen(false); }} className="w-full bg-slate-800 text-white py-4 px-5 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 border border-slate-700 active:scale-[0.98] transition-transform min-h-[52px]">📁 Upload PDF</button>
               <button onClick={() => { onOpenSOP(); setIsMenuOpen(false); }} className="w-full border-2 border-[#c5a065]/30 text-[#c5a065] py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-[0.98] transition-transform min-h-[52px]">? Titanium Manual</button>
             </div>
