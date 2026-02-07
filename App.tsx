@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { useTheme } from './contexts/ThemeProvider';
 import { useView } from './contexts/ViewProvider';
 import { useHotkeys } from './contexts/HotkeysProvider';
@@ -647,6 +648,7 @@ const App: React.FC = () => {
           }
         }
       `}</style>
+      <Analytics />
     </div>
   );
 };
