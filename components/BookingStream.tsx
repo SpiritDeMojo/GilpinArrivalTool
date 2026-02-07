@@ -8,10 +8,10 @@ interface BookingStreamProps {
 }
 
 /** Labelled section with a header and content */
-const Section: React.FC<{ label: string; children: React.ReactNode; color?: string }> = ({ label, children, color = '#c5a065' }) => (
-    <div className="mb-2">
-        <div className="text-[9px] font-black uppercase tracking-widest mb-0.5" style={{ color }}>{label}</div>
-        <div className="text-[11px] leading-relaxed text-slate-200">{children}</div>
+const Section: React.FC<{ label: string; children: React.ReactNode; color?: string }> = ({ label, children, color }) => (
+    <div className="bs-section">
+        <div className="bs-section-label" style={color ? { color } : undefined}>{label}</div>
+        <div className="bs-section-content">{children}</div>
     </div>
 );
 
@@ -19,9 +19,9 @@ const Section: React.FC<{ label: string; children: React.ReactNode; color?: stri
 const KV: React.FC<{ label: string; value?: string }> = ({ label, value }) => {
     if (!value) return null;
     return (
-        <span className="mr-4 inline-block">
-            <span className="text-slate-500 text-[9px] uppercase tracking-wider">{label}: </span>
-            <span className="text-slate-200 text-[11px] font-medium"><HighlightedRaw text={value} /></span>
+        <span className="bs-kv">
+            <span className="bs-kv-label">{label}: </span>
+            <span className="bs-kv-value"><HighlightedRaw text={value} /></span>
         </span>
     );
 };
@@ -39,10 +39,10 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
     const h = data.header;
 
     return (
-        <div className="font-mono text-[11px] space-y-3">
-            {/* ── HEADER ROW (mirrors the PDF table header) ── */}
-            <div className="bg-slate-800/80 rounded-xl p-3 border border-slate-700/50">
-                <div className="flex flex-wrap gap-x-5 gap-y-1">
+        <div className="bs-root">
+            {/* ── HEADER ROW ── */}
+            <div className="bs-card bs-card-header">
+                <div className="bs-kv-row">
                     <KV label="ID" value={h.id} />
                     <KV label="Guest" value={h.name} />
                     <KV label="Room" value={h.room} />
@@ -58,8 +58,8 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
 
             {/* ── COMPANY / CONTACT / OCCASION ── */}
             {(data.company || data.contact || data.occasion || data.poNumber) && (
-                <div className="bg-slate-800/40 rounded-xl p-3 border border-slate-700/30">
-                    <div className="flex flex-wrap gap-x-5 gap-y-1">
+                <div className="bs-card">
+                    <div className="bs-kv-row">
                         <KV label="Company" value={data.company} />
                         <KV label="Contact" value={data.contact} />
                         <KV label="Occasion" value={data.occasion} />
@@ -77,10 +77,10 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
 
             {/* ── FACILITY BOOKINGS ── */}
             {data.facilityBookings.length > 0 && (
-                <Section label="Facility Bookings" color="#6bb5e0">
-                    <div className="space-y-0.5">
+                <Section label="Facility Bookings" color="var(--bs-blue)">
+                    <div className="bs-list">
                         {data.facilityBookings.map((b, i) => (
-                            <div key={i} className="pl-2 border-l-2 border-blue-500/30 py-0.5">
+                            <div key={i} className="bs-list-item bs-list-item--blue">
                                 <HighlightedRaw text={b} />
                             </div>
                         ))}
@@ -90,16 +90,16 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
 
             {/* ── ALLERGIES / HK NOTES ── */}
             {(data.allergies || data.hkNotes) && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="bs-grid-2">
                     {data.allergies && (
-                        <Section label="Allergies" color="#f87171">
-                            <div className="text-red-300 font-semibold">
+                        <Section label="Allergies" color="var(--bs-red)">
+                            <div className="bs-allergy">
                                 <HighlightedRaw text={data.allergies} />
                             </div>
                         </Section>
                     )}
                     {data.hkNotes && (
-                        <Section label="HK Notes" color="#a78bfa">
+                        <Section label="HK Notes" color="var(--bs-purple)">
                             <HighlightedRaw text={data.hkNotes} />
                         </Section>
                     )}
@@ -108,10 +108,10 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
 
             {/* ── BOOKING NOTES ── */}
             {data.bookingNotes.length > 0 && (
-                <Section label="Booking Notes" color="#facc15">
-                    <div className="space-y-0.5">
+                <Section label="Booking Notes" color="var(--bs-yellow)">
+                    <div className="bs-list">
                         {data.bookingNotes.map((note, i) => (
-                            <div key={i} className="pl-2 border-l-2 border-yellow-500/30 py-0.5">
+                            <div key={i} className="bs-list-item bs-list-item--yellow">
                                 <HighlightedRaw text={note} />
                             </div>
                         ))}
@@ -121,10 +121,10 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
 
             {/* ── IN ROOM ON ARRIVAL ── */}
             {data.inRoomItems.length > 0 && (
-                <Section label="In Room on Arrival" color="#4ade80">
-                    <div className="flex flex-wrap gap-1.5">
+                <Section label="In Room on Arrival" color="var(--bs-green)">
+                    <div className="bs-tags">
                         {data.inRoomItems.map((item, i) => (
-                            <span key={i} className="inline-block bg-green-500/10 border border-green-500/20 rounded-lg px-2 py-0.5 text-green-300 text-[10px]">
+                            <span key={i} className="bs-tag bs-tag--green">
                                 {item}
                             </span>
                         ))}
@@ -134,10 +134,10 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
 
             {/* ── LINE ITEMS (purchases) ── */}
             {data.lineItems.length > 0 && (
-                <Section label="Charges & Extras" color="#fb923c">
-                    <div className="space-y-0.5">
+                <Section label="Charges & Extras" color="var(--bs-orange)">
+                    <div className="bs-list">
                         {data.lineItems.map((item, i) => (
-                            <div key={i} className="pl-2 border-l-2 border-orange-500/30 py-0.5 text-orange-200">
+                            <div key={i} className="bs-list-item bs-list-item--orange">
                                 <HighlightedRaw text={item} />
                             </div>
                         ))}
@@ -147,9 +147,9 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
 
             {/* ── BILLING ── */}
             {data.billing && (
-                <div className="bg-slate-800/40 rounded-xl p-3 border border-slate-700/30">
-                    <div className="text-[9px] font-black uppercase tracking-widest mb-1 text-slate-400">Billing</div>
-                    <div className="flex flex-wrap gap-x-5 gap-y-1">
+                <div className="bs-card">
+                    <div className="bs-section-label" style={{ color: 'var(--bs-muted)' }}>Billing</div>
+                    <div className="bs-kv-row">
                         <KV label="Total Rate" value={data.billing.totalRate} />
                         <KV label="Deposit" value={data.billing.deposit} />
                         <KV label="Billing" value={data.billing.billing} />
@@ -160,8 +160,8 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
 
             {/* ── CHECKS ── */}
             {data.checks.length > 0 && (
-                <Section label="Internal Checks" color="#94a3b8">
-                    <div className="text-slate-400 text-[10px]">
+                <Section label="Internal Checks" color="var(--bs-muted)">
+                    <div className="bs-checks">
                         {data.checks.join(' • ')}
                     </div>
                 </Section>

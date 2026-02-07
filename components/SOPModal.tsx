@@ -22,7 +22,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               </h2>
             </div>
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-              Standard Operating Procedures • <span className="text-[#c5a065]">v11.0</span>
+              Standard Operating Procedures • <span className="text-[#c5a065]">v12.0</span>
             </p>
           </div>
           <button
@@ -646,6 +646,53 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-loose">
                       Use the Reception Dashboard to track guest arrivals. Watch for the <strong>✅ Room Ready</strong> indicator showing both HK and Maintenance are complete. Use <strong>🚶 Guest Off Site</strong> when guests leave temporarily. Log courtesy calls with sentiment tags. Review AI-generated tags for proactive service opportunities.
                     </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 14. BOOKING STREAM */}
+            <section>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
+                <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
+                14. Booking Stream
+                <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
+              </h3>
+
+              <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222]">
+                <div className="text-3xl mb-4">📄</div>
+                <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">Structured PDF View</h4>
+                <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                  Each guest row has a <strong>▶ Booking Stream</strong> toggle. Expanding it shows the original PDF booking data in a clean, structured layout — not raw text.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">📋</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Header Row</h5>
+                      <p className="text-[10px] text-slate-400">ID, Name, Room, Time, Status, Departure, Type, Rate Code, Rate, Car Reg</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">🍽️</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Facility Bookings</h5>
+                      <p className="text-[10px] text-slate-400">Restaurant reservations, spa sessions, and activity bookings</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">⚠️</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Allergies & HK Notes</h5>
+                      <p className="text-[10px] text-slate-400">Red-highlighted allergy alerts and housekeeping notes side-by-side</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">💰</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Charges & Billing</h5>
+                      <p className="text-[10px] text-slate-400">Line items with dates and prices, billing summary, and rate information</p>
+                    </div>
                   </div>
                 </div>
               </div>
