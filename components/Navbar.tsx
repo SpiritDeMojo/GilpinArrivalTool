@@ -129,47 +129,103 @@ const Navbar: React.FC<NavbarProps> = ({
         )}
       </div>
 
-      {/* --- Mobile Actions: using <div> to bypass global button CSS overrides --- */}
+      {/* --- Mobile Actions: div-based to bypass global button CSS --- */}
       <div className="flex lg:hidden items-center gap-2 flex-shrink-0 relative z-[1015]">
         {hasGuests && (
           <>
             <div
               role="button"
               onClick={onToggleLive}
-              style={{ width: 44, height: 44, minHeight: 'auto', padding: 0, cursor: 'pointer' }}
+              style={{ width: 40, height: 40, minHeight: 'auto', padding: 0, cursor: 'pointer' }}
               className={`rounded-xl flex items-center justify-center transition-all ${isLiveActive ? 'bg-indigo-600 shadow-lg scale-105' : 'bg-slate-800'} active:scale-95`}
             >
-              <span className="text-lg leading-none">{isLiveActive ? (isMicEnabled ? '🎙️' : '🤖') : '🤖'}</span>
+              <span className="text-base leading-none">{isLiveActive ? (isMicEnabled ? '🎙️' : '🤖') : '🤖'}</span>
             </div>
             <div
               role="button"
               onClick={onToggleMute}
-              style={{ width: 44, height: 44, minHeight: 'auto', padding: 0, cursor: 'pointer' }}
+              style={{ width: 40, height: 40, minHeight: 'auto', padding: 0, cursor: 'pointer' }}
               className={`rounded-xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-600' : 'bg-slate-800'} active:scale-95`}
             >
-              <span className="text-lg leading-none">{isMuted ? '🔕' : '🔔'}</span>
+              <span className="text-base leading-none">{isMuted ? '🔕' : '🔔'}</span>
+            </div>
+
+            {/* Print — standalone, separate from hamburger */}
+            <div className="relative">
+              <div
+                role="button"
+                onClick={() => { setIsPrintOpen(!isPrintOpen); setIsMenuOpen(false); }}
+                style={{ width: 40, height: 40, minHeight: 'auto', padding: 0, cursor: 'pointer' }}
+                className={`rounded-xl flex items-center justify-center transition-all shadow-lg active:scale-90 ${isPrintOpen ? 'bg-slate-700 ring-2 ring-[#c5a065]' : 'bg-slate-800'}`}
+              >
+                <span className="text-base leading-none">🖨️</span>
+              </div>
+              {/* Print dropdown — positioned below the print icon */}
+              {isPrintOpen && (
+                <div className="absolute right-0 top-full mt-2 z-[3000] w-48">
+                  <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
+                    <div className="p-1">
+                      <div
+                        role="button"
+                        onClick={() => { onPrint('main'); setIsPrintOpen(false); }}
+                        style={{ cursor: 'pointer', minHeight: 'auto', padding: '12px 16px' }}
+                        className="text-white text-xs font-bold flex items-center gap-2 rounded-xl active:bg-white/10 transition-colors"
+                      >
+                        📄 Master List
+                      </div>
+                      <div
+                        role="button"
+                        onClick={() => { onPrint('greeter'); setIsPrintOpen(false); }}
+                        style={{ cursor: 'pointer', minHeight: 'auto', padding: '12px 16px' }}
+                        className="text-white text-xs font-bold flex items-center gap-2 rounded-xl active:bg-white/10 transition-colors"
+                      >
+                        👋 Greeter View
+                      </div>
+                      <div
+                        role="button"
+                        onClick={() => { onPrint('inroom'); setIsPrintOpen(false); }}
+                        style={{ cursor: 'pointer', minHeight: 'auto', padding: '12px 16px' }}
+                        className="text-white text-xs font-bold flex items-center gap-2 rounded-xl active:bg-white/10 transition-colors"
+                      >
+                        🛏️ In-Room Delivery
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
+
+        {/* Hamburger — opens slide-out menu, closes print dropdown */}
         <div
           role="button"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          onClick={() => { setIsMenuOpen(!isMenuOpen); setIsPrintOpen(false); }}
           style={{ width: 44, height: 44, minHeight: 'auto', padding: 0, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
-          className="rounded-xl bg-[#c5a065] text-white flex items-center justify-center shadow-lg active:scale-90 flex-shrink-0 select-none"
+          className={`rounded-xl text-white flex items-center justify-center shadow-lg active:scale-90 flex-shrink-0 select-none ${isMenuOpen ? 'bg-slate-700 ring-2 ring-[#c5a065]' : 'bg-[#c5a065]'}`}
         >
           <span className="text-xl font-bold leading-none">{isMenuOpen ? '✕' : '☰'}</span>
         </div>
       </div>
 
-      {/* --- Mobile Slide-out Menu (full-width, organized sections) --- */}
+      {/* Close dropdowns when tapping outside */}
+      {(isPrintOpen || isMenuOpen) && (
+        <div
+          className="lg:hidden fixed inset-0 z-[2999]"
+          style={{ top: 0 }}
+          onClick={() => { setIsPrintOpen(false); setIsMenuOpen(false); }}
+        />
+      )}
+
+      {/* --- Mobile Slide-out Menu (no print — print is separate) --- */}
       {isMenuOpen && (
-        <div className="lg:hidden fixed inset-0 top-[56px] md:top-[72px] bg-slate-950/95 backdrop-blur-xl z-[3000] overflow-y-auto animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="lg:hidden fixed left-0 right-0 bottom-0 bg-slate-950/95 backdrop-blur-xl z-[3000] overflow-y-auto" style={{ top: 56 }}>
           <div className="p-5 pb-20 space-y-4 max-w-md mx-auto">
 
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => { onAddManual(); setIsMenuOpen(false); }} className="bg-[#c5a065] text-white py-4 px-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform min-h-[52px]">➕ Add Manual</button>
-              <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} className="bg-slate-800 text-white py-4 px-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-slate-700 active:scale-95 transition-transform min-h-[52px]">{isDark ? '☀️ Ivory' : '🌙 Obsidian'}</button>
+              <div role="button" onClick={() => { onAddManual(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="bg-[#c5a065] text-white py-4 px-4 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform">➕ Add Manual</div>
+              <div role="button" onClick={() => { toggleTheme(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="bg-slate-800 text-white py-4 px-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-slate-700 active:scale-95 transition-transform">{isDark ? '☀️ Ivory' : '🌙 Obsidian'}</div>
             </div>
 
             {hasGuests && (
@@ -177,22 +233,12 @@ const Navbar: React.FC<NavbarProps> = ({
                 {/* AI & Analytics */}
                 <div className="space-y-3">
                   <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-1">Intelligence</p>
-                  <button onClick={() => { onAIRefine(); setIsMenuOpen(false); }} className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-[0.98] transition-transform min-h-[52px]">✨ AI Audit Refine</button>
-                  <button onClick={() => { onToggleAnalytics(); setIsMenuOpen(false); }} className={`w-full ${showAnalytics ? 'bg-[#c5a065]' : 'bg-slate-800'} text-white py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest border border-slate-700 active:scale-[0.98] transition-transform min-h-[52px]`}>📊 Strategic Analytics</button>
-                </div>
-
-                {/* Print Hub */}
-                <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-800">
-                  <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] mb-3">Print Hub</p>
-                  <div className="space-y-1">
-                    <button onClick={() => { onPrint('main'); setIsMenuOpen(false); }} className="w-full text-left py-3 px-3 text-sm text-white font-bold flex items-center gap-3 rounded-xl active:bg-white/5 transition-colors min-h-[44px]">🖨️ Master List</button>
-                    <button onClick={() => { onPrint('greeter'); setIsMenuOpen(false); }} className="w-full text-left py-3 px-3 text-sm text-white font-bold flex items-center gap-3 rounded-xl active:bg-white/5 transition-colors min-h-[44px]">🖨️ Greeter List</button>
-                    <button onClick={() => { onPrint('inroom'); setIsMenuOpen(false); }} className="w-full text-left py-3 px-3 text-sm text-white font-bold flex items-center gap-3 rounded-xl active:bg-white/5 transition-colors min-h-[44px]">🖨️ Delivery Manifest</button>
-                  </div>
+                  <div role="button" onClick={() => { onAIRefine(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-[0.98] transition-transform">✨ AI Audit Refine</div>
+                  <div role="button" onClick={() => { onToggleAnalytics(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className={`w-full ${showAnalytics ? 'bg-[#c5a065]' : 'bg-slate-800'} text-white py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest border border-slate-700 active:scale-[0.98] transition-transform`}>📊 Strategic Analytics</div>
                 </div>
 
                 {/* Export */}
-                <button onClick={() => { onExcel(); setIsMenuOpen(false); }} className="w-full bg-emerald-600 text-white py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-[0.98] transition-transform min-h-[52px]">⬇️ Export Excel</button>
+                <div role="button" onClick={() => { onExcel(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="w-full bg-emerald-600 text-white py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-[0.98] transition-transform">⬇️ Export Excel</div>
               </>
             )}
 
@@ -209,16 +255,13 @@ const Navbar: React.FC<NavbarProps> = ({
                       <p className="text-[10px] text-slate-400">Signed in</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => { logout(); setIsMenuOpen(false); }}
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-rose-400 text-[10px] font-black uppercase tracking-widest border border-slate-700 active:scale-95 transition-transform"
-                  >
+                  <div role="button" onClick={() => { logout(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="px-4 py-2 rounded-xl bg-slate-800 text-rose-400 text-[10px] font-black uppercase tracking-widest border border-slate-700 active:scale-95 transition-transform">
                     Sign Out
-                  </button>
+                  </div>
                 </div>
               )}
-              <button onClick={() => { document.getElementById('file-upload-nav')?.click(); setIsMenuOpen(false); }} className="w-full bg-slate-800 text-white py-4 px-5 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 border border-slate-700 active:scale-[0.98] transition-transform min-h-[52px]">📁 Upload PDF</button>
-              <button onClick={() => { onOpenSOP(); setIsMenuOpen(false); }} className="w-full border-2 border-[#c5a065]/30 text-[#c5a065] py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-[0.98] transition-transform min-h-[52px]">? Titanium Manual</button>
+              <div role="button" onClick={() => { document.getElementById('file-upload-nav')?.click(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="w-full bg-slate-800 text-white py-4 px-5 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 border border-slate-700 active:scale-[0.98] transition-transform">📁 Upload PDF</div>
+              <div role="button" onClick={() => { onOpenSOP(); setIsMenuOpen(false); }} style={{ cursor: 'pointer', minHeight: 'auto' }} className="w-full border-2 border-[#c5a065]/30 text-[#c5a065] py-4 px-5 rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-[0.98] transition-transform">? Titanium Manual</div>
             </div>
           </div>
         </div>

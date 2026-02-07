@@ -98,6 +98,73 @@
         .nav-logo-bubble:hover { transform: translateY(22px) scale(1.1); }
         .nav-logo-img { width: 100%; height: 100%; object-fit: contain; }
 
+        /* --- PREMIUM DASHBOARD VIEW TABS --- */
+        .dashboard-view-tabs {
+            position: sticky;
+            top: 72px;
+            z-index: 1005;
+            background: var(--nav-bg);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid var(--border-ui);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        }
+        .view-tabs-container {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding: 2px;
+        }
+        .view-tabs-container::-webkit-scrollbar { display: none; }
+        .view-tab {
+            padding: 8px 20px;
+            border-radius: 10px;
+            font-family: var(--font-sans);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1.5px solid var(--border-ui);
+            background: var(--surface);
+            color: var(--text-main);
+            position: relative;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .view-tab:hover {
+            background: rgba(197, 160, 101, 0.12);
+            border-color: var(--gilpin-gold);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(197, 160, 101, 0.15);
+        }
+        .view-tab.active {
+            background: var(--gilpin-gold);
+            color: white;
+            border-color: var(--gilpin-gold);
+            box-shadow: 0 4px 16px rgba(197, 160, 101, 0.35);
+            font-weight: 800;
+        }
+        .connection-status {
+            flex-shrink: 0;
+            margin-left: 12px;
+        }
+        .status-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+        .status-badge.connected { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .status-badge.connecting { background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .status-badge.offline { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+
         .dashboard-container.sticky {
             position: fixed; left: 0; right: 0;
             background: var(--nav-bg);
@@ -226,6 +293,14 @@
             .nav-logo-bubble:hover {
                 transform: translateY(16px) scale(1.05);
             }
+            .dashboard-view-tabs {
+                top: 64px;
+                padding: 8px 16px;
+            }
+            .view-tab {
+                padding: 7px 16px;
+                font-size: 11px;
+            }
         }
 
         /* Mobile (max-width: 768px) */
@@ -234,6 +309,14 @@
                 padding: 0 16px;
                 height: 56px;
                 justify-content: space-between;
+            }
+            .dashboard-view-tabs {
+                top: 56px;
+                padding: 6px 12px;
+            }
+            .view-tab {
+                padding: 6px 14px;
+                font-size: 11px;
             }
             .nav-logo-bubble {
                 width: 50px;
@@ -326,6 +409,14 @@
             .navbar {
                 padding: 0 12px;
                 height: 50px;
+            }
+            .dashboard-view-tabs {
+                top: 50px;
+                padding: 5px 8px;
+            }
+            .view-tab {
+                padding: 5px 12px;
+                font-size: 10px;
             }
             .nav-logo-bubble {
                 width: 44px;
