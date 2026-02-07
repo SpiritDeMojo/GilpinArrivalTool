@@ -37,6 +37,7 @@ import ETATimeline from './components/ETATimeline';
 import ConflictDetector from './components/ConflictDetector';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionBrowser from './components/SessionBrowser';
+import NotificationToast from './components/NotificationToast';
 
 import ActivityLogPanel from './components/ActivityLogPanel';
 import LoginScreen from './components/LoginScreen';
@@ -186,7 +187,7 @@ const App: React.FC = () => {
     startLiveAssistant, toggleMic, sendTextMessage, disconnect, clearHistory
   } = useLiveAssistant({ guests, onAddRoomNote: handleAddRoomNote, onUpdateGuest: handleAIUpdateGuest });
 
-  const { isMuted, toggleMute } = useNotifications(guests);
+  const { isMuted, toggleMute, notifications, badges, dismissNotification, clearAllNotifications, clearBadge } = useNotifications(guests);
 
   // === Resolve Room Note Handler ===
   const handleResolveNote = useCallback((guestId: string, noteId: string, resolvedBy: string) => {
@@ -274,6 +275,13 @@ const App: React.FC = () => {
         connectionStatus={connectionStatus}
       />
 
+      {/* Notification Toast Overlay */}
+      <NotificationToast
+        notifications={notifications}
+        onDismiss={dismissNotification}
+        onClearAll={clearAllNotifications}
+        onNavigate={(view) => { setDashboardView(view); clearBadge(view); }}
+      />
       {isOldFile && guests.length > 0 && (
         <div className="no-print pulsate-alert text-white text-center font-black py-1 tracking-widest text-[8px] md:text-[10px] fixed w-full z-[1009]" style={{ top: NAV_HEIGHT + 'px' }}>
           ⚠️ HISTORICAL FILE DETECTED • {arrivalDateStr}
@@ -281,62 +289,45 @@ const App: React.FC = () => {
       )}
 
       {/* Dashboard View Tabs */}
-      {guests.length > 0 && (() => {
-        const urgentMaintCount = guests.filter(g =>
-          (g.roomNotes || []).some(n => !n.resolved && (n.priority === 'urgent' || n.priority === 'high'))
-        ).length;
-
-        return (
-          <div className="no-print dashboard-view-tabs">
-            <div className="view-tabs-container">
-              <button
-                className={`view-tab ${dashboardView === 'arrivals' ? 'active' : ''}`}
-                onClick={() => setDashboardView('arrivals')}
-              >
-                📋 Arrivals ({guests.length})
-              </button>
-              <button
-                className={`view-tab ${dashboardView === 'housekeeping' ? 'active' : ''}`}
-                onClick={() => setDashboardView('housekeeping')}
-              >
-                🧹 Housekeeping
-              </button>
-              <button
-                className={`view-tab ${dashboardView === 'maintenance' ? 'active' : ''}`}
-                onClick={() => setDashboardView('maintenance')}
-                style={{ position: 'relative' }}
-              >
-                🔧 Maintenance
-                {urgentMaintCount > 0 && (
-                  <span style={{
-                    position: 'absolute',
-                    top: '-4px',
-                    right: '-4px',
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '50%',
-                    background: '#ef4444',
-                    color: 'white',
-                    fontSize: '9px',
-                    fontWeight: 900,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '2px solid var(--bg-color, white)',
-                    animation: 'pulse 2s infinite',
-                  }}>{urgentMaintCount}</span>
-                )}
-              </button>
-              <button
-                className={`view-tab ${dashboardView === 'reception' ? 'active' : ''}`}
-                onClick={() => setDashboardView('reception')}
-              >
-                🛎️ Reception
-              </button>
-            </div>
+      {guests.length > 0 && (
+        <div className="no-print dashboard-view-tabs">
+          <div className="view-tabs-container">
+            <button
+              className={`view-tab ${dashboardView === 'arrivals' ? 'active' : ''}`}
+              onClick={() => setDashboardView('arrivals')}
+            >
+              📋 Arrivals ({guests.length})
+            </button>
+            <button
+              className={`view-tab ${dashboardView === 'housekeeping' ? 'active' : ''}`}
+              onClick={() => { setDashboardView('housekeeping'); clearBadge('housekeeping'); }}
+            >
+              🧹 Housekeeping
+              {badges.housekeeping > 0 && dashboardView !== 'housekeeping' && (
+                <span className="tab-badge-dot" style={{ background: '#22c55e' }}>{badges.housekeeping}</span>
+              )}
+            </button>
+            <button
+              className={`view-tab ${dashboardView === 'maintenance' ? 'active' : ''}`}
+              onClick={() => { setDashboardView('maintenance'); clearBadge('maintenance'); }}
+            >
+              🔧 Maintenance
+              {badges.maintenance > 0 && dashboardView !== 'maintenance' && (
+                <span className="tab-badge-dot" style={{ background: '#f59e0b' }}>{badges.maintenance}</span>
+              )}
+            </button>
+            <button
+              className={`view-tab ${dashboardView === 'reception' ? 'active' : ''}`}
+              onClick={() => { setDashboardView('reception'); clearBadge('reception'); }}
+            >
+              🛎️ Reception
+              {badges.reception > 0 && dashboardView !== 'reception' && (
+                <span className="tab-badge-dot" style={{ background: '#3b82f6' }}>{badges.reception}</span>
+              )}
+            </button>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {guests.length > 0 && dashboardView === 'arrivals' && (
         <div className="no-print relative my-2 md:my-6">
