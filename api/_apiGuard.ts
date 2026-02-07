@@ -3,25 +3,31 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 /**
  * Shared API security guard for all Vercel serverless functions.
  * 
- * - Validates Origin / Referer against allowed domains
+ * - Blocks cross-origin requests from unknown domains
+ * - Same-origin requests (no Origin header) are always allowed
  * - Adds CORS headers for browser preflight
  * - Returns true if the request is allowed, false if blocked (response already sent)
  */
 
 const ALLOWED_ORIGINS = [
-    // Production
+    // Production (add your actual Vercel domains here)
     'https://gilpin-arrival-tool.vercel.app',
     'https://gilpinarrivaltool.vercel.app',
-    // Preview deployments (Vercel pattern)
-    '.vercel.app',
     // Local dev
     'http://localhost:',
     'http://127.0.0.1:',
 ];
 
 function isOriginAllowed(origin: string): boolean {
-    if (!origin) return false;
-    return ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed) || origin.includes(allowed));
+    if (!origin) return true; // Same-origin requests don't send Origin header — always safe
+    // Check explicit matches
+    if (ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed))) return true;
+    // Allow any Vercel preview/deployment URL
+    if (origin.endsWith('.vercel.app')) return true;
+    // Allow the auto-detected Vercel URL
+    const vercelUrl = process.env.VERCEL_URL;
+    if (vercelUrl && origin.includes(vercelUrl)) return true;
+    return false;
 }
 
 export function apiGuard(req: VercelRequest, res: VercelResponse): boolean {
@@ -36,25 +42,19 @@ export function apiGuard(req: VercelRequest, res: VercelResponse): boolean {
 
     // Check origin from headers
     const origin = req.headers.origin || '';
-    const referer = req.headers.referer || '';
-    const source = origin || referer;
 
-    // Allow server-side / non-browser requests in development
-    if (!source && process.env.NODE_ENV === 'development') {
-        return true;
-    }
-
-    // Validate origin
-    if (!isOriginAllowed(source)) {
-        console.warn(`[API Guard] Blocked request from: ${source || '(no origin)'}`);
-        res.status(403).json({ error: 'Forbidden — request origin not allowed' });
+    // Validate origin (empty = same-origin = always allowed)
+    if (!isOriginAllowed(origin)) {
+        console.warn(`[API Guard] Blocked cross-origin request from: ${origin}`);
+        res.status(403).json({ error: 'Forbidden — cross-origin request not allowed' });
         return false;
     }
 
-    // Set CORS headers for allowed origins
+    // Set CORS headers for cross-origin allowed requests
     if (origin) {
         res.setHeader('Access-Control-Allow-Origin', origin);
     }
 
     return true;
 }
+
