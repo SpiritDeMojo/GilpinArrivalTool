@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.37.0",
+    "@vercel/analytics": "^1.6.1",
     "firebase": "^12.9.0",
     "pdfjs-dist": "5.4.624",
     "react": "^19.0.0",
