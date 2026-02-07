@@ -51,8 +51,14 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 └──────────────┘     └──────────────┘     └───────┬───────┘
                                                   │
                      ┌──────────────┐              │
-                     │  Gemini AI   │◀─────────────┤
-                     │  (AI Audit)  │──────────────┤
+                     │ Vercel API   │◀─────────────┤
+                     │ /api/gemini-*│              │
+                     │ (server-side)│              │
+                     └──────┬───────┘              │
+                            │                     │
+                     ┌──────▼───────┐              │
+                     │  Gemini AI   │              │
+                     │  (2.5 Flash) │              │
                      └──────────────┘              │
                                                   │
                      ┌──────────────┐              │
@@ -65,8 +71,10 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 
 - **Frontend:** React 19 + TypeScript 5.6 + Tailwind CSS
 - **Build:** Vite 6
+- **Backend:** Vercel Serverless Functions (API routes for AI calls)
 - **PDF Parsing:** pdfjs-dist (Mozilla PDF.js)
 - **AI:** Google Gemini 2.5 Flash (via @google/genai) + Gemini Live API for native audio
+- **Audio Capture:** AudioWorklet API (with ScriptProcessorNode fallback)
 - **Real-time Sync:** Firebase Realtime Database
 - **Testing:** Vitest
 - **Export:** XLSX (SheetJS)
@@ -119,10 +127,9 @@ cp .env.example .env
 
 ### Configuration
 
-Edit your `.env` file:
+#### Local `.env` file (Firebase only — client-side)
 
 ```env
-# Firebase (required for multi-device sync)
 VITE_FIREBASE_API_KEY=your-api-key
 VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 VITE_FIREBASE_DATABASE_URL=https://your-project-default-rtdb.firebaseio.com
@@ -130,10 +137,18 @@ VITE_FIREBASE_PROJECT_ID=your-project-id
 VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
 VITE_FIREBASE_APP_ID=1:123456789:web:abc123
-
-# AI Features (optional)
-VITE_GEMINI_API_KEY=your-gemini-api-key
 ```
+
+#### Vercel Environment Variables (AI features — server-side)
+
+Set in **Vercel → Settings → Environment Variables**:
+
+| Variable | Prefix | Purpose |
+|----------|--------|---------|
+| `GEMINI_API_KEY` | No `VITE_` | Server-side only — powers AI Audit, Analytics, Cleaning Order, Live Assistant |
+| `VITE_FIREBASE_*` | `VITE_` | Same Firebase values as `.env` above |
+
+> **Note:** AI features (Audit, Analytics, Live Assistant) require Vercel deployment. They are unavailable when running locally.
 
 ### Run Locally
 
@@ -167,11 +182,11 @@ npm run build
 
 ## Security
 
-- 🔒 API keys stored in `.env` (never committed to git)
+- 🔒 **Gemini API key is server-side only** — stored in Vercel env vars, never exposed in the client JS bundle
+- 🔒 **Vercel Serverless Functions** proxy all AI calls (`/api/gemini-*`), keeping credentials off the client
+- 🔒 Firebase API keys stored in `.env` (never committed to git)
 - 🔒 Firebase security rules control database access
-- 🔒 No server-side code — all processing happens client-side
 - 🔒 PDF data stays in-browser and Firebase (no third-party storage)
-- 🔒 Gemini API calls use the user's own API key
 
 ---
 

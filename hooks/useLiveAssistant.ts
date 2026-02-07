@@ -193,11 +193,18 @@ export const useLiveAssistant = ({ guests, onAddRoomNote, onUpdateGuest }: UseLi
     setErrorMessage(null);
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-      if (!apiKey) {
-        setErrorMessage('Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.');
-        console.error('Gemini API key not configured.');
+      // Fetch API key from server at runtime (not baked into JS bundle)
+      let apiKey: string;
+      try {
+        const tokenRes = await fetch('/api/live-token');
+        if (!tokenRes.ok) {
+          setErrorMessage('AI Assistant unavailable — API key not configured on server.');
+          return;
+        }
+        const tokenData = await tokenRes.json();
+        apiKey = tokenData.apiKey;
+      } catch {
+        setErrorMessage('AI Assistant unavailable locally. Deploy to Vercel to use Live AI.');
         return;
       }
 
@@ -253,27 +260,47 @@ ${g.rawHtml}
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
-          onopen: () => {
+          onopen: async () => {
             // Clear any previous error — we're connected
             setErrorMessage(null);
             if (stream && inputCtx) {
               const source = inputCtx.createMediaStreamSource(stream);
-              const processor = inputCtx.createScriptProcessor(4096, 1, 1);
-              processor.onaudioprocess = (e) => {
-                if (!micEnabledRef.current) return;
-                const inputData = e.inputBuffer.getChannelData(0);
-                const int16 = new Int16Array(inputData.length);
-                for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
 
-                sessionPromise.then(s => s.sendRealtimeInput({
-                  media: {
-                    data: encode(new Uint8Array(int16.buffer)),
-                    mimeType: 'audio/pcm;rate=16000'
-                  }
-                }));
-              };
-              source.connect(processor);
-              processor.connect(inputCtx.destination);
+              // Use AudioWorklet (modern) with ScriptProcessor fallback (legacy)
+              try {
+                await inputCtx.audioWorklet.addModule('/mic-processor.js');
+                const workletNode = new AudioWorkletNode(inputCtx, 'mic-processor');
+                workletNode.port.onmessage = (e) => {
+                  if (!micEnabledRef.current) return;
+                  sessionPromise.then(s => s.sendRealtimeInput({
+                    media: {
+                      data: encode(new Uint8Array(e.data)),
+                      mimeType: 'audio/pcm;rate=16000'
+                    }
+                  }));
+                };
+                source.connect(workletNode);
+                workletNode.connect(inputCtx.destination);
+              } catch {
+                // Fallback: ScriptProcessorNode (deprecated but widely supported)
+                console.warn('AudioWorklet unavailable, falling back to ScriptProcessorNode');
+                const processor = inputCtx.createScriptProcessor(4096, 1, 1);
+                processor.onaudioprocess = (e) => {
+                  if (!micEnabledRef.current) return;
+                  const inputData = e.inputBuffer.getChannelData(0);
+                  const int16 = new Int16Array(inputData.length);
+                  for (let i = 0; i < inputData.length; i++) int16[i] = inputData[i] * 32768;
+
+                  sessionPromise.then(s => s.sendRealtimeInput({
+                    media: {
+                      data: encode(new Uint8Array(int16.buffer)),
+                      mimeType: 'audio/pcm;rate=16000'
+                    }
+                  }));
+                };
+                source.connect(processor);
+                processor.connect(inputCtx.destination);
+              }
             }
             setIsLiveActive(true);
           },

@@ -1,36 +1,27 @@
 import { Guest } from '../types';
-import { ROOM_MAP } from '../constants';
+import { ROOM_MAP, getRoomNumber } from '../constants';
 
 declare const XLSX: any;
 
 export class ExcelService {
-  private static getRoomNumber(roomString: string): number {
-    if (!roomString) return 0;
-    const clean = roomString.toLowerCase().replace(/[^a-z]/g, '');
-    for (const key in ROOM_MAP) {
-      if (clean.includes(key)) return ROOM_MAP[key];
-    }
-    const m = roomString.match(/^(\d+)/);
-    return m ? parseInt(m[1]) : 0;
-  }
 
   static export(guests: Guest[]) {
     // Headers mapped precisely to Rec Host Sheet: A, B, C, D, E, F, G, H, I, J, K, L
     const headers = [
-      "Room", 
-      "Guest Name", 
-      "Car Reg", 
-      "Car Type", 
-      "L & L", 
-      "ETA", 
-      "Arrival Time", 
-      "Location", 
-      "Notes", 
+      "Room",
+      "Guest Name",
+      "Car Reg",
+      "Car Type",
+      "L & L",
+      "ETA",
+      "Arrival Time",
+      "Location",
+      "Notes",
       "Status",
       "Initial",
       "Time"
     ];
-    
+
     // Aligned to visual structure of the Rec Host Sheet screenshot
     const masterRooms: ({ n: number, l: string, gap?: boolean, header?: string })[] = [
       { n: 1, l: "1 LYTH" }, { n: 2, l: "2 WINSTER" }, { n: 3, l: "3 CLEABARROW" },
@@ -46,20 +37,20 @@ export class ExcelService {
       { n: 21, l: "21 BIRDOSWALD" }, { n: 22, l: "22 MAGLONA" }, { n: 23, l: "23 GLANNOVENTA" },
       { n: 24, l: "24 VOREDA" }, { n: 25, l: "25 HARDKNOTT" }, { n: 26, l: "26 BRATHAY" },
       { n: 27, l: "27 CRAKE" }, { n: 28, l: "28 DUDDON" }, { n: 30, l: "30 LOWTHER" }, { n: 31, l: "31 LYVENNET" },
-      { n: 0, l: "Lakehouse rooms", header: "Lakehouse rooms" }, 
-      { n: 51, l: "51 HARRIET" }, 
-      { n: 52, l: "52 ETHEL" }, 
-      { n: 53, l: "53 ADGIE" }, 
-      { n: 54, l: "54 GERTIE" }, 
-      { n: 55, l: "55 MAUD" }, 
-      { n: 56, l: "56 BEATRICE" }, 
-      { n: 57, l: "57 TARN SUITE" }, 
+      { n: 0, l: "Lakehouse rooms", header: "Lakehouse rooms" },
+      { n: 51, l: "51 HARRIET" },
+      { n: 52, l: "52 ETHEL" },
+      { n: 53, l: "53 ADGIE" },
+      { n: 54, l: "54 GERTIE" },
+      { n: 55, l: "55 MAUD" },
+      { n: 56, l: "56 BEATRICE" },
+      { n: 57, l: "57 TARN SUITE" },
       { n: 58, l: "58 KNIPE SUITE" }
     ];
 
     const guestMap = new Map<number, Guest>();
     guests.forEach(g => {
-      const rNum = this.getRoomNumber(g.room);
+      const rNum = getRoomNumber(g.room);
       if (rNum > 0) guestMap.set(rNum, g);
     });
 
@@ -74,15 +65,15 @@ export class ExcelService {
         const g = guestMap.get(item.n);
         if (g) {
           wsData.push([
-            item.l, 
-            g.name, 
-            g.car, 
+            item.l,
+            g.name,
+            g.car,
             "", // Car Type
             g.ll, // Tactical Fix: Export full L&L details directly
-            g.eta, 
+            g.eta,
             "", // Arrival Time
             "", // Location
-            g.prefillNotes.replace(/\n/g, ' • '), 
+            g.prefillNotes.replace(/\n/g, ' • '),
             "", // Status
             "", // Initial
             ""  // Time
@@ -94,7 +85,7 @@ export class ExcelService {
     });
 
     const extraGuests = guests.filter(g => {
-      const rNum = this.getRoomNumber(g.room);
+      const rNum = getRoomNumber(g.room);
       return !masterRooms.find(m => m.n === rNum) || rNum === 0;
     });
 
