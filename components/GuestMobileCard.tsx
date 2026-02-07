@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Guest } from '../types';
-import { highlightRaw } from './GuestRow';
+import { HighlightedRaw } from './GuestRow';
 
 interface GuestMobileCardProps {
   guest: Guest;
@@ -132,10 +132,9 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
                 />
               </div>
               <div className="p-4 bg-slate-900 rounded-2xl overflow-x-auto">
-                <div
-                  className="font-mono text-[9px] text-white/80 leading-relaxed whitespace-pre-wrap"
-                  dangerouslySetInnerHTML={{ __html: highlightRaw(guest.rawHtml) }}
-                />
+                <div className="font-mono text-[9px] text-white/80 leading-relaxed whitespace-pre-wrap">
+                  <HighlightedRaw text={guest.rawHtml} />
+                </div>
               </div>
             </div>
           )}

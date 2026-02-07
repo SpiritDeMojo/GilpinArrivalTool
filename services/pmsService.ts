@@ -64,7 +64,7 @@ interface PMSArrivalsResponse {
 function getPMSConfig(): PMSConfig {
     return {
         apiUrl: import.meta.env.VITE_PMS_API_URL || '',
-        apiKey: import.meta.env.VITE_PMS_API_KEY || '',
+        apiKey: '', // API key is now server-side only (via /api/pms-proxy)
         hotelId: import.meta.env.VITE_PMS_HOTEL_ID || '',
         refreshInterval: parseInt(import.meta.env.VITE_PMS_REFRESH_INTERVAL || '60000', 10),
     };
@@ -75,7 +75,7 @@ function getPMSConfig(): PMSConfig {
  */
 export function isPMSConfigured(): boolean {
     const config = getPMSConfig();
-    return !!(config.apiUrl && config.apiKey && config.hotelId);
+    return !!(config.apiUrl && config.hotelId);
 }
 
 /**
@@ -179,8 +179,6 @@ function mapPMSStatusToGuestStatus(pmsStatus: PMSReservation['status']): GuestSt
  * Fetch arrivals from PMS for a specific date
  */
 export async function fetchArrivals(date: Date): Promise<Guest[]> {
-    const config = getPMSConfig();
-
     if (!isPMSConfigured()) {
         console.warn('PMS not configured. Use PDF import instead.');
         return [];
@@ -189,20 +187,16 @@ export async function fetchArrivals(date: Date): Promise<Guest[]> {
     const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
 
     try {
-        const response = await fetch(
-            `${config.apiUrl}/hotels/${config.hotelId}/arrivals?date=${dateStr}`,
-            {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${config.apiKey}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-            }
-        );
+        // Route through server-side proxy to keep API key secure
+        const response = await fetch('/api/pms-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'arrivals', date: dateStr }),
+        });
 
         if (!response.ok) {
-            throw new Error(`PMS API error: ${response.status} ${response.statusText}`);
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `PMS proxy error: ${response.status}`);
         }
 
         const data: PMSArrivalsResponse = await response.json();
@@ -211,7 +205,6 @@ export async function fetchArrivals(date: Date): Promise<Guest[]> {
             throw new Error(data.error || 'Unknown PMS error');
         }
 
-        // Transform PMS data to Guest format
         return data.data.arrivals.map(transformPMSToGuest);
     } catch (error) {
         console.error('Failed to fetch arrivals from PMS:', error);
@@ -223,29 +216,20 @@ export async function fetchArrivals(date: Date): Promise<Guest[]> {
  * Test PMS API connection
  */
 export async function testConnection(): Promise<{ success: boolean; message: string }> {
-    const config = getPMSConfig();
-
     if (!isPMSConfigured()) {
-        return { success: false, message: 'PMS not configured. Add API credentials to .env file.' };
+        return { success: false, message: 'PMS not configured. Add API credentials to server environment.' };
     }
 
     try {
-        const response = await fetch(
-            `${config.apiUrl}/hotels/${config.hotelId}/ping`,
-            {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${config.apiKey}`,
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
+        // Route through server-side proxy
+        const response = await fetch('/api/pms-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'ping' }),
+        });
 
-        if (response.ok) {
-            return { success: true, message: 'Connected to PMS successfully!' };
-        } else {
-            return { success: false, message: `API returned status ${response.status}` };
-        }
+        const data = await response.json();
+        return { success: data.success, message: data.message };
     } catch (error) {
         return { success: false, message: `Connection failed: ${error}` };
     }

@@ -14,6 +14,7 @@ interface GuestRowProps {
 /**
  * MODULAR ARCHITECTURE: highlightRaw (v3.72+)
  * Decoupled logic for strategic intelligence highlighting with strict car reg noise exclusion.
+ * @deprecated Use <HighlightedRaw> component instead for XSS-safe rendering.
  */
 export const highlightRaw = (text: string): string => {
   if (!text) return "";
@@ -60,6 +61,73 @@ export const highlightRaw = (text: string): string => {
   html = html.replace(/Comp Upgrade: Guest Unaware/g, '<span class="hl-badge hl-vip">Comp Upgrade: Guest Unaware</span>');
 
   return html;
+};
+
+/**
+ * XSS-safe React component for highlighted raw text.
+ * Renders React elements instead of injecting raw HTML via dangerouslySetInnerHTML.
+ */
+interface HighlightRule {
+  pattern: RegExp;
+  className: string;
+  transform?: (match: string) => string;
+}
+
+const HIGHLIGHT_RULES: HighlightRule[] = [
+  // VIP keywords
+  ...['VIP', 'DIRECTOR', 'CELEBRITY', 'OWNER', 'CHAIRMAN', 'HIGH PROFILE', 'PRIDE OF BRITAIN', 'POB_STAFF', 'POB']
+    .map(w => ({ pattern: new RegExp(`\\b(${w})\\b`, 'gi'), className: 'hl-badge hl-vip' })),
+  // Alerts
+  ...['OAT MILK', 'SOYA MILK', 'NUT FREE', 'NO NUT', 'ANAPHYLAXIS', 'PEANUT', 'NUT ALLERGY', 'GLUTEN FREE', 'GF', 'COELIAC', 'CELIAC', 'DAIRY FREE', 'COMPLAINT', 'PGI', 'ISSUE']
+    .map(w => ({ pattern: new RegExp(`\\b(${w})\\b`, 'gi'), className: 'hl-badge hl-ctx-red' })),
+  // Rate codes
+  ...['CEL_DBB_1', 'MAGESC', 'MIN', 'RO', 'BB_1', 'BB_2', 'BB_3', 'COMP', 'LHBB', 'APR_1_BB', 'APR_2_BB', 'APR_3_BB', 'POB_STAFF', 'STAFF']
+    .map(w => ({ pattern: new RegExp(`\\b(${w})\\b`, 'gi'), className: 'hl-badge hl-ro' })),
+  // IDs
+  { pattern: /(\d{5})/g, className: 'hl-badge hl-id' },
+  // Comp Upgrade
+  { pattern: /Comp Upgrade: Guest Unaware/g, className: 'hl-badge hl-vip' },
+];
+
+export const HighlightedRaw: React.FC<{ text: string }> = ({ text }) => {
+  if (!text) return null;
+
+  // Build a combined regex from all rules
+  const allPatterns = HIGHLIGHT_RULES.map(r => `(${r.pattern.source})`).join('|');
+  const combinedRegex = new RegExp(allPatterns, 'gi');
+
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = combinedRegex.exec(text)) !== null) {
+    // Push text before the match
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    // Find which rule matched
+    const matched = match[0];
+    let className = 'hl-badge';
+    for (const rule of HIGHLIGHT_RULES) {
+      rule.pattern.lastIndex = 0;
+      if (rule.pattern.test(matched)) {
+        className = rule.className;
+        break;
+      }
+    }
+
+    parts.push(<span key={key++} className={className}>{matched}</span>);
+    lastIndex = combinedRegex.lastIndex;
+  }
+
+  // Push remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return <>{parts}</>;
 };
 
 const ResizableTextArea = ({ field, className, value, bold, center, onUpdate }: {
@@ -162,10 +230,7 @@ const GuestRow: React.FC<GuestRowProps> = ({
           </div>
           {isExpanded && (
             <div className="raw-intel-box p-5 mb-5 rounded-2xl border border-[#c5a065]/20 bg-[#c5a065]/5 animate-in fade-in slide-in-from-top-1">
-              <div
-                className="font-mono text-[10.5px] leading-relaxed select-all whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: highlightRaw(guest.rawHtml) }}
-              />
+              <HighlightedRaw text={guest.rawHtml} />
             </div>
           )}
         </td>

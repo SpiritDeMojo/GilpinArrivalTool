@@ -1,0 +1,37 @@
+{
+    "rules": {
+        "sessions": {
+            "$sessionId": {
+                ".read": true,
+                ".write": true
+            }
+        },
+        "presence": {
+            "$sessionId": {
+                ".read": true,
+                ".write": true
+            }
+        },
+        "heartbeat": {
+            "$sessionId": {
+                "$deviceId": {
+                    ".read": false,
+                    ".write": true
+                }
+            }
+        },
+        "chat": {
+            "$sessionId": {
+                ".read": true,
+                ".write": true,
+                "$messageId": {
+                    ".validate": "newData.hasChildren(['author', 'text', 'timestamp'])"
+                }
+            }
+        },
+        "$other": {
+            ".read": false,
+            ".write": false
+        }
+    }
+}
