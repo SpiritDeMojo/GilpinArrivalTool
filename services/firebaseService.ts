@@ -318,45 +318,34 @@ export async function updateGuestFields(
     }
 
     try {
+        // Use get() for a clean one-time read — no listener management needed.
+        // The old onValue + off() pattern was killing concurrent listeners.
         const guestsRef = ref(db, `sessions/${sessionId}/guests`);
+        const snapshot = await get(guestsRef);
 
-        return new Promise<void>((resolve, reject) => {
-            onValue(guestsRef, async (snapshot) => {
-                off(guestsRef); // one-time read
+        if (!snapshot.exists()) {
+            throw new Error(`Session ${sessionId} has no guests`);
+        }
 
-                if (!snapshot.exists()) {
-                    reject(new Error(`Session ${sessionId} has no guests`));
-                    return;
-                }
+        const guests: Guest[] = Array.isArray(snapshot.val())
+            ? snapshot.val()
+            : Object.values(snapshot.val());
+        const index = guests.findIndex(g => g.id === guestId);
 
-                const guests: Guest[] = Array.isArray(snapshot.val())
-                    ? snapshot.val()
-                    : Object.values(snapshot.val());
-                const index = guests.findIndex(g => g.id === guestId);
+        if (index === -1) {
+            throw new Error(`Guest ${guestId} not found in session ${sessionId}`);
+        }
 
-                if (index === -1) {
-                    reject(new Error(`Guest ${guestId} not found in session ${sessionId}`));
-                    return;
-                }
+        // Build multi-path update — only touches the specific fields
+        // sanitizeForFirebase converts undefined → null (Firebase rejects undefined)
+        const updates: Record<string, any> = {};
+        for (const [key, value] of Object.entries(fields)) {
+            updates[`sessions/${sessionId}/guests/${index}/${key}`] = sanitizeForFirebase(value);
+        }
+        // Always bump the session-level lastModified so other listeners fire
+        updates[`sessions/${sessionId}/lastModified`] = Date.now();
 
-                // Build multi-path update — only touches the specific fields
-                // sanitizeForFirebase converts undefined → null (Firebase rejects undefined)
-                const updates: Record<string, any> = {};
-                for (const [key, value] of Object.entries(fields)) {
-                    updates[`sessions/${sessionId}/guests/${index}/${key}`] = sanitizeForFirebase(value);
-                }
-                // Always bump the session-level lastModified so other listeners fire
-                updates[`sessions/${sessionId}/lastModified`] = Date.now();
-
-                try {
-                    await update(ref(db!), updates);
-                    resolve();
-                } catch (err) {
-                    console.error('Atomic guest update failed:', err);
-                    reject(err);
-                }
-            }, { onlyOnce: true });
-        });
+        await update(ref(db), updates);
     } catch (error) {
         console.error('updateGuestFields error:', error);
         throw error;
