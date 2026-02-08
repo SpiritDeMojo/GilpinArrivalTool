@@ -1,14 +1,14 @@
 {
     "rules": {
         "sessions": {
+            ".read": true,
             "$sessionId": {
-                ".read": true,
                 ".write": true
             }
         },
         "presence": {
+            ".read": true,
             "$sessionId": {
-                ".read": true,
                 ".write": true
             }
         },
