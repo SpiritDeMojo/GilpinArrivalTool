@@ -293,7 +293,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   }, [firebaseEnabled, activeSessionId, userName]);
 
   // 5. Sync to Firebase when session changes (debounced)
-  const syncToFirebase = useCallback((session: ArrivalSession) => {
+  const syncAllToFirebase = useCallback((allSessions: ArrivalSession[]) => {
     if (!firebaseEnabled) return;
 
     // Debounce sync to avoid rapid updates
@@ -305,8 +305,8 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       if (isRemoteUpdate.current) return; // Don't sync remote updates back
 
       try {
-        await syncSession(session);
-        console.log('✅ Synced to Firebase:', session.id);
+        await Promise.all(allSessions.map(s => syncSession(s)));
+        console.log('✅ Synced all sessions to Firebase:', allSessions.length);
       } catch (error) {
         console.error('❌ Firebase sync failed:', error);
         setConnectionStatus('offline');
@@ -325,15 +325,15 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         updateURLWithSession(activeSessionId);
       }
 
-      // Sync ALL sessions to Firebase (multi-day sync)
+      // Sync ALL sessions to Firebase (batched, debounced)
       if (!isRemoteUpdate.current) {
-        sessions.forEach(s => syncToFirebase(s));
+        syncAllToFirebase(sessions);
       }
     } else {
       localStorage.removeItem('gilpin_sessions_v5');
       localStorage.removeItem('gilpin_active_id_v5');
     }
-  }, [sessions, activeSessionId, activeSession, syncToFirebase]);
+  }, [sessions, activeSessionId, activeSession, syncAllToFirebase]);
 
   // 7. Actions
 
