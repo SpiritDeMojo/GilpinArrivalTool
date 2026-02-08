@@ -695,6 +695,9 @@ export const useGuestManager = (initialFlags: Flag[]) => {
           console.log('[AI Audit] Got refinements:', refinements.length, 'results');
           console.log('[AI Audit] Sample refinement:', JSON.stringify(refinements[0], null, 2));
 
+          // Track the updated session so we can sync to Firebase after setState
+          let updatedSessionForSync: ArrivalSession | null = null;
+
           setSessions(prev => prev.map(s => {
             if (s.id !== activeSessionId) return s;
             const updatedGuests = [...s.guests];
@@ -751,15 +754,16 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                 console.warn('[AI Audit] No refinement for guest', original.name, 'at index', idx);
               }
             });
-            return { ...s, guests: updatedGuests, lastModified: Date.now() };
+            const updated = { ...s, guests: updatedGuests, lastModified: Date.now() };
+            // Capture the UPDATED session for Firebase sync (avoids stale closure)
+            updatedSessionForSync = updated;
+            return updated;
           }));
 
-          // AI refine is a bulk update — sync full session after each batch
-          if (firebaseEnabled && activeSessionId) {
-            const currentSession = sessions.find(s => s.id === activeSessionId);
-            if (currentSession) {
-              syncInitialUpload({ ...currentSession, guests: currentSession.guests, lastModified: Date.now() });
-            }
+          // Sync the updated session to Firebase (uses the data captured inside
+          // setSessions, NOT the stale `sessions` closure)
+          if (firebaseEnabled && activeSessionId && updatedSessionForSync) {
+            syncInitialUpload(updatedSessionForSync);
           }
         } else {
           console.error('[AI Audit] No refinements returned from AI service');

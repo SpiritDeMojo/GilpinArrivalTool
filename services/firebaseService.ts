@@ -9,7 +9,6 @@ import {
     remove,
     onDisconnect,
     Database,
-    off,
     goOnline,
     serverTimestamp,
     push
@@ -90,7 +89,7 @@ export function subscribeToConnectionState(
         onStatus(connected);
     });
 
-    return () => off(connRef);
+    return unsubscribe;
 }
 
 /**
@@ -222,7 +221,7 @@ export function subscribeToAllSessions(
         console.error('Firebase all-sessions subscription error:', error);
     });
 
-    return () => off(sessionsRef);
+    return unsubscribe;
 }
 
 /**
@@ -585,7 +584,7 @@ export function subscribeToSessionList(
         console.error('Firebase session list subscription error:', error);
     });
 
-    return () => off(sessionsRef);
+    return unsubscribe;
 }
 
 /**
@@ -687,7 +686,7 @@ export function subscribeToPresence(
         onUpdate(result);
     });
 
-    return () => off(presenceRef);
+    return unsubscribe;
 }
 
 // === Chat System ===
@@ -750,7 +749,7 @@ export function subscribeToChatMessages(
         }
     });
 
-    return () => off(chatRef);
+    return unsubscribe;
 }
 
 /**
