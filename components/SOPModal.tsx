@@ -22,7 +22,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               </h2>
             </div>
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-              Standard Operating Procedures • <span className="text-[#c5a065]">v16.0</span>
+              Standard Operating Procedures • <span className="text-[#c5a065]">v16.1</span>
             </p>
           </div>
           <button
@@ -511,6 +511,40 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     <div>
                       <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Delete</h5>
                       <p className="text-[10px] text-slate-400">Deleting a session removes it from all devices instantly</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sync Reliability */}
+              <div className="mt-4 md:mt-6 p-6 md:p-8 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-500/20 rounded-[1.5rem] md:rounded-[2rem]">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-xl">🛡️</span>
+                  <div className="font-black text-sm text-emerald-700 dark:text-emerald-400 uppercase">Sync Reliability Engine</div>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                  The sync system includes built-in self-healing. If your device loses connection — backgrounded tabs, Wi-Fi drops, or mobile sleep mode — it automatically recovers without manual refresh.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">📱</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Background Recovery</h5>
+                      <p className="text-[10px] text-slate-400">Tabs automatically re-subscribe when you return after 60+ seconds away</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">💾</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Smart Persistence</h5>
+                      <p className="text-[10px] text-slate-400">Local storage writes are skipped during remote updates to prevent data conflicts</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">🔄</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Health Monitoring</h5>
+                      <p className="text-[10px] text-slate-400">Connection health is continuously verified — stale listeners are replaced automatically</p>
                     </div>
                   </div>
                 </div>

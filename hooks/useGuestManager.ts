@@ -8,8 +8,6 @@ import { BATCH_SIZE } from '../constants';
 import {
   initializeFirebase,
   isFirebaseEnabled,
-  subscribeToSession,
-  subscribeToFullSession,
   subscribeToAllSessions,
   subscribeToConnectionState,
   keepAlive,
@@ -116,8 +114,12 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track guest IDs with in-flight local writes to avoid clobbering them with remote data
   const pendingLocalUpdates = useRef<Set<string>>(new Set());
-  // Flag to prevent echo-back when we receive our own remote update
-  const isRemoteUpdate = useRef(false);
+  // Generation counter: bumped on every remote update. Persistence effect
+  // checks this to skip localStorage writes triggered by remote data.
+  const remoteUpdateGen = useRef(0);
+  const lastPersistedGen = useRef(0);
+  // Timestamp of last data received from Firebase — used to detect stale subscriptions
+  const lastRemoteDataTs = useRef(0);
   // Track active session ID in a ref so reconnect callbacks always have the latest value
   const activeSessionIdRef = useRef(activeSessionId);
 
@@ -232,11 +234,35 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
     // === MOBILE BACKGROUND RECOVERY ===
     // Mobile browsers suspend WebSocket connections when the tab is backgrounded.
-    // When the tab returns, we force Firebase to re-establish its connection.
+    // When the tab returns, we force Firebase to re-establish its connection
+    // AND verify the subscription is still alive.
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('📱 Tab became visible — forcing Firebase reconnect');
         forceReconnect();
+
+        // Subscription health check: if we haven't received data in >60 seconds,
+        // the listener may be dead. Tear down and re-subscribe.
+        const staleness = Date.now() - lastRemoteDataTs.current;
+        if (lastRemoteDataTs.current > 0 && staleness > 60_000) {
+          console.warn(`⚠️ Firebase subscription stale (${Math.round(staleness / 1000)}s) — re-subscribing...`);
+          if (unsubscribeRef.current) {
+            unsubscribeRef.current();
+            unsubscribeRef.current = null;
+          }
+          // Re-subscribe (the effect in step 4 won't re-run since firebaseEnabled hasn't changed,
+          // so we do it manually here)
+          unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
+            lastRemoteDataTs.current = Date.now();
+            remoteUpdateGen.current += 1;
+            setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
+            setActiveSessionId(prev => {
+              if (remoteSessions.length === 0) return '';
+              if (prev && remoteSessions.some(s => s.id === prev)) return prev;
+              return remoteSessions[0].id;
+            });
+          });
+        }
       }
     };
 
@@ -269,7 +295,12 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
     // Subscribe to ALL sessions — every day uploaded by any device
     unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
-      isRemoteUpdate.current = true;
+      // Track when we last received remote data (for stale subscription detection)
+      lastRemoteDataTs.current = Date.now();
+      // Bump generation counter — the persistence effect uses this to skip
+      // localStorage writes triggered by remote Firebase updates
+      remoteUpdateGen.current += 1;
+
       // Smart merge: remote data is source of truth, but protect guests with
       // pending local writes (their atomic update hasn't round-tripped yet)
       setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
@@ -280,11 +311,6 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         if (prev && remoteSessions.some(s => s.id === prev)) return prev;
         return remoteSessions[0].id;
       });
-
-      // Reset flag after state update
-      setTimeout(() => {
-        isRemoteUpdate.current = false;
-      }, 50);
     });
 
     return () => {
@@ -350,18 +376,25 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   }, [firebaseEnabled]);
 
   // 6. Persistence (localStorage only — Firebase sync happens via atomic writes)
+  // GUARDED: Skip localStorage writes when the state change was triggered by
+  // a remote Firebase update (remoteUpdateGen > lastPersistedGen).  This avoids
+  // expensive JSON.stringify + I/O on every remote tick and prevents echo loops.
   useEffect(() => {
+    // Always update URL (cheap)
+    if (activeSessionId) {
+      updateURLWithSession(activeSessionId);
+    }
+
+    // Skip localStorage write if this render was caused by a remote update
+    if (remoteUpdateGen.current > lastPersistedGen.current) {
+      lastPersistedGen.current = remoteUpdateGen.current;
+      console.log('[Sync] Skipping localStorage write — remote update');
+      return;
+    }
+
     if (sessions.length > 0) {
       localStorage.setItem('gilpin_sessions_v5', JSON.stringify(sessions));
       localStorage.setItem('gilpin_active_id_v5', activeSessionId);
-
-      // Update URL with current session ID for easy sharing
-      if (activeSessionId) {
-        updateURLWithSession(activeSessionId);
-      }
-      // NOTE: No Firebase sync here! That's handled by:
-      // - syncInitialUpload() for new sessions/uploads
-      // - atomicUpdateGuest() for field-level changes
     } else {
       localStorage.removeItem('gilpin_sessions_v5');
       localStorage.removeItem('gilpin_active_id_v5');

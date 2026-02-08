@@ -141,53 +141,23 @@ export function keepAlive(
 }
 
 /**
- * Subscribe to a session's guests for real-time updates
- * @param sessionId - The session ID to subscribe to
- * @param onUpdate - Callback when guests are updated
- * @returns Unsubscribe function
+ * Fetch a full session from Firebase (one-time read using get()).
+ * Uses get() instead of onValue+off() to avoid killing concurrent listeners.
+ * Used when a device joins via URL and needs to load existing data.
  */
-export function subscribeToSession(
-    sessionId: string,
-    onUpdate: (guests: Guest[]) => void
-): () => void {
-    if (!db) {
-        console.warn('Firebase not initialized');
-        return () => { };
-    }
-
-    const sessionRef = ref(db, `sessions/${sessionId}/guests`);
-
-    const unsubscribe = onValue(sessionRef, (snapshot) => {
-        if (snapshot.exists()) {
-            const data = snapshot.val();
-            // Convert object to array if needed
-            const guests: Guest[] = Array.isArray(data) ? data : Object.values(data);
-            onUpdate(guests);
-        }
-    }, (error) => {
-        console.error('Firebase subscription error:', error);
-    });
-
-    // Return unsubscribe function
-    return () => off(sessionRef);
-}
-
-/**
- * Fetch a full session from Firebase (one-time read)
- * Used when a device joins via URL and needs to load existing data
- */
-export function fetchSession(
+export async function fetchSession(
     sessionId: string,
     onResult: (session: ArrivalSession | null) => void
-): void {
+): Promise<void> {
     if (!db) {
         console.warn('Firebase not initialized');
         onResult(null);
         return;
     }
 
-    const sessionRef = ref(db, `sessions/${sessionId}`);
-    onValue(sessionRef, (snapshot) => {
+    try {
+        const sessionRef = ref(db, `sessions/${sessionId}`);
+        const snapshot = await get(sessionRef);
         if (snapshot.exists()) {
             const data = snapshot.val();
             // Ensure guests is an array
@@ -200,39 +170,10 @@ export function fetchSession(
             console.log('📭 No session found in Firebase for:', sessionId);
             onResult(null);
         }
-        off(sessionRef);
-    }, { onlyOnce: true });
-}
-
-/**
- * Subscribe to full session updates (not just guests)
- * Used for cross-device sync where the joining device needs the complete session
- */
-export function subscribeToFullSession(
-    sessionId: string,
-    onUpdate: (session: ArrivalSession) => void
-): () => void {
-    if (!db) {
-        console.warn('Firebase not initialized');
-        return () => { };
+    } catch (error) {
+        console.error('Failed to fetch session:', error);
+        onResult(null);
     }
-
-    const sessionRef = ref(db, `sessions/${sessionId}`);
-
-    const unsubscribe = onValue(sessionRef, (snapshot) => {
-        if (snapshot.exists()) {
-            const data = snapshot.val();
-            // Ensure guests is an array
-            if (data.guests && !Array.isArray(data.guests)) {
-                data.guests = Object.values(data.guests);
-            }
-            onUpdate(data as ArrivalSession);
-        }
-    }, (error) => {
-        console.error('Firebase full session subscription error:', error);
-    });
-
-    return () => off(sessionRef);
 }
 
 /**
@@ -400,30 +341,29 @@ export async function updateRoomStatus(
     }
 
     try {
-        const guestRef = ref(db, `sessions/${sessionId}/guests`);
+        // Use get() for a clean one-time read — no listener creation/destruction
+        const guestsRef = ref(db, `sessions/${sessionId}/guests`);
+        const snapshot = await get(guestsRef);
 
-        // First, find the guest index
-        return new Promise((resolve, reject) => {
-            onValue(guestRef, async (snapshot) => {
-                if (snapshot.exists()) {
-                    const guests: Guest[] = Object.values(snapshot.val());
-                    const index = guests.findIndex(g => g.id === guestId);
+        if (!snapshot.exists()) {
+            throw new Error(`Session ${sessionId} has no guests`);
+        }
 
-                    if (index !== -1) {
-                        const updates: Record<string, any> = {};
-                        updates[`sessions/${sessionId}/guests/${index}/roomStatus`] = status;
-                        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdate`] = Date.now();
-                        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdatedBy`] = updatedBy;
+        const guests: Guest[] = Array.isArray(snapshot.val())
+            ? snapshot.val()
+            : Object.values(snapshot.val());
+        const index = guests.findIndex(g => g.id === guestId);
 
-                        await update(ref(db!), updates);
-                        resolve();
-                    } else {
-                        reject(new Error('Guest not found'));
-                    }
-                }
-                off(guestRef);
-            }, { onlyOnce: true });
-        });
+        if (index === -1) {
+            throw new Error(`Guest ${guestId} not found`);
+        }
+
+        const updates: Record<string, any> = {};
+        updates[`sessions/${sessionId}/guests/${index}/roomStatus`] = status;
+        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdate`] = Date.now();
+        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdatedBy`] = updatedBy;
+
+        await update(ref(db), updates);
     } catch (error) {
         console.error('Failed to update room status:', error);
         throw error;
@@ -449,29 +389,29 @@ export async function updateGuestStatus(
     }
 
     try {
-        const guestRef = ref(db, `sessions/${sessionId}/guests`);
+        // Use get() for a clean one-time read — no listener creation/destruction
+        const guestsRef = ref(db, `sessions/${sessionId}/guests`);
+        const snapshot = await get(guestsRef);
 
-        return new Promise((resolve, reject) => {
-            onValue(guestRef, async (snapshot) => {
-                if (snapshot.exists()) {
-                    const guests: Guest[] = Object.values(snapshot.val());
-                    const index = guests.findIndex(g => g.id === guestId);
+        if (!snapshot.exists()) {
+            throw new Error(`Session ${sessionId} has no guests`);
+        }
 
-                    if (index !== -1) {
-                        const updates: Record<string, any> = {};
-                        updates[`sessions/${sessionId}/guests/${index}/guestStatus`] = status;
-                        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdate`] = Date.now();
-                        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdatedBy`] = updatedBy;
+        const guests: Guest[] = Array.isArray(snapshot.val())
+            ? snapshot.val()
+            : Object.values(snapshot.val());
+        const index = guests.findIndex(g => g.id === guestId);
 
-                        await update(ref(db!), updates);
-                        resolve();
-                    } else {
-                        reject(new Error('Guest not found'));
-                    }
-                }
-                off(guestRef);
-            }, { onlyOnce: true });
-        });
+        if (index === -1) {
+            throw new Error(`Guest ${guestId} not found`);
+        }
+
+        const updates: Record<string, any> = {};
+        updates[`sessions/${sessionId}/guests/${index}/guestStatus`] = status;
+        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdate`] = Date.now();
+        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdatedBy`] = updatedBy;
+
+        await update(ref(db), updates);
     } catch (error) {
         console.error('Failed to update guest status:', error);
         throw error;
@@ -497,31 +437,31 @@ export async function updateInRoomDelivery(
     }
 
     try {
-        const guestRef = ref(db, `sessions/${sessionId}/guests`);
+        // Use get() for a clean one-time read — no listener creation/destruction
+        const guestsRef = ref(db, `sessions/${sessionId}/guests`);
+        const snapshot = await get(guestsRef);
 
-        return new Promise((resolve, reject) => {
-            onValue(guestRef, async (snapshot) => {
-                if (snapshot.exists()) {
-                    const guests: Guest[] = Object.values(snapshot.val());
-                    const index = guests.findIndex(g => g.id === guestId);
+        if (!snapshot.exists()) {
+            throw new Error(`Session ${sessionId} has no guests`);
+        }
 
-                    if (index !== -1) {
-                        const updates: Record<string, any> = {};
-                        updates[`sessions/${sessionId}/guests/${index}/inRoomDelivered`] = delivered;
-                        if (delivered && deliveredBy) {
-                            updates[`sessions/${sessionId}/guests/${index}/inRoomDeliveredBy`] = deliveredBy;
-                            updates[`sessions/${sessionId}/guests/${index}/inRoomDeliveredAt`] = Date.now();
-                        }
+        const guests: Guest[] = Array.isArray(snapshot.val())
+            ? snapshot.val()
+            : Object.values(snapshot.val());
+        const index = guests.findIndex(g => g.id === guestId);
 
-                        await update(ref(db!), updates);
-                        resolve();
-                    } else {
-                        reject(new Error('Guest not found'));
-                    }
-                }
-                off(guestRef);
-            }, { onlyOnce: true });
-        });
+        if (index === -1) {
+            throw new Error(`Guest ${guestId} not found`);
+        }
+
+        const updates: Record<string, any> = {};
+        updates[`sessions/${sessionId}/guests/${index}/inRoomDelivered`] = delivered;
+        if (delivered && deliveredBy) {
+            updates[`sessions/${sessionId}/guests/${index}/inRoomDeliveredBy`] = deliveredBy;
+            updates[`sessions/${sessionId}/guests/${index}/inRoomDeliveredAt`] = Date.now();
+        }
+
+        await update(ref(db), updates);
     } catch (error) {
         console.error('Failed to update in-room delivery:', error);
         throw error;
@@ -545,37 +485,37 @@ export async function addCourtesyCallNote(
     }
 
     try {
-        const guestRef = ref(db, `sessions/${sessionId}/guests`);
+        // Use get() for a clean one-time read — no listener creation/destruction
+        const guestsRef = ref(db, `sessions/${sessionId}/guests`);
+        const snapshot = await get(guestsRef);
 
-        return new Promise((resolve, reject) => {
-            onValue(guestRef, async (snapshot) => {
-                if (snapshot.exists()) {
-                    const guests: Guest[] = Object.values(snapshot.val());
-                    const index = guests.findIndex(g => g.id === guestId);
+        if (!snapshot.exists()) {
+            throw new Error(`Session ${sessionId} has no guests`);
+        }
 
-                    if (index !== -1) {
-                        const currentNotes = guests[index].courtesyCallNotes || [];
-                        const newNote: CourtesyCallNote = {
-                            id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                            timestamp: Date.now(),
-                            ...note
-                        };
+        const guests: Guest[] = Array.isArray(snapshot.val())
+            ? snapshot.val()
+            : Object.values(snapshot.val());
+        const index = guests.findIndex(g => g.id === guestId);
 
-                        const updates: Record<string, any> = {};
-                        updates[`sessions/${sessionId}/guests/${index}/courtesyCallNotes`] = [...currentNotes, newNote];
-                        updates[`sessions/${sessionId}/guests/${index}/guestStatus`] = 'call_complete';
-                        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdate`] = Date.now();
-                        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdatedBy`] = note.author;
+        if (index === -1) {
+            throw new Error(`Guest ${guestId} not found`);
+        }
 
-                        await update(ref(db!), updates);
-                        resolve();
-                    } else {
-                        reject(new Error('Guest not found'));
-                    }
-                }
-                off(guestRef);
-            }, { onlyOnce: true });
-        });
+        const currentNotes = guests[index].courtesyCallNotes || [];
+        const newNote: CourtesyCallNote = {
+            id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            timestamp: Date.now(),
+            ...note
+        };
+
+        const updates: Record<string, any> = {};
+        updates[`sessions/${sessionId}/guests/${index}/courtesyCallNotes`] = [...currentNotes, newNote];
+        updates[`sessions/${sessionId}/guests/${index}/guestStatus`] = 'call_complete';
+        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdate`] = Date.now();
+        updates[`sessions/${sessionId}/guests/${index}/lastStatusUpdatedBy`] = note.author;
+
+        await update(ref(db), updates);
     } catch (error) {
         console.error('Failed to add courtesy call note:', error);
         throw error;
