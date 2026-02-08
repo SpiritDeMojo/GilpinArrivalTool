@@ -28,7 +28,8 @@ export const DEFAULT_FLAGS: Flag[] = [
 
 // UI Layout Constants
 export const NAV_HEIGHT = 72;
-export const ALERT_HEIGHT = 40;
+export const ALERT_HEIGHT = 28;
+export const TABS_HEIGHT = 50;
 
 // AI Processing Batch Size
 export const BATCH_SIZE = 5;

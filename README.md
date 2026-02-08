@@ -82,6 +82,22 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 
 ---
 
+## UI/UX Design
+
+The interface features a handcrafted animation engine designed for a premium, responsive feel across both **light** and **dark** themes.
+
+| Category | Effects |
+|----------|---------|
+| **Entrance Animations** | Content fade-slide-up on load, staggered dashboard pill cascade (50ms), session tab slide-in (60ms), table row stagger (20ms) |
+| **Micro-Interactions** | Button press scale (0.96x), table row hover-lift with shadow, dashboard pill hover-lift, status badge scale (1.05x), input focus golden glow, mobile card touch press-down |
+| **View Transitions** | Tab switch scale-up + fade-in + de-blur, active tab golden shimmer sweep, non-active tab ambient golden glow on hover |
+| **Theme Transitions** | All colours transition smoothly (0.3s) on light/dark toggle, logo adapts with dark background + golden shadow |
+| **Navbar** | Logo golden glow halo on hover, image rotation (5°) + scale (1.05x), dark mode adaptive background |
+| **Premium Scrollbar** | Custom golden-tinted scrollbar thumb with rounded corners |
+| **Print Safety** | All animations disabled via `@media print` — clean, static print layouts |
+
+---
+
 ## PDF Parser Features
 
 The parser extracts structured guest data from PMS arrival PDFs:

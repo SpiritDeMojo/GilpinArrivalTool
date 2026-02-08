@@ -242,9 +242,6 @@ const App: React.FC = () => {
     } as Partial<Guest>);
   }, [guests, updateGuest]);
 
-  const stickyStyle = isSticky ? `fixed left-0 right-0 z-[1000] bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-[#c5a065]/20` : '';
-  const stickyTop = isSticky ? { top: `${NAV_HEIGHT}px` } : {};
-
   // Early return: Show login screen when not authenticated
   if (!userName || !department) {
     return <LoginScreen />;
@@ -297,14 +294,20 @@ const App: React.FC = () => {
         onNavigate={(view) => { setDashboardView(view); clearBadge(view); }}
       />
       {isOldFile && guests.length > 0 && (
-        <div className="no-print pulsate-alert text-white text-center font-black py-1 tracking-widest text-[8px] md:text-[10px] fixed w-full z-[1009]" style={{ top: NAV_HEIGHT + 'px' }}>
+        <div className="no-print pulsate-alert text-white text-center font-black tracking-widest text-[8px] md:text-[10px] fixed w-full z-[1009] flex items-center justify-center" style={{ top: NAV_HEIGHT + 'px', height: ALERT_HEIGHT + 'px' }}>
           ⚠️ HISTORICAL FILE DETECTED • {arrivalDateStr}
         </div>
       )}
 
       {/* Dashboard View Tabs — filtered by department */}
       {guests.length > 0 && (
-        <div className="no-print dashboard-view-tabs">
+        <div
+          className={`no-print dashboard-view-tabs transition-all duration-300 ${isSticky
+            ? 'fixed left-0 right-0 z-[1005] backdrop-blur-xl shadow-lg'
+            : ''
+            }`}
+          style={isSticky ? { top: (isOldFile && guests.length > 0) ? (NAV_HEIGHT + ALERT_HEIGHT) + 'px' : NAV_HEIGHT + 'px' } : {}}
+        >
           <div className="view-tabs-container">
             {isRec && (
               <button
@@ -321,7 +324,7 @@ const App: React.FC = () => {
               >
                 🧹 Housekeeping
                 {badges.housekeeping > 0 && dashboardView !== 'housekeeping' && (
-                  <span className="tab-badge-dot" style={{ background: '#22c55e' }}>{badges.housekeeping}</span>
+                  <span className="tab-badge-dot bg-green-500">{badges.housekeeping}</span>
                 )}
               </button>
             )}
@@ -332,7 +335,7 @@ const App: React.FC = () => {
               >
                 🔧 Maintenance
                 {badges.maintenance > 0 && dashboardView !== 'maintenance' && (
-                  <span className="tab-badge-dot" style={{ background: '#f59e0b' }}>{badges.maintenance}</span>
+                  <span className="tab-badge-dot bg-amber-500">{badges.maintenance}</span>
                 )}
               </button>
             )}
@@ -343,7 +346,7 @@ const App: React.FC = () => {
               >
                 🛎️ Reception
                 {badges.reception > 0 && dashboardView !== 'reception' && (
-                  <span className="tab-badge-dot" style={{ background: '#3b82f6' }}>{badges.reception}</span>
+                  <span className="tab-badge-dot bg-blue-500">{badges.reception}</span>
                 )}
               </button>
             )}
@@ -352,10 +355,9 @@ const App: React.FC = () => {
       )}
 
       {guests.length > 0 && dashboardView === 'arrivals' && (
-        <div className="no-print relative my-2 md:my-6">
+        <div className="no-print relative my-2 md:my-6 animate-entrance">
           <div
-            className={`dashboard-container no-print py-4 md:py-6 transition-all ${stickyStyle}`}
-            style={stickyTop}
+            className="dashboard-container no-print py-4 md:py-6"
           >
             <Dashboard
               guests={guests}
@@ -368,7 +370,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main className="max-w-[1800px] mx-auto px-4 md:px-10 pb-32 no-print">
+      <main className="max-w-[1800px] mx-auto px-4 md:px-10 pb-32 no-print animate-fade">
         <SessionBar
           sessions={sessions}
           activeId={activeSessionId}
@@ -399,7 +401,7 @@ const App: React.FC = () => {
           <ErrorBoundary>
             {/* Arrivals View */}
             {dashboardView === 'arrivals' && (
-              <>
+              <div key="arrivals" className="view-switch-animate">
                 <ConflictDetector guests={guests} />
                 {showTimeline && <ETATimeline guests={propertyFilteredGuests} />}
 
@@ -451,40 +453,46 @@ const App: React.FC = () => {
                     <div className="text-center p-20 opacity-40 italic text-sm">No arrivals found for this filter.</div>
                   )}
                 </div>
-              </>
+              </div>
             )}
 
             {/* Housekeeping View */}
             {dashboardView === 'housekeeping' && (
-              <HousekeepingDashboard
-                guests={guests}
-                onUpdateHKStatus={handleUpdateHKStatus}
-                onAddRoomNote={handleAddRoomNote}
-                onResolveNote={handleResolveNote}
-                onViewAuditLog={(g) => setAuditLogGuest(g)}
-              />
+              <div key="housekeeping" className="view-switch-animate">
+                <HousekeepingDashboard
+                  guests={guests}
+                  onUpdateHKStatus={handleUpdateHKStatus}
+                  onAddRoomNote={handleAddRoomNote}
+                  onResolveNote={handleResolveNote}
+                  onViewAuditLog={(g) => setAuditLogGuest(g)}
+                />
+              </div>
             )}
 
             {/* Maintenance View */}
             {dashboardView === 'maintenance' && (
-              <MaintenanceDashboard
-                guests={guests}
-                onUpdateMaintenanceStatus={handleUpdateMaintenanceStatus}
-                onAddRoomNote={handleAddRoomNote}
-                onResolveNote={handleResolveNote}
-                onViewAuditLog={(g: Guest) => setAuditLogGuest(g)}
-              />
+              <div key="maintenance" className="view-switch-animate">
+                <MaintenanceDashboard
+                  guests={guests}
+                  onUpdateMaintenanceStatus={handleUpdateMaintenanceStatus}
+                  onAddRoomNote={handleAddRoomNote}
+                  onResolveNote={handleResolveNote}
+                  onViewAuditLog={(g: Guest) => setAuditLogGuest(g)}
+                />
+              </div>
             )}
 
             {/* Reception View */}
             {dashboardView === 'reception' && (
-              <ReceptionDashboard
-                guests={guests}
-                onUpdateGuestStatus={handleUpdateGuestStatus}
-                onUpdateInRoomDelivery={handleUpdateInRoomDelivery}
-                onAddCourtesyNote={handleAddCourtesyNote}
-                onViewAuditLog={(g: Guest) => setAuditLogGuest(g)}
-              />
+              <div key="reception" className="view-switch-animate">
+                <ReceptionDashboard
+                  guests={guests}
+                  onUpdateGuestStatus={handleUpdateGuestStatus}
+                  onUpdateInRoomDelivery={handleUpdateInRoomDelivery}
+                  onAddCourtesyNote={handleAddCourtesyNote}
+                  onViewAuditLog={(g: Guest) => setAuditLogGuest(g)}
+                />
+              </div>
             )}
           </ErrorBoundary>
         )}
@@ -536,14 +544,15 @@ const App: React.FC = () => {
 
       <style>{`
         .dashboard-view-tabs {
-          position: sticky;
-          top: 72px;
-          z-index: 100;
-          background: var(--bg-color);
+          z-index: 1005;
+          background: var(--nav-bg);
+          backdrop-filter: blur(15px);
           border-bottom: 3px solid var(--gilpin-gold);
-          padding: 16px 20px;
-          margin: 0 auto 16px;
+          padding: 12px 20px;
+          margin: 0 auto;
           max-width: 1800px;
+          transition: box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                      backdrop-filter 0.35s ease;
         }
 
         .view-tabs-container {
@@ -557,8 +566,8 @@ const App: React.FC = () => {
 
         .view-tab {
           padding: 10px 20px;
-          border: 2px solid var(--border-color);
-          background: var(--bg-container);
+          border: 2px solid var(--border-ui);
+          background: var(--surface);
           border-radius: 25px;
           cursor: pointer;
           font-weight: 700;
@@ -568,6 +577,7 @@ const App: React.FC = () => {
           text-transform: uppercase;
           letter-spacing: 0.5px;
           white-space: nowrap;
+          position: relative;
         }
 
         .view-tab:hover {
@@ -583,80 +593,22 @@ const App: React.FC = () => {
           box-shadow: 0 4px 12px rgba(197, 160, 101, 0.3);
         }
 
-        @media (max-width: 640px) {
-          .view-tab {
-            padding: 8px 14px;
-            font-size: 10px;
-          }
-          
-          .view-tabs-container {
-            gap: 6px;
-          }
-          
-          .dashboard-view-tabs {
-            padding: 12px 10px 16px;
-          }
-        }
-
-        /* Connection Status */
-        .connection-status {
-          position: absolute;
-          right: 20px;
-          top: 50%;
-          transform: translateY(-50%);
-        }
-
-        .status-badge {
-          padding: 6px 12px;
-          border-radius: 16px;
-          font-size: 11px;
-          font-weight: 700;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .status-badge.connected {
-          background: rgba(34, 197, 94, 0.15);
-          color: #16a34a;
-          border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-
-        .status-badge.connecting {
-          background: rgba(251, 191, 36, 0.15);
-          color: #d97706;
-          border: 1px solid rgba(251, 191, 36, 0.3);
-          animation: pulse 1.5s infinite;
-        }
-
-        .status-badge.offline {
-          background: rgba(239, 68, 68, 0.15);
-          color: #dc2626;
-          border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
-        }
-
         @media (max-width: 768px) {
-          .connection-status {
-            position: static;
-            transform: none;
-            text-align: center;
-            margin-top: 8px;
-          }
-
           .dashboard-view-tabs {
-            top: 56px;
-            padding: 12px 10px 10px;
+            padding: 10px 12px;
           }
         }
 
         @media (max-width: 480px) {
           .dashboard-view-tabs {
-            top: 50px;
+            padding: 8px 10px;
+          }
+          .view-tab {
+            padding: 8px 14px;
+            font-size: 10px;
+          }
+          .view-tabs-container {
+            gap: 6px;
           }
         }
       `}</style>

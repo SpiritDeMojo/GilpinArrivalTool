@@ -18,12 +18,13 @@ const SessionBar: React.FC<SessionBarProps> = ({ sessions, activeId, onSwitch, o
   return (
     <div className="no-print w-full flex justify-center mt-4 md:mt-6 mb-3 md:mb-4 px-3 md:px-0">
       <div className="flex items-center gap-2 md:gap-3 overflow-x-auto p-2 max-w-full no-scrollbar snap-x snap-mandatory">
-        {sessions.map(session => (
+        {sessions.map((session, index) => (
           <div
             key={session.id}
             onClick={() => onSwitch(session.id)}
+            style={{ animationDelay: `${index * 0.06}s` }}
             className={`
-              group flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-2 rounded-full cursor-pointer transition-all duration-200 border select-none flex-shrink-0 snap-start min-h-[40px]
+              session-tab group flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-2 rounded-full cursor-pointer transition-all duration-200 border select-none flex-shrink-0 snap-start min-h-[40px]
               ${activeId === session.id
                 ? 'bg-[#c5a065] text-white border-[#c5a065] shadow-lg font-bold scale-105'
                 : 'bg-white dark:bg-stone-900 text-slate-500 border-slate-200 dark:border-stone-700 hover:border-[#c5a065]/50 active:bg-slate-50 dark:active:bg-stone-800'}

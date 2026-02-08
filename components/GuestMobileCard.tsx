@@ -13,7 +13,7 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
   const isReturn = guest.ll.toLowerCase().includes('yes');
 
   return (
-    <div className="bg-white dark:bg-stone-900 rounded-[2rem] border border-slate-200 dark:border-stone-800 shadow-xl overflow-hidden mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="guest-mobile-card bg-white dark:bg-stone-900 rounded-[2rem] border border-slate-200 dark:border-stone-800 shadow-xl overflow-hidden mb-4">
       {/* --- Card Header: Room & Name --- */}
       <div className="p-5 flex items-start justify-between border-b border-slate-100 dark:border-stone-800/50">
         <div className="flex items-center gap-4">
@@ -112,14 +112,14 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
           </button>
 
           {isExpanded && (
-            <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2">
+            <div className="mt-4 space-y-4 expand-row-enter">
               <div>
                 <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">Intelligence Notes</label>
                 <textarea
                   value={guest.prefillNotes}
                   onChange={(e) => onUpdate({ prefillNotes: e.target.value })}
                   rows={3}
-                  className="w-full bg-white dark:bg-stone-800 p-3 rounded-xl border border-slate-200 dark:border-stone-700 text-[11px] italic text-slate-500 outline-none leading-relaxed"
+                  className="w-full bg-white dark:bg-stone-800 p-3 rounded-xl border border-slate-200 dark:border-stone-700 text-[11px] italic text-slate-500 dark:text-slate-300 outline-none leading-relaxed"
                 />
               </div>
               <div>
@@ -128,7 +128,7 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
                   value={guest.facilities}
                   onChange={(e) => onUpdate({ facilities: e.target.value })}
                   rows={2}
-                  className="w-full bg-white dark:bg-stone-800 p-3 rounded-xl border border-slate-200 dark:border-stone-700 text-[11px] outline-none leading-tight"
+                  className="w-full bg-white dark:bg-stone-800 p-3 rounded-xl border border-slate-200 dark:border-stone-700 text-[11px] dark:text-slate-200 outline-none leading-tight"
                 />
               </div>
               <div className="p-4 bg-slate-900 rounded-2xl overflow-x-auto">

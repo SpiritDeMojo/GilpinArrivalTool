@@ -5,6 +5,7 @@ import { ThemeProvider } from './contexts/ThemeProvider';
 import { ViewProvider } from './contexts/ViewProvider';
 import { HotkeysProvider } from './contexts/HotkeysProvider';
 import { UserProvider } from './contexts/UserProvider';
+import './styles/design-tokens.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

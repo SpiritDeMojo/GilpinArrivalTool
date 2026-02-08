@@ -22,7 +22,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               </h2>
             </div>
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-              Standard Operating Procedures • <span className="text-[#c5a065]">v15.0</span>
+              Standard Operating Procedures • <span className="text-[#c5a065]">v16.0</span>
             </p>
           </div>
           <button
@@ -770,6 +770,69 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   </div>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-3">Your department is saved locally — you won’t need to re-select unless you sign out.</p>
+              </div>
+            </section>
+
+            {/* 16. UI ANIMATIONS & VISUAL POLISH */}
+            <section>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
+                <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
+                16. UI Animations & Visual Polish
+                <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
+              </h3>
+
+              <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] mb-6">
+                <div className="text-3xl mb-4">✨</div>
+                <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">Premium Animation System</h4>
+                <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                  The interface features a comprehensive animation engine designed for a premium, responsive feel. All animations are theme-aware (light & dark) and automatically disabled in <strong>print mode</strong>.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
+                <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">🎬</span>
+                    <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Entrance Animations</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Content sections fade in with a subtle upward slide on page load. Dashboard filter pills cascade in with staggered timing (50ms apart). Session tabs slide in from the left (60ms stagger). Table rows enter with a 20ms staggered cascade.
+                  </p>
+                </div>
+                <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">👆</span>
+                    <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Micro-Interactions</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Buttons scale down on press (0.96x). Table rows lift with a shadow on hover. Dashboard pills hover-lift with enhanced shadow. Status badges scale up (1.05x) on hover. Input fields gain a golden glow ring on focus. Mobile cards respond to touch with a subtle press-down.
+                  </p>
+                </div>
+                <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">🎨</span>
+                    <div className="font-black text-sm text-slate-900 dark:text-white uppercase">View Transitions</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Switching between dashboard tabs (Arrivals, HK, Maintenance, Reception) triggers a smooth scale-up with fade-in and de-blur transition. The active tab displays a continuous golden shimmer sweep. Non-active tabs show an ambient golden glow on hover.
+                  </p>
+                </div>
+                <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">🌗</span>
+                    <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Theme Transitions</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Toggling between light and dark mode smoothly transitions all colours over 0.3 seconds. The navbar logo adapts with a dark background and golden glow shadow in dark mode. The logo image subtly rotates and scales on hover.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-5 md:p-6 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-500/20 rounded-[1.5rem] md:rounded-[2rem]">
+                <h4 className="font-black text-xs uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-2">🖨️ Print Safety</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  All animations, transitions, and visual effects are automatically disabled in print mode via <strong>@media print</strong>. Printed documents display static, clean layouts with no motion artifacts.
+                </p>
               </div>
             </section>
 
