@@ -191,11 +191,6 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
           if (isRemoteUpdate.current) return;
           isRemoteUpdate.current = true;
-          // Cancel any pending local sync to prevent stale data from being echoed back
-          if (syncTimeoutRef.current) {
-            clearTimeout(syncTimeoutRef.current);
-            syncTimeoutRef.current = null;
-          }
           // Firebase is source of truth — replace local sessions entirely
           setSessions(remoteSessions);
           // Clear active session if it was deleted
@@ -204,7 +199,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
             if (prev && remoteSessions.some(s => s.id === prev)) return prev;
             return remoteSessions[0].id;
           });
-          setTimeout(() => { isRemoteUpdate.current = false; }, 300);
+          setTimeout(() => { isRemoteUpdate.current = false; }, 100);
         });
       } else {
         setConnectionStatus('connecting'); // "connecting" signals reconnecting, not hard offline
@@ -235,11 +230,6 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       if (isRemoteUpdate.current) return;
 
       isRemoteUpdate.current = true;
-      // Cancel any pending local sync to prevent stale data from being echoed back
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-        syncTimeoutRef.current = null;
-      }
       // Firebase is source of truth — replace local sessions entirely
       // (ensures deletions propagate: deleted sessions won't get re-synced from localStorage)
       setSessions(remoteSessions);
@@ -251,11 +241,10 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         return remoteSessions[0].id;
       });
 
-      // Reset flag after state update — must be LONGER than sync debounce (150ms)
-      // to prevent stale sync timers from firing and echoing data back
+      // Reset flag after state update
       setTimeout(() => {
         isRemoteUpdate.current = false;
-      }, 300);
+      }, 100);
     });
 
     return () => {
