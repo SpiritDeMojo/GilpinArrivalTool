@@ -179,9 +179,16 @@ export const PrintLayout: React.FC<{
             box-sizing: border-box !important;
           }
 
+          /* Hide chat FAB and panel from print */
+          .chat-fab,
+          .chat-fab ~ div {
+            display: none !important;
+            visibility: hidden !important;
+          }
+
           .print-only {
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif !important;
-            font-size: 8pt !important;
+            font-size: 9pt !important;
             line-height: 1.2 !important;
             font-weight: 400 !important;
             color: #1a1a1a !important;
@@ -216,7 +223,7 @@ export const PrintLayout: React.FC<{
             border-bottom: 1.5pt solid #333 !important;
           }
           .print-col-header th {
-            font-size: 6pt !important;
+            font-size: 7pt !important;
             font-weight: 700 !important;
             text-transform: uppercase !important;
             letter-spacing: 0.04em !important;
@@ -229,20 +236,20 @@ export const PrintLayout: React.FC<{
           
           .print-room {
             font-weight: 700 !important;
-            font-size: 9pt !important;
+            font-size: 10.5pt !important;
             color: #000 !important;
             white-space: nowrap !important;
           }
 
           .print-guest-name {
             font-weight: 600 !important;
-            font-size: 7.5pt !important;
+            font-size: 8.5pt !important;
             color: #111 !important;
-            line-height: 1.1 !important;
+            line-height: 1.15 !important;
           }
 
           .print-pkg {
-            font-size: 6pt !important;
+            font-size: 7pt !important;
             font-weight: 500 !important;
             color: #888 !important;
             letter-spacing: 0.03em !important;
@@ -252,20 +259,20 @@ export const PrintLayout: React.FC<{
           .print-plate {
             font-family: 'Courier New', monospace !important;
             font-weight: 600 !important;
-            font-size: 7pt !important;
+            font-size: 8pt !important;
             text-transform: uppercase !important;
             letter-spacing: 0.03em !important;
           }
 
           .print-eta {
             font-weight: 600 !important;
-            font-size: 8pt !important;
+            font-size: 9pt !important;
             white-space: nowrap !important;
           }
 
           .print-body {
             font-weight: 400 !important;
-            font-size: 7pt !important;
+            font-size: 8pt !important;
             color: #333 !important;
             white-space: normal !important;
             word-wrap: break-word !important;
@@ -277,7 +284,7 @@ export const PrintLayout: React.FC<{
 
           .print-dietary {
             font-weight: 500 !important;
-            font-size: 7pt !important;
+            font-size: 8pt !important;
             color: #b91c1c !important;
           }
 
@@ -323,9 +330,9 @@ export const PrintLayout: React.FC<{
           .print-mode-master .col-strategy { min-width: 0 !important; }
 
           /* === GREETER MODE SIZING === */
-          .print-mode-greeter .print-room { font-size: 12pt !important; }
-          .print-mode-greeter .print-guest-name { font-size: 9pt !important; }
-          .print-mode-greeter .print-body { font-size: 8pt !important; }
+          .print-mode-greeter .print-room { font-size: 14pt !important; }
+          .print-mode-greeter .print-guest-name { font-size: 10.5pt !important; }
+          .print-mode-greeter .print-body { font-size: 9pt !important; }
 
           /* Page break optimization */
           tr { page-break-inside: avoid !important; }
