@@ -307,7 +307,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         console.error('❌ Firebase sync failed:', error);
         setConnectionStatus('offline');
       }
-    }, 500); // 500ms debounce
+    }, 150); // 150ms debounce — fast enough for instant-feel cross-device sync
   }, [firebaseEnabled]);
 
   // 6. Persistence (localStorage + Firebase)

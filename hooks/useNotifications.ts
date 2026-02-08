@@ -319,7 +319,7 @@ export const useNotifications = (guests: Guest[]) => {
             const map = new Map<string, Guest>();
             guests.forEach(g => map.set(g.id, { ...g }));
             prevGuestsRef.current = map;
-        }, 500);
+        }, 150); // 150ms — fast enough for near-instant notifications from other devices
 
         return () => {
             if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);

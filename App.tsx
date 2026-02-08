@@ -120,7 +120,7 @@ const App: React.FC = () => {
     registerActions({ hasGuests: guests.length > 0, onExcelExport });
   }, [guests.length, onExcelExport, registerActions]);
 
-  const mainPaddingTop = isOldFile && guests.length > 0 ? NAV_HEIGHT + ALERT_HEIGHT : NAV_HEIGHT;
+  const mainPaddingTop = isOldFile && guests.length > 0 ? 'calc(var(--nav-height) + var(--alert-height))' : 'var(--nav-height)';
 
   const toggleExpand = (id: string) => {
     setExpandedRows(prev => {
@@ -264,7 +264,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-500 print:!pt-0" style={{ paddingTop: mainPaddingTop + 'px' }}>
+    <div className="min-h-screen transition-colors duration-500 print:!pt-0" style={{ paddingTop: mainPaddingTop }}>
       <Navbar
         arrivalDateStr={arrivalDateStr}
         isDark={isDark}
@@ -294,7 +294,7 @@ const App: React.FC = () => {
         onNavigate={(view) => { setDashboardView(view); clearBadge(view); }}
       />
       {isOldFile && guests.length > 0 && (
-        <div className="no-print pulsate-alert text-white text-center font-black tracking-widest text-[8px] md:text-[10px] fixed w-full z-[1009] flex items-center justify-center" style={{ top: NAV_HEIGHT + 'px', height: ALERT_HEIGHT + 'px' }}>
+        <div className="no-print pulsate-alert text-white text-center font-black tracking-widest text-[8px] md:text-[10px] fixed w-full z-[1009] flex items-center justify-center" style={{ top: 'var(--nav-height)', height: 'var(--alert-height)' }}>
           ⚠️ HISTORICAL FILE DETECTED • {arrivalDateStr}
         </div>
       )}
@@ -306,7 +306,7 @@ const App: React.FC = () => {
             ? 'fixed left-0 right-0 z-[1005] backdrop-blur-xl shadow-lg'
             : ''
             }`}
-          style={isSticky ? { top: (isOldFile && guests.length > 0) ? (NAV_HEIGHT + ALERT_HEIGHT) + 'px' : NAV_HEIGHT + 'px' } : {}}
+          style={isSticky ? { top: (isOldFile && guests.length > 0) ? 'calc(var(--nav-height) + var(--alert-height))' : 'var(--nav-height)' } : {}}
         >
           <div className="view-tabs-container">
             {isRec && (
