@@ -22,7 +22,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               </h2>
             </div>
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-              Standard Operating Procedures • <span className="text-[#c5a065]">v12.0</span>
+              Standard Operating Procedures • <span className="text-[#c5a065]">v13.0</span>
             </p>
           </div>
           <button
@@ -695,6 +695,47 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </section>
+
+            {/* 15. DEPARTMENT ACCESS CONTROL */}
+            <section>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
+                <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
+                15. Department Access
+                <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
+              </h3>
+
+              <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222]">
+                <div className="text-3xl mb-4">🔐</div>
+                <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">Role-Based Views</h4>
+                <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                  On sign-in you select your <strong>department</strong>. This controls which tabs and tools appear.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🧹</span>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Housekeeping</h5>
+                    </div>
+                    <p className="text-[10px] text-slate-400">🧹 HK tab only. Room name, allergies, and HK notes visible. No AI or print tools.</p>
+                  </div>
+                  <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🔧</span>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Maintenance</h5>
+                    </div>
+                    <p className="text-[10px] text-slate-400">🔧 Maintenance tab only. Room name, car reg, and HK notes visible. No AI or print tools.</p>
+                  </div>
+                  <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🛎️</span>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Reception</h5>
+                    </div>
+                    <p className="text-[10px] text-slate-400">All 4 tabs. Full guest data, AI Audit, Intelligence, Print, Excel, and manual booking tools.</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-3">Your department is saved locally — you won’t need to re-select unless you sign out.</p>
               </div>
             </section>
 

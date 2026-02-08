@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GILPIN_LOGO_URL } from '../constants';
 import { useUser } from '../contexts/UserProvider';
+import { DEPARTMENT_LABELS } from '../types';
 
 interface NavbarProps {
   arrivalDateStr: string;
@@ -27,7 +28,8 @@ const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
-  const { userName, logout } = useUser();
+  const { userName, department, logout } = useUser();
+  const isRec = department === 'REC';
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu on route change or escape key
@@ -90,34 +92,44 @@ const Navbar: React.FC<NavbarProps> = ({
         <div className="flex gap-2">
           {hasGuests && (
             <>
-              <button
-                onClick={onToggleAnalytics}
-                className={`${showAnalytics ? 'bg-[#c5a065] text-white' : 'bg-slate-100 dark:bg-stone-800 text-slate-600 dark:text-slate-300'} px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95 border border-[#c5a065]/20`}
-              >
-                📊 Intelligence
-              </button>
-
-              <button onClick={onAIRefine} className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95">
-                ✨ AI Audit
-              </button>
-
-              <div className="relative">
-                <button onClick={() => setIsPrintOpen(!isPrintOpen)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">
-                  🖨️ Print
+              {isRec && (
+                <button
+                  onClick={onToggleAnalytics}
+                  className={`${showAnalytics ? 'bg-[#c5a065] text-white' : 'bg-slate-100 dark:bg-stone-800 text-slate-600 dark:text-slate-300'} px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95 border border-[#c5a065]/20`}
+                >
+                  📊 Intelligence
                 </button>
-                {isPrintOpen && (
-                  <div className="absolute right-0 top-full pt-2 z-[2000]">
-                    <div className="bg-white dark:bg-stone-900 border border-[#c5a065]/20 shadow-2xl rounded-xl p-2 w-44">
-                      <button onClick={() => { onPrint('main'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Master List</button>
-                      <button onClick={() => { onPrint('greeter'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Greeter View</button>
-                      <button onClick={() => { onPrint('inroom'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">In-Room Assets</button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
 
-              <button onClick={onExcel} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all">⬇️ Excel</button>
-              <button onClick={onAddManual} className="bg-[#c5a065] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#b08d54] transition-all">➕ Add</button>
+              {isRec && (
+                <button onClick={onAIRefine} className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95">
+                  ✨ AI Audit
+                </button>
+              )}
+
+              {isRec && (
+                <div className="relative">
+                  <button onClick={() => setIsPrintOpen(!isPrintOpen)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">
+                    🖨️ Print
+                  </button>
+                  {isPrintOpen && (
+                    <div className="absolute right-0 top-full pt-2 z-[2000]">
+                      <div className="bg-white dark:bg-stone-900 border border-[#c5a065]/20 shadow-2xl rounded-xl p-2 w-44">
+                        <button onClick={() => { onPrint('main'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Master List</button>
+                        <button onClick={() => { onPrint('greeter'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Greeter View</button>
+                        <button onClick={() => { onPrint('inroom'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">In-Room Assets</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isRec && (
+                <button onClick={onExcel} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all">⬇️ Excel</button>
+              )}
+              {isRec && (
+                <button onClick={onAddManual} className="bg-[#c5a065] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#b08d54] transition-all">➕ Add</button>
+              )}
 
 
 
@@ -142,7 +154,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
         <button onClick={onOpenSOP} className="w-9 h-9 rounded-full border-2 border-[#c5a065]/30 flex items-center justify-center font-bold text-sm transition-all hover:bg-[#c5a065]/10">?</button>
 
-        {/* User Badge */}
+        {/* User Badge with Department */}
         {userName && (
           <div className="flex items-center gap-2 ml-1">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#c5a065]/10 border border-[#c5a065]/30">
@@ -150,6 +162,11 @@ const Navbar: React.FC<NavbarProps> = ({
                 {userName.charAt(0).toUpperCase()}
               </div>
               <span className="text-[10px] font-bold uppercase tracking-wider">{userName}</span>
+              {department && (
+                <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-[#c5a065]/20 text-[#c5a065]">
+                  {DEPARTMENT_LABELS[department]}
+                </span>
+              )}
             </div>
             <button
               onClick={logout}
@@ -176,38 +193,39 @@ const Navbar: React.FC<NavbarProps> = ({
         {hasGuests && (
           <>
 
-
             <div role="button" onClick={onToggleMute} style={mobIcon}
               className={`rounded-xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-600' : 'bg-slate-800'} active:scale-95`}
             >
               <span className="text-sm leading-none">{isMuted ? '🔕' : '🔔'}</span>
             </div>
 
-            {/* Print — standalone icon */}
-            <div className="relative">
-              <div role="button" onClick={() => { setIsPrintOpen(!isPrintOpen); setIsMenuOpen(false); }} style={mobIcon}
-                className={`rounded-xl flex items-center justify-center transition-all shadow-lg active:scale-90 ${isPrintOpen ? 'bg-slate-700 ring-2 ring-[#c5a065]' : 'bg-slate-800'}`}
-              >
-                <span className="text-sm leading-none">🖨️</span>
-              </div>
-              {isPrintOpen && (
-                <div className="absolute right-0 top-full mt-2 z-[3001] w-48">
-                  <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
-                    <div className="p-1">
-                      {(['main', 'greeter', 'inroom'] as const).map((mode) => (
-                        <div key={mode} role="button"
-                          onClick={() => { onPrint(mode); setIsPrintOpen(false); }}
-                          style={{ cursor: 'pointer', minHeight: 'auto', padding: '12px 16px' }}
-                          className="text-white text-xs font-bold flex items-center gap-2 rounded-xl active:bg-white/10 transition-colors"
-                        >
-                          {mode === 'main' ? '📄 Master List' : mode === 'greeter' ? '👋 Greeter View' : '🛏️ In-Room Delivery'}
-                        </div>
-                      ))}
+            {/* Print — standalone icon (REC only) */}
+            {isRec && (
+              <div className="relative">
+                <div role="button" onClick={() => { setIsPrintOpen(!isPrintOpen); setIsMenuOpen(false); }} style={mobIcon}
+                  className={`rounded-xl flex items-center justify-center transition-all shadow-lg active:scale-90 ${isPrintOpen ? 'bg-slate-700 ring-2 ring-[#c5a065]' : 'bg-slate-800'}`}
+                >
+                  <span className="text-sm leading-none">🖨️</span>
+                </div>
+                {isPrintOpen && (
+                  <div className="absolute right-0 top-full mt-2 z-[3001] w-48">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
+                      <div className="p-1">
+                        {(['main', 'greeter', 'inroom'] as const).map((mode) => (
+                          <div key={mode} role="button"
+                            onClick={() => { onPrint(mode); setIsPrintOpen(false); }}
+                            style={{ cursor: 'pointer', minHeight: 'auto', padding: '12px 16px' }}
+                            className="text-white text-xs font-bold flex items-center gap-2 rounded-xl active:bg-white/10 transition-colors"
+                          >
+                            {mode === 'main' ? '📄 Master List' : mode === 'greeter' ? '👋 Greeter View' : '🛏️ In-Room Delivery'}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </>
         )}
 
@@ -258,14 +276,21 @@ const Navbar: React.FC<NavbarProps> = ({
             <div className="rounded-2xl border border-slate-700/50 overflow-hidden">
               <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-4 pt-3 pb-1">Account</p>
 
-              {/* User */}
+              {/* User + Department */}
               {userName && (
                 <div className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-[#c5a065] flex items-center justify-center text-white text-xs font-black">
                       {userName.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-white font-bold text-sm">{userName}</span>
+                    <div className="flex flex-col">
+                      <span className="text-white font-bold text-sm">{userName}</span>
+                      {department && (
+                        <span className="text-[9px] font-black uppercase tracking-wider text-[#c5a065]">
+                          {DEPARTMENT_LABELS[department]}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div role="button" onClick={() => { logout(); closeMenu(); }} style={{ cursor: 'pointer', minHeight: 'auto' }}
                     className="px-3 py-1.5 rounded-lg bg-slate-800 text-rose-400 text-[10px] font-black uppercase tracking-wider border border-rose-500/20 active:scale-95 transition-transform"
@@ -284,8 +309,8 @@ const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* ── GROUP 2: Tools ── */}
-            {hasGuests && (
+            {/* ── GROUP 2: Tools (REC only) ── */}
+            {hasGuests && isRec && (
               <div className="rounded-2xl border border-slate-700/50 overflow-hidden">
                 <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-4 pt-3 pb-1">Tools</p>
 

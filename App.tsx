@@ -51,7 +51,8 @@ const App: React.FC = () => {
   // Context hooks
   const { isDark, toggleTheme } = useTheme();
   const { dashboardView, setDashboardView, showAnalytics, toggleAnalytics, showTimeline } = useView();
-  const { userName } = useUser();
+  const { userName, department } = useUser();
+  const isRec = department === 'REC';
   const { printMode, triggerPrint, registerActions } = useHotkeys();
 
   const [isSticky, setIsSticky] = useState(false);
@@ -95,6 +96,19 @@ const App: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [guests.length]);
+
+  // Auto-set dashboard view based on department access
+  useEffect(() => {
+    if (!department) return;
+    const allowed: Record<string, string[]> = {
+      HK: ['housekeeping'],
+      MAIN: ['maintenance'],
+      REC: ['arrivals', 'housekeeping', 'maintenance', 'reception'],
+    };
+    if (!allowed[department]?.includes(dashboardView)) {
+      setDashboardView(allowed[department][0] as any);
+    }
+  }, [department, dashboardView, setDashboardView]);
 
   const { auditedUpdate } = useAuditLog(guests, updateGuest);
 
@@ -232,7 +246,7 @@ const App: React.FC = () => {
   const stickyTop = isSticky ? { top: `${NAV_HEIGHT}px` } : {};
 
   // Early return: Show login screen when not authenticated
-  if (!userName) {
+  if (!userName || !department) {
     return <LoginScreen />;
   }
 
@@ -288,43 +302,51 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Dashboard View Tabs */}
+      {/* Dashboard View Tabs — filtered by department */}
       {guests.length > 0 && (
         <div className="no-print dashboard-view-tabs">
           <div className="view-tabs-container">
-            <button
-              className={`view-tab ${dashboardView === 'arrivals' ? 'active' : ''}`}
-              onClick={() => setDashboardView('arrivals')}
-            >
-              📋 Arrivals ({guests.length})
-            </button>
-            <button
-              className={`view-tab ${dashboardView === 'housekeeping' ? 'active' : ''}`}
-              onClick={() => { setDashboardView('housekeeping'); clearBadge('housekeeping'); }}
-            >
-              🧹 Housekeeping
-              {badges.housekeeping > 0 && dashboardView !== 'housekeeping' && (
-                <span className="tab-badge-dot" style={{ background: '#22c55e' }}>{badges.housekeeping}</span>
-              )}
-            </button>
-            <button
-              className={`view-tab ${dashboardView === 'maintenance' ? 'active' : ''}`}
-              onClick={() => { setDashboardView('maintenance'); clearBadge('maintenance'); }}
-            >
-              🔧 Maintenance
-              {badges.maintenance > 0 && dashboardView !== 'maintenance' && (
-                <span className="tab-badge-dot" style={{ background: '#f59e0b' }}>{badges.maintenance}</span>
-              )}
-            </button>
-            <button
-              className={`view-tab ${dashboardView === 'reception' ? 'active' : ''}`}
-              onClick={() => { setDashboardView('reception'); clearBadge('reception'); }}
-            >
-              🛎️ Reception
-              {badges.reception > 0 && dashboardView !== 'reception' && (
-                <span className="tab-badge-dot" style={{ background: '#3b82f6' }}>{badges.reception}</span>
-              )}
-            </button>
+            {isRec && (
+              <button
+                className={`view-tab ${dashboardView === 'arrivals' ? 'active' : ''}`}
+                onClick={() => setDashboardView('arrivals')}
+              >
+                📋 Arrivals ({guests.length})
+              </button>
+            )}
+            {(department === 'HK' || isRec) && (
+              <button
+                className={`view-tab ${dashboardView === 'housekeeping' ? 'active' : ''}`}
+                onClick={() => { setDashboardView('housekeeping'); clearBadge('housekeeping'); }}
+              >
+                🧹 Housekeeping
+                {badges.housekeeping > 0 && dashboardView !== 'housekeeping' && (
+                  <span className="tab-badge-dot" style={{ background: '#22c55e' }}>{badges.housekeeping}</span>
+                )}
+              </button>
+            )}
+            {(department === 'MAIN' || isRec) && (
+              <button
+                className={`view-tab ${dashboardView === 'maintenance' ? 'active' : ''}`}
+                onClick={() => { setDashboardView('maintenance'); clearBadge('maintenance'); }}
+              >
+                🔧 Maintenance
+                {badges.maintenance > 0 && dashboardView !== 'maintenance' && (
+                  <span className="tab-badge-dot" style={{ background: '#f59e0b' }}>{badges.maintenance}</span>
+                )}
+              </button>
+            )}
+            {isRec && (
+              <button
+                className={`view-tab ${dashboardView === 'reception' ? 'active' : ''}`}
+                onClick={() => { setDashboardView('reception'); clearBadge('reception'); }}
+              >
+                🛎️ Reception
+                {badges.reception > 0 && dashboardView !== 'reception' && (
+                  <span className="tab-badge-dot" style={{ background: '#3b82f6' }}>{badges.reception}</span>
+                )}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -355,7 +377,7 @@ const App: React.FC = () => {
           onCreate={createNewSession}
         />
 
-        {showAnalytics && (
+        {isRec && showAnalytics && (
           <AnalyticsView
             activeGuests={guests}
             allSessions={sessions}
@@ -496,7 +518,7 @@ const App: React.FC = () => {
         <UnifiedChatPanel
           sessionId={activeSessionId}
           userName={userName || 'Unknown'}
-          department={dashboardView === 'arrivals' || dashboardView === 'reception' ? 'reception' : dashboardView}
+          department={department === 'HK' ? 'housekeeping' : department === 'MAIN' ? 'maintenance' : 'reception'}
           isLiveActive={isLiveActive}
           isMicEnabled={isMicEnabled}
           transcriptions={transcriptions}

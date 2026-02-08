@@ -2,6 +2,28 @@
 // EXISTING TYPES
 // ==========================================
 
+export type Department = 'HK' | 'MAIN' | 'REC';
+
+/** Map user-friendly aliases to canonical department codes */
+export const DEPARTMENT_ALIASES: Record<string, Department> = {
+  housekeeping: 'HK',
+  hk: 'HK',
+  maintenance: 'MAIN',
+  main: 'MAIN',
+  reception: 'REC',
+  reservations: 'REC',
+  manager: 'REC',
+  rec: 'REC',
+  res: 'REC',
+  hod: 'REC',
+};
+
+export const DEPARTMENT_LABELS: Record<Department, string> = {
+  HK: 'Housekeeping',
+  MAIN: 'Maintenance',
+  REC: 'Reception',
+};
+
 export interface Guest {
   id: string;
   room: string;
