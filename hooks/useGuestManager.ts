@@ -191,13 +191,13 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
           if (isRemoteUpdate.current) return;
           isRemoteUpdate.current = true;
-          setSessions(prev => {
-            // Merge: keep local-only sessions (MAN- prefix not yet synced), update Firebase ones
-            const remoteIds = new Set(remoteSessions.map(s => s.id));
-            const localOnly = prev.filter(s => !remoteIds.has(s.id));
-            return [...remoteSessions, ...localOnly].sort((a, b) =>
-              new Date(a.dateObj).getTime() - new Date(b.dateObj).getTime()
-            );
+          // Firebase is source of truth — replace local sessions entirely
+          setSessions(remoteSessions);
+          // Clear active session if it was deleted
+          setActiveSessionId(prev => {
+            if (remoteSessions.length === 0) return '';
+            if (prev && remoteSessions.some(s => s.id === prev)) return prev;
+            return remoteSessions[0].id;
           });
           setTimeout(() => { isRemoteUpdate.current = false; }, 100);
         });
@@ -230,19 +230,15 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       if (isRemoteUpdate.current) return;
 
       isRemoteUpdate.current = true;
-      setSessions(prev => {
-        // Merge strategy: Firebase sessions overwrite local, keep local-only sessions
-        const remoteIds = new Set(remoteSessions.map(s => s.id));
-        const localOnly = prev.filter(s => !remoteIds.has(s.id));
-        return [...remoteSessions, ...localOnly].sort((a, b) =>
-          new Date(a.dateObj).getTime() - new Date(b.dateObj).getTime()
-        );
-      });
+      // Firebase is source of truth — replace local sessions entirely
+      // (ensures deletions propagate: deleted sessions won't get re-synced from localStorage)
+      setSessions(remoteSessions);
 
-      // Auto-set active session if we don't have one yet
+      // Auto-set active session, or clear if all deleted
       setActiveSessionId(prev => {
+        if (remoteSessions.length === 0) return '';
         if (prev && remoteSessions.some(s => s.id === prev)) return prev;
-        return remoteSessions.length > 0 ? remoteSessions[0].id : prev;
+        return remoteSessions[0].id;
       });
 
       // Reset flag after state update
