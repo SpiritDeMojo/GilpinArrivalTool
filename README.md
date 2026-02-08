@@ -23,7 +23,8 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 
 - 📄 **Smart PDF Parser** — Extracts guest data, room assignments, ETAs, car registrations, facilities, allergies, occasions, and in-room items from PMS arrival PDFs with high accuracy
 - 🤖 **AI-Powered Audit** — Gemini 2.0 Flash refines parsed data: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, and generates actionable greeting strategies
-- 📡 **Fleet Sync (Firebase)** — Real-time multi-device synchronisation via Firebase Realtime Database. Upload a PDF on one device, all connected devices update instantly
+- 📡 **Fleet Sync (Firebase)** — Real-time multi-device synchronisation via Firebase Realtime Database. Upload multiple arrival PDFs on one device, all connected devices update instantly with every day visible as tabs
+- 📅 **Multi-Day Sessions** — Upload Monday, Tuesday, Wednesday PDFs and all appear as tabs in the Session Bar. All connected devices see every day. Deletions propagate across all devices instantly
 - 🖨️ **Smart Print Layouts** — Three print modes (Master, Greeter, Delivery) with auto-sizing columns and dense formatting that maximises paper utilisation in landscape
 - 💬 **Unified Chat Panel** — Tabbed interface with cross-department Team Chat and AI Live Assistant (voice & text). Delete chat, auto-connect, HTTPS voice/HTTP text-only modes
 - 🤖 **AI Live Assistant** — Conversational AI colleague powered by Gemini 2.5 Flash native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands
@@ -64,7 +65,7 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
                      ┌──────────────┐              │
                      │   Firebase   │◀─────────────┘
                      │ (Fleet Sync) │──────▶ All Devices
-                     └──────────────┘
+                     └──────────────┘        (all days)
 ```
 
 ### Tech Stack
@@ -172,11 +173,12 @@ npm run build
 
 ## Multi-Device Workflow
 
-1. **Upload** a PMS arrival PDF on any device (typically the reception desktop)
-2. **Share** the session URL to other devices (phones, tablets)
-3. **All devices** auto-sync via Firebase — status changes, notes, and room updates propagate instantly
+1. **Upload** one or more PMS arrival PDFs on any device (typically the reception desktop)
+2. **Multi-day** — each uploaded PDF becomes a tab in the Session Bar; upload Monday, Tuesday, Wednesday and all appear
+3. **All devices** auto-sync via Firebase — every day, every status change, every note propagates instantly
 4. **Each department** uses their dedicated dashboard view
 5. **AI Audit** (optional) refines all guest data in one click
+6. **Delete** a session on any device and it's removed from all connected devices
 
 ---
 

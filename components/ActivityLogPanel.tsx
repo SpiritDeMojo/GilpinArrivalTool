@@ -206,8 +206,8 @@ const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
                                                 <div key={item.id} style={{
                                                     padding: '10px 14px',
                                                     borderRadius: '12px',
-                                                    background: 'rgba(239, 68, 68, 0.08)',
-                                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                    background: 'var(--surface, rgba(239, 68, 68, 0.08))',
+                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
                                                     fontSize: '12px',
                                                 }}>
                                                     <div style={{ fontWeight: 700, color: '#ef4444', marginBottom: '3px' }}>

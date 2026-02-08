@@ -287,7 +287,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ sessionId, userName, department
                         display: 'flex',
                         gap: '8px',
                         alignItems: 'center',
-                        background: 'rgba(197, 160, 101, 0.03)',
+                        background: 'var(--surface, rgba(197, 160, 101, 0.03))',
                     }}>
                         <input
                             type="text"

@@ -86,7 +86,7 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
             {showClearConfirm && (
                 <div style={{
                     padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'rgba(239,68,68,0.08)', borderBottom: '1px solid rgba(239,68,68,0.15)',
+                    background: 'var(--surface, rgba(239,68,68,0.08))', borderBottom: '1px solid rgba(239,68,68,0.25)',
                 }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: '#ef4444' }}>Delete all messages?</span>
                     <div style={{ display: 'flex', gap: '6px' }}>
@@ -143,7 +143,7 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                 padding: '12px 14px',
                 borderTop: '1px solid var(--border-ui, rgba(197, 160, 101, 0.1))',
                 display: 'flex', gap: '8px', alignItems: 'center',
-                background: 'rgba(197, 160, 101, 0.03)',
+                background: 'var(--surface, rgba(197, 160, 101, 0.03))',
             }}>
                 {/* Clear chat button */}
                 {messages.length > 0 && (

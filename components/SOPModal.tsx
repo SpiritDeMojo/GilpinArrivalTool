@@ -22,7 +22,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               </h2>
             </div>
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-              Standard Operating Procedures • <span className="text-[#c5a065]">v14.0</span>
+              Standard Operating Procedures • <span className="text-[#c5a065]">v15.0</span>
             </p>
           </div>
           <button
@@ -477,6 +477,40 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                       <span className="px-3 md:px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-bold">🟢 Synced</span>
                       <span className="px-3 md:px-4 py-2 bg-amber-500/20 text-amber-400 rounded-full text-xs font-bold">🟡 Connecting</span>
                       <span className="px-3 md:px-4 py-2 bg-red-500/20 text-red-400 rounded-full text-xs font-bold">🔴 Offline (Local Only)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Multi-Day Sync */}
+              <div className="mt-4 md:mt-6 p-6 md:p-8 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-xl">📅</span>
+                  <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Multi-Day Sessions</div>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                  Upload <strong>multiple arrival PDFs</strong> (e.g. Monday, Tuesday, Wednesday) on the reception PC. Each day appears as a separate tab in the <strong>Session Bar</strong> at the top of the dashboard. All connected devices — phones, tablets, other PCs — see every day automatically.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">📤</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Upload</h5>
+                      <p className="text-[10px] text-slate-400">Upload PDFs on reception PC — each day syncs to all devices</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">📱</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">View</h5>
+                      <p className="text-[10px] text-slate-400">Tap tabs to switch between days — all data stays synced</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">🗑️</span>
+                    <div>
+                      <h5 className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300">Delete</h5>
+                      <p className="text-[10px] text-slate-400">Deleting a session removes it from all devices instantly</p>
                     </div>
                   </div>
                 </div>

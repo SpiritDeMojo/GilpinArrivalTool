@@ -64,7 +64,7 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
             {/* Status bar */}
             <div style={{
                 padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'rgba(197,160,101,0.04)',
+                background: 'var(--surface, rgba(197,160,101,0.04))',
                 borderBottom: '1px solid var(--border-ui, rgba(197,160,101,0.1))',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -97,7 +97,7 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
                             <button onClick={onDisconnect} style={{
                                 padding: '5px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: 900,
                                 textTransform: 'uppercase', cursor: 'pointer', border: 'none',
-                                background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                                background: 'var(--surface, rgba(239,68,68,0.1))', color: '#ef4444',
                             }}>⏹ Stop</button>
                         </>
                     )}
@@ -105,7 +105,7 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
                         <button onClick={onClearHistory} style={{
                             padding: '5px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: 900,
                             textTransform: 'uppercase', cursor: 'pointer', border: 'none',
-                            background: 'rgba(148,163,184,0.1)', color: '#94a3b8',
+                            background: 'var(--surface, rgba(148,163,184,0.1))', color: 'var(--text-muted, #94a3b8)',
                         }}>Clear</button>
                     )}
                 </div>
@@ -115,8 +115,8 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
             {errorMessage && (
                 <div style={{
                     padding: '10px 16px', fontSize: '11px', fontWeight: 700,
-                    background: 'rgba(239,68,68,0.1)', color: '#ef4444',
-                    borderBottom: '1px solid rgba(239,68,68,0.2)',
+                    background: 'var(--surface, rgba(239,68,68,0.1))', color: '#ef4444',
+                    borderBottom: '1px solid rgba(239,68,68,0.25)',
                     display: 'flex', alignItems: 'center', gap: '8px',
                 }}>
                     <span>⚠️</span>
@@ -182,7 +182,7 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
                 padding: '12px 14px',
                 borderTop: '1px solid var(--border-ui, rgba(197, 160, 101, 0.1))',
                 display: 'flex', gap: '8px', alignItems: 'center',
-                background: 'rgba(197, 160, 101, 0.03)',
+                background: 'var(--surface, rgba(197, 160, 101, 0.03))',
                 opacity: isLiveActive ? 1 : 0.4,
                 pointerEvents: isLiveActive ? 'auto' : 'none',
             }}>
