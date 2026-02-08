@@ -223,6 +223,55 @@ export function subscribeToFullSession(
 }
 
 /**
+ * Subscribe to ALL sessions in Firebase (multi-day sync).
+ * Returns the full ArrivalSession[] whenever any session is added, updated, or removed.
+ * Used so all connected devices see every day uploaded by the reception PC.
+ */
+export function subscribeToAllSessions(
+    onUpdate: (sessions: ArrivalSession[]) => void
+): () => void {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        onUpdate([]);
+        return () => { };
+    }
+
+    const sessionsRef = ref(db, 'sessions');
+
+    const unsubscribe = onValue(sessionsRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            const allSessions: ArrivalSession[] = Object.entries(data).map(([id, session]: [string, any]) => {
+                // Ensure guests is always an array
+                let guests = session.guests || [];
+                if (!Array.isArray(guests)) {
+                    guests = Object.values(guests);
+                }
+                return {
+                    id,
+                    label: session.label || id,
+                    dateObj: session.dateObj || new Date().toISOString(),
+                    guests,
+                    lastModified: session.lastModified || 0
+                };
+            });
+
+            // Sort by date (earliest first)
+            allSessions.sort((a, b) => new Date(a.dateObj).getTime() - new Date(b.dateObj).getTime());
+
+            console.log('📋 All sessions updated:', allSessions.length, 'sessions');
+            onUpdate(allSessions);
+        } else {
+            onUpdate([]);
+        }
+    }, (error) => {
+        console.error('Firebase all-sessions subscription error:', error);
+    });
+
+    return () => off(sessionsRef);
+}
+
+/**
  * Sync entire session to Firebase
  * @param session - The session to sync
  */

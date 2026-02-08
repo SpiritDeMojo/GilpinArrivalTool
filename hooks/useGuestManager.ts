@@ -10,6 +10,7 @@ import {
   isFirebaseEnabled,
   subscribeToSession,
   subscribeToFullSession,
+  subscribeToAllSessions,
   subscribeToConnectionState,
   keepAlive,
   fetchSession,
@@ -176,37 +177,30 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
     // === CONNECTION STATE MONITOR ===
     // Firebase's .info/connected is the authoritative source.
-    // On reconnect we re-subscribe to the active session + re-establish presence.
+    // On reconnect we re-subscribe to ALL sessions + re-establish presence.
     connectionCleanupRef.current = subscribeToConnectionState((connected) => {
       if (connected) {
         setConnectionStatus('connected');
 
-        // Re-subscribe to active session on reconnect
-        const currentSessionId = activeSessionIdRef.current;
-        if (currentSessionId) {
-          // Tear down stale subscription
-          if (unsubscribeRef.current) {
-            unsubscribeRef.current();
-            unsubscribeRef.current = null;
-          }
-          console.log('🔄 Reconnected — re-subscribing to session:', currentSessionId);
-          unsubscribeRef.current = subscribeToFullSession(currentSessionId, (remoteSession) => {
-            if (isRemoteUpdate.current) return;
-            isRemoteUpdate.current = true;
-            setSessions(prev => prev.map(s =>
-              s.id === currentSessionId
-                ? {
-                  ...s,
-                  guests: remoteSession.guests || [],
-                  label: remoteSession.label || s.label,
-                  dateObj: remoteSession.dateObj || s.dateObj,
-                  lastModified: Date.now()
-                }
-                : s
-            ));
-            setTimeout(() => { isRemoteUpdate.current = false; }, 100);
-          });
+        // Re-subscribe to ALL sessions on reconnect
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+          unsubscribeRef.current = null;
         }
+        console.log('🔄 Reconnected — re-subscribing to all sessions');
+        unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
+          if (isRemoteUpdate.current) return;
+          isRemoteUpdate.current = true;
+          setSessions(prev => {
+            // Merge: keep local-only sessions (MAN- prefix not yet synced), update Firebase ones
+            const remoteIds = new Set(remoteSessions.map(s => s.id));
+            const localOnly = prev.filter(s => !remoteIds.has(s.id));
+            return [...remoteSessions, ...localOnly].sort((a, b) =>
+              new Date(a.dateObj).getTime() - new Date(b.dateObj).getTime()
+            );
+          });
+          setTimeout(() => { isRemoteUpdate.current = false; }, 100);
+        });
       } else {
         setConnectionStatus('connecting'); // "connecting" signals reconnecting, not hard offline
         console.log('⚠️ Firebase disconnected — will auto-reconnect...');
@@ -220,7 +214,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     };
   }, []);
 
-  // 4. Subscribe to active session updates from Firebase (full session sync)
+  // 4. Subscribe to ALL session updates from Firebase (multi-day sync)
   useEffect(() => {
     // Clean up previous subscription
     if (unsubscribeRef.current) {
@@ -228,25 +222,28 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       unsubscribeRef.current = null;
     }
 
-    if (!firebaseEnabled || !activeSessionId) return;
+    if (!firebaseEnabled) return;
 
-    // Subscribe to FULL session updates (label, guests, everything)
-    unsubscribeRef.current = subscribeToFullSession(activeSessionId, (remoteSession) => {
+    // Subscribe to ALL sessions — every day uploaded by any device
+    unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
       // Prevent infinite loops - only update if this is a remote change
       if (isRemoteUpdate.current) return;
 
       isRemoteUpdate.current = true;
-      setSessions(prev => prev.map(s =>
-        s.id === activeSessionId
-          ? {
-            ...s,
-            guests: remoteSession.guests || [],
-            label: remoteSession.label || s.label,
-            dateObj: remoteSession.dateObj || s.dateObj,
-            lastModified: Date.now()
-          }
-          : s
-      ));
+      setSessions(prev => {
+        // Merge strategy: Firebase sessions overwrite local, keep local-only sessions
+        const remoteIds = new Set(remoteSessions.map(s => s.id));
+        const localOnly = prev.filter(s => !remoteIds.has(s.id));
+        return [...remoteSessions, ...localOnly].sort((a, b) =>
+          new Date(a.dateObj).getTime() - new Date(b.dateObj).getTime()
+        );
+      });
+
+      // Auto-set active session if we don't have one yet
+      setActiveSessionId(prev => {
+        if (prev && remoteSessions.some(s => s.id === prev)) return prev;
+        return remoteSessions.length > 0 ? remoteSessions[0].id : prev;
+      });
 
       // Reset flag after state update
       setTimeout(() => {
@@ -259,7 +256,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         unsubscribeRef.current();
       }
     };
-  }, [firebaseEnabled, activeSessionId]);
+  }, [firebaseEnabled]);
 
   // 4b. Track presence + keepalive in active session
   useEffect(() => {
@@ -328,9 +325,9 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         updateURLWithSession(activeSessionId);
       }
 
-      // Sync active session to Firebase
-      if (activeSession && !isRemoteUpdate.current) {
-        syncToFirebase(activeSession);
+      // Sync ALL sessions to Firebase (multi-day sync)
+      if (!isRemoteUpdate.current) {
+        sessions.forEach(s => syncToFirebase(s));
       }
     } else {
       localStorage.removeItem('gilpin_sessions_v5');
