@@ -10,6 +10,7 @@ import {
     onDisconnect,
     Database,
     goOnline,
+    goOffline,
     serverTimestamp,
     push
 } from 'firebase/database';
@@ -100,8 +101,14 @@ export function subscribeToConnectionState(
  */
 export function forceReconnect(): void {
     if (!db) return;
-    console.log('🔄 Forcing Firebase reconnect...');
-    goOnline(db);
+    console.log('🔄 Forcing Firebase reconnect (offline→online cycle)...');
+    // Cycle offline→online to force a FRESH WebSocket.
+    // goOnline() alone is a no-op if Firebase thinks it's still connected.
+    try { goOffline(db); } catch (e) { /* ignore */ }
+    // Small delay to ensure the SDK fully tears down the old connection
+    setTimeout(() => {
+        try { goOnline(db); } catch (e) { /* ignore */ }
+    }, 100);
 }
 
 /**

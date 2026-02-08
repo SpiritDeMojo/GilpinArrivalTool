@@ -52,7 +52,10 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                 className="no-print"
                 onClick={() => { setIsOpen(!isOpen); if (!isOpen) setUnread(0); }}
                 style={{
-                    position: 'fixed', bottom: '24px', right: '24px', zIndex: 10001,
+                    position: 'fixed',
+                    bottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
+                    right: '20px',
+                    zIndex: 10001,
                     width: `${fabSize}px`, height: `${fabSize}px`, borderRadius: '50%',
                     background: isOpen
                         ? 'linear-gradient(135deg, #ef4444, #dc2626)'
@@ -72,7 +75,10 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
             {/* Unread badge */}
             {unread > 0 && !isOpen && (
                 <div className="no-print" style={{
-                    position: 'fixed', bottom: `${24 + fabSize - 10}px`, right: '24px', zIndex: 10002,
+                    position: 'fixed',
+                    bottom: `max(${24 + fabSize - 10}px, calc(env(safe-area-inset-bottom, 0px) + ${16 + fabSize - 10}px))`,
+                    right: '20px',
+                    zIndex: 10002,
                     minWidth: '20px', height: '20px', borderRadius: '10px',
                     background: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 900,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -83,7 +89,10 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
             {/* Live indicator dot */}
             {isLiveActive && !isOpen && (
                 <div className="no-print" style={{
-                    position: 'fixed', bottom: `${24 + fabSize - 6}px`, right: `${24 + fabSize - 6}px`, zIndex: 10002,
+                    position: 'fixed',
+                    bottom: `max(${24 + fabSize - 6}px, calc(env(safe-area-inset-bottom, 0px) + ${16 + fabSize - 6}px))`,
+                    right: `${20 + fabSize - 6}px`,
+                    zIndex: 10002,
                     width: '12px', height: '12px', borderRadius: '50%',
                     background: isMicEnabled ? '#ef4444' : '#22c55e',
                     border: '2px solid white',
@@ -95,8 +104,11 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
             {/* ═══ CHAT PANEL ═══ */}
             {isOpen && (
                 <div className="no-print" style={{
-                    position: 'fixed', bottom: '90px', right: '20px', zIndex: 10000,
-                    width: 'min(380px, calc(100vw - 40px))', height: 'min(520px, calc(100vh - 140px))',
+                    position: 'fixed',
+                    bottom: `max(90px, calc(env(safe-area-inset-bottom, 0px) + 82px))`,
+                    right: '20px', zIndex: 10000,
+                    width: 'min(380px, calc(100vw - 40px))',
+                    height: 'min(520px, calc(100vh - 140px))',
                     background: 'var(--bg-main, rgba(255,255,255,0.95))',
                     backdropFilter: 'blur(20px)',
                     borderRadius: '24px',

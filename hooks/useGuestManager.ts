@@ -238,20 +238,19 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     // AND verify the subscription is still alive.
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('📱 Tab became visible — forcing Firebase reconnect');
+        console.log('📱 Tab became visible — forcing Firebase reconnect + resubscribe');
         forceReconnect();
 
-        // Subscription health check: if we haven't received data in >60 seconds,
-        // the listener may be dead. Tear down and re-subscribe.
-        const staleness = Date.now() - lastRemoteDataTs.current;
-        if (lastRemoteDataTs.current > 0 && staleness > 60_000) {
-          console.warn(`⚠️ Firebase subscription stale (${Math.round(staleness / 1000)}s) — re-subscribing...`);
+        // ALWAYS tear down and re-subscribe when returning from background.
+        // Mobile browsers kill WebSockets on screen lock/tab switch, leaving
+        // the onValue listener permanently dead. The only reliable fix is to
+        // reconnect AND create a fresh listener every time the tab returns.
+        setTimeout(() => {
+          console.log('🔄 Re-subscribing to Firebase after background return...');
           if (unsubscribeRef.current) {
             unsubscribeRef.current();
             unsubscribeRef.current = null;
           }
-          // Re-subscribe (the effect in step 4 won't re-run since firebaseEnabled hasn't changed,
-          // so we do it manually here)
           unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
             lastRemoteDataTs.current = Date.now();
             remoteUpdateGen.current += 1;
@@ -262,7 +261,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
               return remoteSessions[0].id;
             });
           });
-        }
+        }, 300); // Wait for goOffline→goOnline cycle to complete (100ms + margin)
       }
     };
 
