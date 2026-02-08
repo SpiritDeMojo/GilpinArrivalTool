@@ -19,6 +19,7 @@ import {
 import { DEFAULT_FLAGS, NAV_HEIGHT, ALERT_HEIGHT } from './constants';
 
 import { useGuestManager } from './hooks/useGuestManager';
+import { forceReconnect } from './services/firebaseService';
 import { useLiveAssistant } from './hooks/useLiveAssistant';
 import { useNotifications } from './hooks/useNotifications';
 import { useAuditLog } from './hooks/useAuditLog';
@@ -96,6 +97,18 @@ const App: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [guests.length]);
+
+  // App-level mobile reconnect: force Firebase WebSocket reconnect on foreground
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('📱 App returned to foreground, forcing reconnect...');
+        forceReconnect();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
 
   // Auto-set dashboard view based on department access
   useEffect(() => {

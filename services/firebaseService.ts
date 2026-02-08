@@ -116,13 +116,13 @@ export function forceReconnect(): void {
  * This prevents idle WebSocket connections from being dropped by intermediate proxies.
  * @param sessionId - The current session ID
  * @param deviceId - This device's unique ID
- * @param intervalMs - Ping interval in ms (default 55s — under most 60s timeout limits)
+ * @param intervalMs - Ping interval in ms (default 15s — aggressive for mobile carrier keep-alive)
  * @returns Cleanup function
  */
 export function keepAlive(
     sessionId: string,
     deviceId: string,
-    intervalMs: number = 55000
+    intervalMs: number = 15000
 ): () => void {
     if (!db) return () => { };
 
