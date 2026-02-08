@@ -232,45 +232,77 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       }
     });
 
-    // === MOBILE BACKGROUND RECOVERY ===
-    // Mobile browsers suspend WebSocket connections when the tab is backgrounded.
-    // When the tab returns, we force Firebase to re-establish its connection
-    // AND verify the subscription is still alive.
+    // Shared reconnect + resubscribe logic. Debounced to avoid duplicate
+    // triggers when multiple lifecycle events fire together (e.g., both
+    // visibilitychange and focus fire on iOS unlock).
+    let lastReconnectTs = 0;
+    const reconnectAndResubscribe = () => {
+      const now = Date.now();
+      if (now - lastReconnectTs < 2000) {
+        console.log('🔄 Reconnect skipped (debounce, last was', now - lastReconnectTs, 'ms ago)');
+        return; // Already reconnected recently
+      }
+      lastReconnectTs = now;
+
+      console.log('📱 Reconnecting Firebase + resubscribing...');
+      forceReconnect();
+
+      // ALWAYS tear down and re-subscribe. Mobile browsers kill WebSockets
+      // on screen lock/tab switch, leaving the onValue listener permanently dead.
+      setTimeout(() => {
+        console.log('🔄 Re-subscribing to Firebase after background return...');
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+          unsubscribeRef.current = null;
+        }
+        unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
+          lastRemoteDataTs.current = Date.now();
+          remoteUpdateGen.current += 1;
+          setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
+          setActiveSessionId(prev => {
+            if (remoteSessions.length === 0) return '';
+            if (prev && remoteSessions.some(s => s.id === prev)) return prev;
+            return remoteSessions[0].id;
+          });
+        });
+      }, 500); // Wait for goOffline→goOnline cycle (100ms + generous margin)
+    };
+
+    // === EVENT HANDLERS ===
+    // Multiple events for maximum mobile coverage:
+    // - visibilitychange: Standard API, fires on most tab switches
+    // - pageshow: Fires when iOS restores page from bfcache (back-forward cache)
+    // - focus: Fires on window focus, catches some cases visibilitychange misses
+    // - online: Fires when network comes back
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('📱 Tab became visible — forcing Firebase reconnect + resubscribe');
-        forceReconnect();
-
-        // ALWAYS tear down and re-subscribe when returning from background.
-        // Mobile browsers kill WebSockets on screen lock/tab switch, leaving
-        // the onValue listener permanently dead. The only reliable fix is to
-        // reconnect AND create a fresh listener every time the tab returns.
-        setTimeout(() => {
-          console.log('🔄 Re-subscribing to Firebase after background return...');
-          if (unsubscribeRef.current) {
-            unsubscribeRef.current();
-            unsubscribeRef.current = null;
-          }
-          unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
-            lastRemoteDataTs.current = Date.now();
-            remoteUpdateGen.current += 1;
-            setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
-            setActiveSessionId(prev => {
-              if (remoteSessions.length === 0) return '';
-              if (prev && remoteSessions.some(s => s.id === prev)) return prev;
-              return remoteSessions[0].id;
-            });
-          });
-        }, 300); // Wait for goOffline→goOnline cycle to complete (100ms + margin)
+        console.log('📱 visibilitychange → visible');
+        reconnectAndResubscribe();
       }
+    };
+
+    const handlePageShow = (e: PageTransitionEvent) => {
+      // persisted = true means page was restored from bfcache (common on iOS Safari)
+      if (e.persisted) {
+        console.log('📱 pageshow → restored from bfcache');
+        reconnectAndResubscribe();
+      }
+    };
+
+    const handleFocus = () => {
+      console.log('📱 window focus');
+      reconnectAndResubscribe();
     };
 
     const handleOnline = () => {
       console.log('🌐 Browser came back online — forcing Firebase reconnect');
-      forceReconnect();
+      reconnectAndResubscribe();
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('focus', handleFocus);
     window.addEventListener('online', handleOnline);
 
     return () => {
@@ -278,6 +310,8 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         connectionCleanupRef.current();
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('online', handleOnline);
     };
   }, []);
