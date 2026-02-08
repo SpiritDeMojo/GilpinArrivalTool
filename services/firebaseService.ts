@@ -10,6 +10,7 @@ import {
     onDisconnect,
     Database,
     off,
+    goOnline,
     serverTimestamp,
     push
 } from 'firebase/database';
@@ -90,6 +91,18 @@ export function subscribeToConnectionState(
     });
 
     return () => off(connRef);
+}
+
+/**
+ * Force Firebase to re-establish its WebSocket connection.
+ * Call this when the browser tab returns from background (visibilitychange)
+ * or when the device comes back online. Without this, mobile browsers
+ * may leave the WebSocket dead after suspending it.
+ */
+export function forceReconnect(): void {
+    if (!db) return;
+    console.log('🔄 Forcing Firebase reconnect...');
+    goOnline(db);
 }
 
 /**

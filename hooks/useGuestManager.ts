@@ -17,7 +17,8 @@ import {
   syncSession,
   updateGuestFields,
   trackPresence,
-  deleteSessionFromFirebase
+  deleteSessionFromFirebase,
+  forceReconnect
 } from '../services/firebaseService';
 import {
   isPMSConfigured,
@@ -217,39 +218,42 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
     // === CONNECTION STATE MONITOR ===
     // Firebase's .info/connected is the authoritative source.
-    // On reconnect we re-subscribe to ALL sessions + re-establish presence.
+    // On reconnect, step 4's existing onValue listener auto-resyncs data.
+    // We only manage the UI status indicator here.
     connectionCleanupRef.current = subscribeToConnectionState((connected) => {
       if (connected) {
         setConnectionStatus('connected');
-
-        // Re-subscribe to ALL sessions on reconnect
-        if (unsubscribeRef.current) {
-          unsubscribeRef.current();
-          unsubscribeRef.current = null;
-        }
-        console.log('🔄 Reconnected — re-subscribing to all sessions');
-        unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
-          isRemoteUpdate.current = true;
-          // Smart merge: use remote data but protect guests with pending local writes
-          setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
-          // Clear active session if it was deleted
-          setActiveSessionId(prev => {
-            if (remoteSessions.length === 0) return '';
-            if (prev && remoteSessions.some(s => s.id === prev)) return prev;
-            return remoteSessions[0].id;
-          });
-          setTimeout(() => { isRemoteUpdate.current = false; }, 50);
-        });
+        console.log('🔄 Firebase connected');
       } else {
-        setConnectionStatus('connecting'); // "connecting" signals reconnecting, not hard offline
+        setConnectionStatus('connecting');
         console.log('⚠️ Firebase disconnected — will auto-reconnect...');
       }
     });
+
+    // === MOBILE BACKGROUND RECOVERY ===
+    // Mobile browsers suspend WebSocket connections when the tab is backgrounded.
+    // When the tab returns, we force Firebase to re-establish its connection.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('📱 Tab became visible — forcing Firebase reconnect');
+        forceReconnect();
+      }
+    };
+
+    const handleOnline = () => {
+      console.log('🌐 Browser came back online — forcing Firebase reconnect');
+      forceReconnect();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
 
     return () => {
       if (connectionCleanupRef.current) {
         connectionCleanupRef.current();
       }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
     };
   }, []);
 
