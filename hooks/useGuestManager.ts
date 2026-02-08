@@ -15,6 +15,7 @@ import {
   keepAlive,
   fetchSession,
   syncSession,
+  updateGuestFields,
   trackPresence,
   deleteSessionFromFirebase
 } from '../services/firebaseService';
@@ -44,6 +45,42 @@ const updateURLWithSession = (sessionId: string) => {
     window.history.replaceState({}, '', url.toString());
   }
 };
+
+/**
+ * Smart merge: remote Firebase sessions are the source of truth, but we protect
+ * any guest that has an in-flight local atomic write (pendingIds) from being
+ * overwritten before the write round-trips.
+ *
+ * For non-pending guests, remote always wins (since it may contain other
+ * devices' changes). This ensures deletions propagate and data stays consistent.
+ */
+function mergeRemoteSessions(
+  localSessions: ArrivalSession[],
+  remoteSessions: ArrivalSession[],
+  pendingIds: Set<string>
+): ArrivalSession[] {
+  if (pendingIds.size === 0) {
+    // No pending writes — remote wins entirely (fast path)
+    return remoteSessions;
+  }
+
+  return remoteSessions.map(remoteSession => {
+    const localSession = localSessions.find(s => s.id === remoteSession.id);
+    if (!localSession) return remoteSession; // new session from another device
+
+    // Merge guests: remote wins unless guest has pending local write
+    const mergedGuests = remoteSession.guests.map(remoteGuest => {
+      if (pendingIds.has(remoteGuest.id)) {
+        // This guest has a pending local write — keep local version
+        const localGuest = localSession.guests.find(g => g.id === remoteGuest.id);
+        return localGuest || remoteGuest;
+      }
+      return remoteGuest; // remote wins
+    });
+
+    return { ...remoteSession, guests: mergedGuests };
+  });
+}
 
 export const useGuestManager = (initialFlags: Flag[]) => {
   // User context
@@ -76,6 +113,9 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const keepaliveCleanupRef = useRef<(() => void) | null>(null);
   const connectionCleanupRef = useRef<(() => void) | null>(null);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track guest IDs with in-flight local writes to avoid clobbering them with remote data
+  const pendingLocalUpdates = useRef<Set<string>>(new Set());
+  // Flag to prevent echo-back when we receive our own remote update
   const isRemoteUpdate = useRef(false);
   // Track active session ID in a ref so reconnect callbacks always have the latest value
   const activeSessionIdRef = useRef(activeSessionId);
@@ -189,17 +229,16 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         }
         console.log('🔄 Reconnected — re-subscribing to all sessions');
         unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
-          if (isRemoteUpdate.current) return;
           isRemoteUpdate.current = true;
-          // Firebase is source of truth — replace local sessions entirely
-          setSessions(remoteSessions);
+          // Smart merge: use remote data but protect guests with pending local writes
+          setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
           // Clear active session if it was deleted
           setActiveSessionId(prev => {
             if (remoteSessions.length === 0) return '';
             if (prev && remoteSessions.some(s => s.id === prev)) return prev;
             return remoteSessions[0].id;
           });
-          setTimeout(() => { isRemoteUpdate.current = false; }, 100);
+          setTimeout(() => { isRemoteUpdate.current = false; }, 50);
         });
       } else {
         setConnectionStatus('connecting'); // "connecting" signals reconnecting, not hard offline
@@ -226,13 +265,10 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
     // Subscribe to ALL sessions — every day uploaded by any device
     unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
-      // Prevent infinite loops - only update if this is a remote change
-      if (isRemoteUpdate.current) return;
-
       isRemoteUpdate.current = true;
-      // Firebase is source of truth — replace local sessions entirely
-      // (ensures deletions propagate: deleted sessions won't get re-synced from localStorage)
-      setSessions(remoteSessions);
+      // Smart merge: remote data is source of truth, but protect guests with
+      // pending local writes (their atomic update hasn't round-tripped yet)
+      setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
 
       // Auto-set active session, or clear if all deleted
       setActiveSessionId(prev => {
@@ -244,7 +280,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       // Reset flag after state update
       setTimeout(() => {
         isRemoteUpdate.current = false;
-      }, 100);
+      }, 50);
     });
 
     return () => {
@@ -288,31 +324,28 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     };
   }, [firebaseEnabled, activeSessionId, userName]);
 
-  // 5. Sync to Firebase when session changes (debounced)
-  const syncAllToFirebase = useCallback((allSessions: ArrivalSession[]) => {
+  // 5. Sync initial uploads to Firebase (full session push)
+  // This is used ONLY for PDF uploads, PMS imports, and new session creation.
+  // For field-level changes (status updates, notes, etc.), use atomicUpdateGuest().
+  const syncInitialUpload = useCallback((session: ArrivalSession) => {
     if (!firebaseEnabled) return;
 
-    // Debounce sync to avoid rapid updates
+    // Debounce to coalesce rapid initial setup writes
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
     }
 
     syncTimeoutRef.current = setTimeout(async () => {
-      if (isRemoteUpdate.current) return; // Don't sync remote updates back
-
       try {
-        await Promise.all(allSessions.map(s => syncSession(s)));
-        console.log('✅ Synced all sessions to Firebase:', allSessions.length);
+        await syncSession(session);
+        console.log('✅ Initial sync to Firebase:', session.label);
       } catch (error) {
-        console.error('❌ Firebase sync failed:', error);
-        // Do NOT set connectionStatus to 'offline' here — let the connection
-        // state monitor (subscribeToConnectionState) be the sole authority.
-        // A single sync failure doesn't mean the connection is down.
+        console.error('❌ Firebase initial sync failed:', error);
       }
-    }, 150); // 150ms debounce — fast enough for instant-feel cross-device sync
+    }, 150);
   }, [firebaseEnabled]);
 
-  // 6. Persistence (localStorage + Firebase)
+  // 6. Persistence (localStorage only — Firebase sync happens via atomic writes)
   useEffect(() => {
     if (sessions.length > 0) {
       localStorage.setItem('gilpin_sessions_v5', JSON.stringify(sessions));
@@ -322,16 +355,14 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       if (activeSessionId) {
         updateURLWithSession(activeSessionId);
       }
-
-      // Sync ALL sessions to Firebase (batched, debounced)
-      if (!isRemoteUpdate.current) {
-        syncAllToFirebase(sessions);
-      }
+      // NOTE: No Firebase sync here! That's handled by:
+      // - syncInitialUpload() for new sessions/uploads
+      // - atomicUpdateGuest() for field-level changes
     } else {
       localStorage.removeItem('gilpin_sessions_v5');
       localStorage.removeItem('gilpin_active_id_v5');
     }
-  }, [sessions, activeSessionId, activeSession, syncAllToFirebase]);
+  }, [sessions, activeSessionId, activeSession]);
 
   // 7. Actions
 
@@ -365,14 +396,16 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
   const createNewSession = () => {
     const id = `MAN-${Date.now()}`;
-    setSessions(prev => [...prev, {
+    const newSession: ArrivalSession = {
       id,
       label: `New List ${new Date().toLocaleDateString('en-GB')}`,
       dateObj: new Date().toISOString(),
       guests: [],
       lastModified: Date.now()
-    }]);
+    };
+    setSessions(prev => [...prev, newSession]);
     setActiveSessionId(id);
+    syncInitialUpload(newSession);
   };
 
   // Load arrivals from PMS API
@@ -396,25 +429,22 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         // Check if session already exists for this date
         const existingSession = sessions.find(s => s.id === id);
 
+        const pmsSession: ArrivalSession = {
+          id,
+          label,
+          dateObj: targetDate.toISOString(),
+          guests: pmsGuests,
+          lastModified: Date.now()
+        };
+
         if (existingSession) {
-          // Update existing session
-          setSessions(prev => prev.map(s =>
-            s.id === id
-              ? { ...s, guests: pmsGuests, lastModified: Date.now() }
-              : s
-          ));
+          setSessions(prev => prev.map(s => s.id === id ? pmsSession : s));
         } else {
-          // Create new session
-          setSessions(prev => [...prev, {
-            id,
-            label,
-            dateObj: targetDate.toISOString(),
-            guests: pmsGuests,
-            lastModified: Date.now()
-          }]);
+          setSessions(prev => [...prev, pmsSession]);
         }
 
         setActiveSessionId(id);
+        syncInitialUpload(pmsSession);
         setProgressMsg(`Loaded ${pmsGuests.length} arrivals from PMS`);
       } else {
         setProgressMsg('No arrivals found for this date');
@@ -466,6 +496,16 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       });
 
       setActiveSessionId(sessionId);
+
+      // Push entire session to Firebase (this is an initial upload, not a field-level change)
+      const newSessionData: ArrivalSession = {
+        id: sessionId,
+        label: result.arrivalDateStr,
+        dateObj: result.arrivalDateObj ? result.arrivalDateObj.toISOString() : new Date().toISOString(),
+        guests: result.guests,
+        lastModified: Date.now()
+      };
+      syncInitialUpload(newSessionData);
     } catch (err) {
       console.error(err);
       alert("Error parsing PDF.");
@@ -479,33 +519,53 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   };
 
   const updateGuest = (id: string, updates: Partial<Guest>) => {
-    updateActiveSessionGuests(guests.map(g => {
-      if (g.id !== id) return g;
+    // Build the final update (including room move tracking)
+    let finalUpdates = { ...updates };
+    const existingGuest = guests.find(g => g.id === id);
 
-      // Detect room moves
-      if (updates.room && updates.room !== g.room && g.room.trim() !== '') {
-        const roomMove: RoomMove = {
-          id: `move_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-          timestamp: Date.now(),
-          fromRoom: g.room,
-          toRoom: updates.room,
-          movedBy: updates.lastStatusUpdatedBy || 'User',
-        };
-        const existingMoves = g.roomMoves || [];
-        return {
-          ...g,
-          ...updates,
-          previousRoom: g.room,
-          roomMoves: [...existingMoves, roomMove],
-        };
-      }
+    if (existingGuest && updates.room && updates.room !== existingGuest.room && existingGuest.room.trim() !== '') {
+      const roomMove: RoomMove = {
+        id: `move_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        timestamp: Date.now(),
+        fromRoom: existingGuest.room,
+        toRoom: updates.room,
+        movedBy: updates.lastStatusUpdatedBy || 'User',
+      };
+      const existingMoves = existingGuest.roomMoves || [];
+      finalUpdates = {
+        ...updates,
+        previousRoom: existingGuest.room,
+        roomMoves: [...existingMoves, roomMove],
+      };
+    }
 
-      return { ...g, ...updates };
-    }));
+    // 1. Optimistic local update (instant UI)
+    updateActiveSessionGuests(guests.map(g =>
+      g.id === id ? { ...g, ...finalUpdates } : g
+    ));
+
+    // 2. Atomic Firebase update (cross-device sync without full-session overwrite)
+    if (firebaseEnabled && activeSessionId) {
+      pendingLocalUpdates.current.add(id);
+      updateGuestFields(activeSessionId, id, finalUpdates)
+        .catch(err => console.error('Atomic sync failed for guest', id, err))
+        .finally(() => {
+          // Clear pending flag after write confirms (or fails)
+          pendingLocalUpdates.current.delete(id);
+        });
+    }
   };
 
   const deleteGuest = (id: string) => {
-    updateActiveSessionGuests(guests.filter(g => g.id !== id));
+    const newGuests = guests.filter(g => g.id !== id);
+    updateActiveSessionGuests(newGuests);
+    // Structural change (removal) — sync full active session
+    if (firebaseEnabled && activeSessionId) {
+      const session = sessions.find(s => s.id === activeSessionId);
+      if (session) {
+        syncInitialUpload({ ...session, guests: newGuests, lastModified: Date.now() });
+      }
+    }
   };
 
   const addManual = () => {
@@ -537,8 +597,17 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       };
       setSessions([newSession]);
       setActiveSessionId(newId);
+      syncInitialUpload(newSession);
     } else {
-      updateActiveSessionGuests([g, ...guests]);
+      const newGuests = [g, ...guests];
+      updateActiveSessionGuests(newGuests);
+      // Structural change (addition) — sync full active session
+      if (firebaseEnabled && activeSessionId) {
+        const session = sessions.find(s => s.id === activeSessionId);
+        if (session) {
+          syncInitialUpload({ ...session, guests: newGuests, lastModified: Date.now() });
+        }
+      }
     }
   };
 
@@ -551,7 +620,15 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       room: 'TBD',
       isManual: true
     };
-    updateActiveSessionGuests([newGuest, ...guests]);
+    const newGuests = [newGuest, ...guests];
+    updateActiveSessionGuests(newGuests);
+    // Structural change (addition) — sync full active session
+    if (firebaseEnabled && activeSessionId) {
+      const session = sessions.find(s => s.id === activeSessionId);
+      if (session) {
+        syncInitialUpload({ ...session, guests: newGuests, lastModified: Date.now() });
+      }
+    }
   };
 
   const handleAIRefine = async () => {
@@ -639,6 +716,14 @@ export const useGuestManager = (initialFlags: Flag[]) => {
             });
             return { ...s, guests: updatedGuests, lastModified: Date.now() };
           }));
+
+          // AI refine is a bulk update — sync full session after each batch
+          if (firebaseEnabled && activeSessionId) {
+            const currentSession = sessions.find(s => s.id === activeSessionId);
+            if (currentSession) {
+              syncInitialUpload({ ...currentSession, guests: currentSession.guests, lastModified: Date.now() });
+            }
+          }
         } else {
           console.error('[AI Audit] No refinements returned from AI service');
         }

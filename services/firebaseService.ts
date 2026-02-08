@@ -272,7 +272,8 @@ export function subscribeToAllSessions(
 }
 
 /**
- * Sync entire session to Firebase
+ * Sync entire session to Firebase — used ONLY for initial upload (PDF/PMS import).
+ * For subsequent field-level changes, use updateGuestFields() instead.
  * @param session - The session to sync
  */
 export async function syncSession(session: ArrivalSession): Promise<void> {
@@ -289,6 +290,74 @@ export async function syncSession(session: ArrivalSession): Promise<void> {
         });
     } catch (error) {
         console.error('Failed to sync session:', error);
+        throw error;
+    }
+}
+
+/**
+ * Atomically update specific fields on a single guest without overwriting the
+ * entire session.  This prevents the "last-write-wins" race that occurs when
+ * two devices push full sessions at the same time.
+ *
+ * Works by reading the current guest list once to find the array index, then
+ * issuing a Firebase multi-path `update()` that touches only the changed fields.
+ *
+ * @param sessionId  - The session containing the guest
+ * @param guestId    - The guest's unique ID
+ * @param fields     - A partial Guest object with only the changed fields
+ * @returns Promise that resolves when Firebase confirms the write
+ */
+export async function updateGuestFields(
+    sessionId: string,
+    guestId: string,
+    fields: Record<string, any>
+): Promise<void> {
+    if (!db) {
+        console.warn('Firebase not initialized — skipping atomic update');
+        return;
+    }
+
+    try {
+        const guestsRef = ref(db, `sessions/${sessionId}/guests`);
+
+        return new Promise<void>((resolve, reject) => {
+            onValue(guestsRef, async (snapshot) => {
+                off(guestsRef); // one-time read
+
+                if (!snapshot.exists()) {
+                    reject(new Error(`Session ${sessionId} has no guests`));
+                    return;
+                }
+
+                const guests: Guest[] = Array.isArray(snapshot.val())
+                    ? snapshot.val()
+                    : Object.values(snapshot.val());
+                const index = guests.findIndex(g => g.id === guestId);
+
+                if (index === -1) {
+                    reject(new Error(`Guest ${guestId} not found in session ${sessionId}`));
+                    return;
+                }
+
+                // Build multi-path update — only touches the specific fields
+                const updates: Record<string, any> = {};
+                for (const [key, value] of Object.entries(fields)) {
+                    updates[`sessions/${sessionId}/guests/${index}/${key}`] = value;
+                }
+                // Always bump the session-level lastModified so other listeners fire
+                updates[`sessions/${sessionId}/lastModified`] = Date.now();
+
+                try {
+                    await update(ref(db!), updates);
+                    resolve();
+                } catch (err) {
+                    console.error('Atomic guest update failed:', err);
+                    reject(err);
+                }
+            }, { onlyOnce: true });
+        });
+    } catch (error) {
+        console.error('updateGuestFields error:', error);
         throw error;
     }
 }
