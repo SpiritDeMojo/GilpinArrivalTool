@@ -49,6 +49,7 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
         <>
             {/* ═══ FAB BUTTON ═══ */}
             <button
+                className="no-print"
                 onClick={() => { setIsOpen(!isOpen); if (!isOpen) setUnread(0); }}
                 style={{
                     position: 'fixed', bottom: '24px', right: '24px', zIndex: 10001,
@@ -70,7 +71,7 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
 
             {/* Unread badge */}
             {unread > 0 && !isOpen && (
-                <div style={{
+                <div className="no-print" style={{
                     position: 'fixed', bottom: `${24 + fabSize - 10}px`, right: '24px', zIndex: 10002,
                     minWidth: '20px', height: '20px', borderRadius: '10px',
                     background: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 900,
@@ -81,7 +82,7 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
 
             {/* Live indicator dot */}
             {isLiveActive && !isOpen && (
-                <div style={{
+                <div className="no-print" style={{
                     position: 'fixed', bottom: `${24 + fabSize - 6}px`, right: `${24 + fabSize - 6}px`, zIndex: 10002,
                     width: '12px', height: '12px', borderRadius: '50%',
                     background: isMicEnabled ? '#ef4444' : '#22c55e',
@@ -93,7 +94,7 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
 
             {/* ═══ CHAT PANEL ═══ */}
             {isOpen && (
-                <div style={{
+                <div className="no-print" style={{
                     position: 'fixed', bottom: '90px', right: '20px', zIndex: 10000,
                     width: 'min(380px, calc(100vw - 40px))', height: 'min(520px, calc(100vh - 140px))',
                     background: 'var(--bg-main, rgba(255,255,255,0.95))',
