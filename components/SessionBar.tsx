@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrivalSession } from '../types';
+import { useUser } from '../contexts/UserProvider';
 
 interface SessionBarProps {
   sessions: ArrivalSession[];
@@ -10,6 +11,8 @@ interface SessionBarProps {
 }
 
 const SessionBar: React.FC<SessionBarProps> = ({ sessions, activeId, onSwitch, onDelete }) => {
+  const { department } = useUser();
+  const isRec = department === 'REC';
   if (sessions.length === 0) return null;
 
   return (
@@ -27,19 +30,21 @@ const SessionBar: React.FC<SessionBarProps> = ({ sessions, activeId, onSwitch, o
             `}
           >
             <span className="text-[10px] md:text-[11px] uppercase tracking-widest whitespace-nowrap">{session.label || session.id}</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.confirm(`Delete "${session.label || session.id}"?\n\nThis will remove it from all devices.`)) onDelete(session.id);
-              }}
-              className={`
-                w-6 h-6 md:w-5 md:h-5 flex items-center justify-center rounded-full transition-colors text-xs font-bold ml-1
-                ${activeId === session.id ? 'bg-white/20 hover:bg-white/40 text-white' : 'bg-slate-100 dark:bg-stone-800 hover:bg-rose-500 hover:text-white text-slate-400'}
-              `}
-              title="Delete List"
-            >
-              ×
-            </button>
+            {isRec && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`Delete "${session.label || session.id}"?\n\nThis will remove it from all devices.`)) onDelete(session.id);
+                }}
+                className={`
+                  w-6 h-6 md:w-5 md:h-5 flex items-center justify-center rounded-full transition-colors text-xs font-bold ml-1
+                  ${activeId === session.id ? 'bg-white/20 hover:bg-white/40 text-white' : 'bg-slate-100 dark:bg-stone-800 hover:bg-rose-500 hover:text-white text-slate-400'}
+                `}
+                title="Delete List"
+              >
+                ×
+              </button>
+            )}
           </div>
         ))}
       </div>
