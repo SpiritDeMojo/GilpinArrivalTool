@@ -340,9 +340,10 @@ export async function updateGuestFields(
                 }
 
                 // Build multi-path update — only touches the specific fields
+                // sanitizeForFirebase converts undefined → null (Firebase rejects undefined)
                 const updates: Record<string, any> = {};
                 for (const [key, value] of Object.entries(fields)) {
-                    updates[`sessions/${sessionId}/guests/${index}/${key}`] = value;
+                    updates[`sessions/${sessionId}/guests/${index}/${key}`] = sanitizeForFirebase(value);
                 }
                 // Always bump the session-level lastModified so other listeners fire
                 updates[`sessions/${sessionId}/lastModified`] = Date.now();
@@ -360,6 +361,22 @@ export async function updateGuestFields(
         console.error('updateGuestFields error:', error);
         throw error;
     }
+}
+
+/**
+ * Deep-sanitize a value for Firebase RTDB: converts all `undefined` to `null`.
+ * Firebase Realtime Database does NOT accept `undefined` and will throw
+ * "First argument contains undefined" if any nested value is undefined.
+ */
+function sanitizeForFirebase(value: any): any {
+    if (value === undefined) return null;
+    if (value === null || typeof value !== 'object') return value;
+    if (Array.isArray(value)) return value.map(sanitizeForFirebase);
+    const clean: Record<string, any> = {};
+    for (const [k, v] of Object.entries(value)) {
+        clean[k] = sanitizeForFirebase(v);
+    }
+    return clean;
 }
 
 /**
