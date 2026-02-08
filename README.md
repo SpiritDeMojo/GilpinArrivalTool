@@ -24,7 +24,7 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 - 📄 **Smart PDF Parser** — Extracts guest data, room assignments, ETAs, car registrations, facilities, allergies, occasions, and in-room items from PMS arrival PDFs with high accuracy
 - 🤖 **AI-Powered Audit** — Gemini 2.0 Flash refines parsed data: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, and generates actionable greeting strategies
 - 📡 **Fleet Sync (Firebase)** — Real-time multi-device synchronisation via Firebase Realtime Database. Upload a PDF on one device, all connected devices update instantly
-- 🖨️ **Smart Print Layouts** — Three print modes (Master, Greeter, Delivery) with optimised column widths and dense formatting for maximum page utilisation
+- 🖨️ **Smart Print Layouts** — Three print modes (Master, Greeter, Delivery) with auto-sizing columns and dense formatting that maximises paper utilisation in landscape
 - 💬 **Unified Chat Panel** — Tabbed interface with cross-department Team Chat and AI Live Assistant (voice & text). Delete chat, auto-connect, HTTPS voice/HTTP text-only modes
 - 🤖 **AI Live Assistant** — Conversational AI colleague powered by Gemini 2.5 Flash native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands
 - 📊 **Department Dashboards** — Purpose-built views for Reception, Housekeeping, and Maintenance with independent status tracking
@@ -187,6 +187,8 @@ npm run build
 - 🔒 Firebase API keys stored in `.env` (never committed to git)
 - 🔒 Firebase security rules control database access
 - 🔒 PDF data stays in-browser and Firebase (no third-party storage)
+- 🔒 Content Security Policy (CSP) headers restrict resource loading to approved domains
+- 🔒 Brand assets (logo) served locally — no external image hosting dependencies
 
 ---
 

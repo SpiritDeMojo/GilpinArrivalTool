@@ -34,7 +34,7 @@ export const ALERT_HEIGHT = 40;
 export const BATCH_SIZE = 5;
 
 // Brand Assets - Updated to the user-provided direct image link
-export const GILPIN_LOGO_URL = 'https://i.ibb.co/YBNNHwxL/logo.png';
+export const GILPIN_LOGO_URL = '/gilpin-logo.jpg';
 
 /**
  * Extract room number from a room string

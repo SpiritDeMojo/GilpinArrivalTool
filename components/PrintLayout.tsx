@@ -77,17 +77,17 @@ const GuestTable: React.FC<{
           </td>
         </tr>
         <tr className="print-col-header">
-          <th className="p-1 w-[5%] text-center">Room</th>
-          <th className="p-1 w-[14%] text-left col-identity">Guest</th>
-          <th className="p-1 w-[3%] text-center col-nts">Nts</th>
-          <th className="p-1 w-[9%] text-left col-vehicle">Vehicle</th>
-          <th className="p-1 w-[5%] text-center col-ll">L&L</th>
-          <th className="p-1 w-[17%] text-left col-facilities">Facilities</th>
-          <th className="p-1 w-[4%] text-center col-eta">ETA</th>
-          <th className="p-1 w-[21%] text-left col-intel">Notes</th>
-          <th className="p-1 w-[22%] text-left col-strategy">Strategy</th>
-          <th className="p-1 w-[70%] text-left col-inroom">In-Room Assets</th>
-          <th className="p-1 w-[25%] text-left col-allergies">Dietary</th>
+          <th className="p-1 text-center">Room</th>
+          <th className="p-1 text-left col-identity">Guest</th>
+          <th className="p-1 text-center col-nts">Nts</th>
+          <th className="p-1 text-left col-vehicle">Vehicle</th>
+          <th className="p-1 text-center col-ll">L&L</th>
+          <th className="p-1 text-left col-facilities">Facilities</th>
+          <th className="p-1 text-center col-eta">ETA</th>
+          <th className="p-1 text-left col-intel">Notes</th>
+          <th className="p-1 text-left col-strategy">Strategy</th>
+          <th className="p-1 text-left col-inroom">In-Room Assets</th>
+          <th className="p-1 text-left col-allergies">Dietary</th>
         </tr>
       </thead>
       <tbody>
@@ -158,39 +158,54 @@ export const PrintLayout: React.FC<{
         @media print {
           @page { 
             size: landscape; 
-            margin: 0.15cm 0.25cm; 
+            margin: 0.1cm 0.15cm; 
           }
           
-          /* === READABILITY-FIRST PRINT RESET === */
-          body { 
+          /* === FULL-WIDTH PRINT RESET === */
+          html, body { 
             -webkit-print-color-adjust: exact; 
             print-color-adjust: exact;
             background: white !important; 
             margin: 0 !important; 
-            padding: 0 !important; 
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+          }
+
+          /* Override ALL screen-layout constraints */
+          .print-only,
+          .print-only * {
+            max-width: none !important;
+            box-sizing: border-box !important;
           }
 
           .print-only {
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif !important;
-            font-size: 8.5pt !important;
-            line-height: 1.25 !important;
+            font-size: 8pt !important;
+            line-height: 1.2 !important;
             font-weight: 400 !important;
             color: #1a1a1a !important;
+            display: block !important;
+            min-height: auto !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
           
           table { 
-            table-layout: fixed !important; 
+            table-layout: auto !important; 
             width: 100% !important; 
-            border-collapse: collapse; 
-            margin-top: 2px;
+            border-collapse: collapse !important; 
+            margin-top: 1px !important;
           }
           
           td, th { 
-            padding: 2px 3px !important; 
+            padding: 1px 2px !important; 
             vertical-align: top !important; 
             border-bottom: 0.5pt solid #d4d4d4; 
-            overflow: hidden; 
-            line-height: 1.25;
+            overflow-wrap: break-word !important;
+            word-break: break-word !important;
+            line-height: 1.15 !important;
             font-weight: 400 !important;
           }
 
@@ -201,127 +216,117 @@ export const PrintLayout: React.FC<{
             border-bottom: 1.5pt solid #333 !important;
           }
           .print-col-header th {
-            font-size: 7pt !important;
+            font-size: 6pt !important;
             font-weight: 700 !important;
             text-transform: uppercase !important;
             letter-spacing: 0.04em !important;
             color: #333 !important;
-            padding: 3px !important;
+            padding: 2px 2px !important;
+            white-space: nowrap !important;
           }
 
-          /* === CELL STYLES — READABILITY FOCUSED === */
+          /* === CELL STYLES — COMPACT & READABLE === */
           
-          /* Room: bold, prominent */
           .print-room {
             font-weight: 700 !important;
-            font-size: 11pt !important;
+            font-size: 9pt !important;
             color: #000 !important;
+            white-space: nowrap !important;
           }
 
-          /* Guest name: semibold, title case (not uppercase) */
           .print-guest-name {
             font-weight: 600 !important;
-            font-size: 8.5pt !important;
+            font-size: 7.5pt !important;
             color: #111 !important;
-            text-transform: capitalize !important;
-            line-height: 1.15 !important;
+            line-height: 1.1 !important;
           }
 
-          /* Package code: subtle */
           .print-pkg {
-            font-size: 6.5pt !important;
+            font-size: 6pt !important;
             font-weight: 500 !important;
             color: #888 !important;
-            letter-spacing: 0.05em !important;
+            letter-spacing: 0.03em !important;
             text-transform: uppercase !important;
           }
 
-          /* Car plate: monospace for clarity */
           .print-plate {
             font-family: 'Courier New', monospace !important;
             font-weight: 600 !important;
-            font-size: 8pt !important;
+            font-size: 7pt !important;
             text-transform: uppercase !important;
-            letter-spacing: 0.04em !important;
+            letter-spacing: 0.03em !important;
           }
 
-          /* ETA: slightly larger for quick scanning */
           .print-eta {
             font-weight: 600 !important;
-            font-size: 9pt !important;
+            font-size: 8pt !important;
+            white-space: nowrap !important;
           }
 
-          /* Body text: normal weight, readable */
           .print-body {
             font-weight: 400 !important;
-            font-size: 7.5pt !important;
+            font-size: 7pt !important;
             color: #333 !important;
             white-space: normal !important;
             word-wrap: break-word !important;
           }
 
-          /* Notes: slightly italic for differentiation */
           .print-notes {
             font-style: italic !important;
           }
 
-          /* Dietary alerts: coloured for visibility */
           .print-dietary {
             font-weight: 500 !important;
-            font-size: 7.5pt !important;
+            font-size: 7pt !important;
             color: #b91c1c !important;
           }
 
-          /* Alternating row shading */
           .print-row-alt {
             background: #fafafa !important;
           }
 
-          /* DASHBOARD PRINT FIX: Force Row */
+          /* DASHBOARD PRINT FIX */
           .print-only .dashboard-container { 
             display: flex !important; 
             flex-direction: row !important; 
             justify-content: flex-end !important;
           }
           
-          .print-only { display: block !important; min-height: auto !important; }
           thead { display: table-header-group !important; }
 
-          /* HIDE UNUSED COLUMNS */
-          .col-inroom, .col-allergies { display: none; }
-          .print-mode-greeter .col-nts, .print-mode-greeter .col-facilities, .print-mode-greeter .col-intel, .print-mode-greeter .col-inroom, .print-mode-greeter .col-allergies { display: none !important; }
-          .print-mode-delivery .col-identity, .print-mode-delivery .col-vehicle, .print-mode-delivery .col-ll, .print-mode-delivery .col-facilities, .print-mode-delivery .col-strategy, .print-mode-delivery .col-nts, .print-mode-delivery .col-eta, .print-mode-delivery .col-intel { display: none !important; }
-          .print-mode-delivery .col-inroom, .print-mode-delivery .col-allergies { display: table-cell !important; }
+          /* === HIDE UNUSED COLUMNS (DEFAULT) === */
+          .col-inroom, .col-allergies { display: none !important; }
 
-          /* === COLUMN WIDTHS PER MODE === */
+          /* === GREETER MODE: Hide extra cols, maximize name + strategy === */
+          .print-mode-greeter .col-nts,
+          .print-mode-greeter .col-facilities,
+          .print-mode-greeter .col-intel,
+          .print-mode-greeter .col-inroom,
+          .print-mode-greeter .col-allergies { display: none !important; }
 
-          /* GREETER: Room + Name prominent, Strategy wide */
-          .print-mode-greeter th:nth-child(1) { width: 5% !important; } 
-          .print-mode-greeter .col-identity { width: 15% !important; } 
-          .print-mode-greeter .col-vehicle { width: 10% !important; } 
-          .print-mode-greeter .col-ll { width: 5% !important; } 
-          .print-mode-greeter .col-eta { width: 5% !important; } 
-          .print-mode-greeter .col-strategy { width: 60% !important; }
-          .print-mode-greeter .print-room { font-size: 14pt !important; }
-          .print-mode-greeter .print-guest-name { font-size: 10pt !important; }
-          .print-mode-greeter .print-body { font-size: 8.5pt !important; }
+          /* === DELIVERY MODE: Show in-room + dietary, hide most others === */
+          .print-mode-delivery .col-identity,
+          .print-mode-delivery .col-vehicle,
+          .print-mode-delivery .col-ll,
+          .print-mode-delivery .col-facilities,
+          .print-mode-delivery .col-strategy,
+          .print-mode-delivery .col-nts,
+          .print-mode-delivery .col-eta,
+          .print-mode-delivery .col-intel { display: none !important; }
+          .print-mode-delivery .col-inroom,
+          .print-mode-delivery .col-allergies { display: table-cell !important; }
 
-          /* DELIVERY: Maximize In-Room assets column */
-          .print-mode-delivery th:nth-child(1) { width: 5% !important; } 
-          .print-mode-delivery .col-inroom { width: 73% !important; } 
-          .print-mode-delivery .col-allergies { width: 22% !important; }
+          /* === MASTER MODE COLUMN WIDTHS — maximise every % === */
+          .print-mode-master .col-identity { min-width: 0 !important; }
+          .print-mode-master .col-facilities { min-width: 0 !important; }
+          .print-mode-master .col-intel { min-width: 0 !important; }
+          .print-mode-master .col-strategy { min-width: 0 !important; }
 
-          /* MASTER: Balanced — full width usage */
-          .print-mode-master th:nth-child(1) { width: 4% !important; } 
-          .print-mode-master .col-identity { width: 13% !important; } 
-          .print-mode-master .col-nts { width: 3% !important; } 
-          .print-mode-master .col-vehicle { width: 8% !important; } 
-          .print-mode-master .col-ll { width: 4% !important; } 
-          .print-mode-master .col-facilities { width: 18% !important; } 
-          .print-mode-master .col-eta { width: 4% !important; } 
-          .print-mode-master .col-intel { width: 22% !important; } 
-          .print-mode-master .col-strategy { width: 24% !important; }
-          
+          /* === GREETER MODE SIZING === */
+          .print-mode-greeter .print-room { font-size: 12pt !important; }
+          .print-mode-greeter .print-guest-name { font-size: 9pt !important; }
+          .print-mode-greeter .print-body { font-size: 8pt !important; }
+
           /* Page break optimization */
           tr { page-break-inside: avoid !important; }
         }
