@@ -6,7 +6,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  * - Blocks cross-origin requests from unknown domains
  * - Same-origin requests (no Origin header) are always allowed
  * - Adds CORS headers for browser preflight
- * - Returns true if the request is allowed, false if blocked (response already sent)
  */
 
 const ALLOWED_ORIGINS = [
@@ -18,7 +17,7 @@ const ALLOWED_ORIGINS = [
     'http://127.0.0.1:',
 ];
 
-function isOriginAllowed(origin: string): boolean {
+export function isOriginAllowed(origin: string): boolean {
     if (!origin) return true; // Same-origin requests don't send Origin header — always safe
     // Check explicit matches
     if (ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed))) return true;
@@ -30,7 +29,12 @@ function isOriginAllowed(origin: string): boolean {
     return false;
 }
 
-export function apiGuard(req: VercelRequest, res: VercelResponse): boolean {
+/**
+ * CORS + Origin guard — handles OPTIONS preflight and origin validation.
+ * Returns true if the request is allowed to proceed, false if it was handled
+ * (preflight response sent, or 403 returned).
+ */
+export function withCors(req: VercelRequest, res: VercelResponse): boolean {
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -57,4 +61,7 @@ export function apiGuard(req: VercelRequest, res: VercelResponse): boolean {
 
     return true;
 }
+
+/** @deprecated Use withCors() instead — same behaviour, clearer name */
+export const apiGuard = withCors;
 

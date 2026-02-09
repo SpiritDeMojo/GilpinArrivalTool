@@ -1,28 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-// ── Inline origin guard ──
-function isOriginAllowed(origin: string): boolean {
-    if (!origin) return true;
-    if (origin.endsWith('.vercel.app')) return true;
-    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
-    const vercelUrl = process.env.VERCEL_URL;
-    if (vercelUrl && origin.includes(vercelUrl)) return true;
-    return false;
-}
+import { withCors } from './_apiGuard';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    if (req.method === 'OPTIONS') {
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-        res.setHeader('Access-Control-Max-Age', '86400');
-        return res.status(204).end();
-    }
-
-    const origin = req.headers.origin || '';
-    if (!isOriginAllowed(origin)) {
-        return res.status(403).json({ error: 'Forbidden' });
-    }
-    if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+    if (!withCors(req, res)) return;
 
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });

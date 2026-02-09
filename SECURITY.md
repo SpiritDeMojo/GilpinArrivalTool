@@ -1,7 +1,7 @@
 # 🔐 Security Policy
 
-**Last Audit:** 8 February 2026  
-**Status:** ✅ Secure — No critical vulnerabilities
+**Last Audit:** 9 February 2026  
+**Status:** ✅ Secure — CSP fix applied for Vercel toolbar
 
 ---
 
@@ -43,19 +43,19 @@ Firebase API keys are **project identifiers**, not secrets. They identify which 
 
 ## 2. API Route Protection
 
-All 7 Vercel serverless functions in `/api/` implement consistent security:
+All 7 Vercel serverless functions in `/api/` implement consistent security via a **shared `withCors()` guard** from `_apiGuard.ts`:
 
 | Route | Guard | Method | Input Validation |
 |-------|-------|--------|------------------|
-| `gemini-refine.ts` | ✅ Origin | POST | `guests` array required |
-| `gemini-analytics.ts` | ✅ Origin | POST | `sessions` array required |
-| `gemini-sentiment.ts` | ✅ Origin | POST | `guests` array required |
-| `gemini-cleaning-order.ts` | ✅ Origin | POST | `guests` array required |
-| `live-token.ts` | ✅ Origin | GET | N/A |
-| `pms-proxy.ts` | ✅ Origin | POST | `action` + `date` required |
+| `gemini-refine.ts` | ✅ `withCors()` | POST | `guests` array required |
+| `gemini-analytics.ts` | ✅ `withCors()` | POST | `sessions` array required |
+| `gemini-sentiment.ts` | ✅ `withCors()` | POST | `guests` array required |
+| `gemini-cleaning-order.ts` | ✅ `withCors()` | POST | `guests` array required |
+| `live-token.ts` | ✅ `withCors()` | GET | N/A |
+| `pms-proxy.ts` | ✅ `withCors()` | POST | `action` + `date` required |
 | `_apiGuard.ts` | Shared guard module | — | — |
 
-**Every route enforces:**
+**Every route enforces (via shared guard):**
 - **Origin validation** — only `.vercel.app`, `localhost`, and `127.0.0.1` accepted
 - **Method guards** — rejects unexpected HTTP methods with 405
 - **CORS preflight** — proper OPTIONS handling with 24h cache
@@ -75,11 +75,12 @@ Defined in `vercel.json` with these headers on all routes:
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 
 **CSP highlights:**
-- `frame-src: 'none'` — blocks iframe embedding
+- `frame-src: https://vercel.live` — allows Vercel toolbar only
 - `object-src: 'none'` — blocks Flash/Java plugins
 - `base-uri: 'self'` — prevents base tag injection
-- `connect-src` — explicit allowlist for Firebase, Gemini, Vercel
+- `connect-src` — explicit allowlist for Firebase, Gemini, Vercel, Pusher WebSockets
 - `script-src` includes `unsafe-inline` / `unsafe-eval` (required by React/Vite SPA)
+- `script-src` / `style-src` include `https://vercel.live` for Vercel toolbar compatibility
 
 ---
 
