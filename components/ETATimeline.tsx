@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Guest } from '../types';
 
 interface ETATimelineProps {
@@ -93,89 +94,100 @@ const ETATimeline: React.FC<ETATimelineProps> = ({ guests, onGuestClick }) => {
                 </div>
             </button>
 
-            {/* Collapsible Content */}
-            <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isExpanded ? 'max-h-[600px] opacity-100 mt-6' : 'max-h-0 opacity-0 mt-0'}`}>
-                <div className="relative">
-                    {/* Time axis */}
-                    <div className="flex justify-between mb-2">
-                        {timeSlots.map(slot => (
-                            <div
-                                key={slot.hour}
-                                className="flex-1 text-center text-[9px] font-bold text-slate-400 uppercase tracking-wider"
-                            >
-                                {slot.label}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Timeline track */}
-                    <div className="h-2 bg-slate-200 dark:bg-stone-700 rounded-full mb-4 relative">
-                        <div className="absolute inset-0 flex">
-                            {timeSlots.map((slot, i) => (
-                                <div
-                                    key={slot.hour}
-                                    className="flex-1 border-r border-white/20 dark:border-stone-600 last:border-r-0"
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Guest bubbles */}
-                    <div className="flex">
-                        {timeSlots.map(slot => (
-                            <div key={slot.hour} className="flex-1 flex flex-col items-center gap-1 min-h-[60px]">
-                                {slot.guests.slice(0, 4).map((guest, idx) => (
+            {/* Collapsible Content — Framer Motion for reliable height animation */}
+            <AnimatePresence initial={false}>
+                {isExpanded && (
+                    <motion.div
+                        key="timeline-content"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.35, ease: [0.25, 0.8, 0.25, 1] }}
+                        style={{ overflow: 'hidden' }}
+                    >
+                        <div className="mt-6 relative">
+                            {/* Time axis */}
+                            <div className="flex justify-between mb-2">
+                                {timeSlots.map(slot => (
                                     <div
-                                        key={guest.id}
-                                        onClick={(e) => { e.stopPropagation(); onGuestClick?.(guest.id); }}
-                                        className={`group relative w-8 h-8 rounded-full ${getGuestColor(guest)} flex items-center justify-center text-white text-[10px] font-black cursor-pointer hover:scale-125 transition-transform shadow-lg`}
-                                        style={{ animationDelay: `${idx * 50}ms` }}
+                                        key={slot.hour}
+                                        className="flex-1 text-center text-[9px] font-bold text-slate-400 uppercase tracking-wider"
                                     >
-                                        {getRoomNumber(guest)}
-
-                                        {/* Tooltip */}
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                                            <div className="bg-slate-900 text-white px-3 py-2 rounded-xl shadow-2xl whitespace-nowrap text-[10px]">
-                                                <div className="font-black">{guest.name}</div>
-                                                <div className="text-slate-400">Room {guest.room} • ETA {guest.eta}</div>
-                                                {guest.prefillNotes && (
-                                                    <div className="text-[9px] text-[#c5a065] mt-1 max-w-[200px] truncate">
-                                                        {guest.prefillNotes}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45 -bottom-1" />
-                                        </div>
+                                        {slot.label}
                                     </div>
                                 ))}
+                            </div>
 
-                                {/* Overflow indicator */}
-                                {slot.guests.length > 4 && (
-                                    <div className="text-[9px] font-bold text-slate-400">
-                                        +{slot.guests.length - 4}
+                            {/* Timeline track */}
+                            <div className="h-2 bg-slate-200 dark:bg-stone-700 rounded-full mb-4 relative">
+                                <div className="absolute inset-0 flex">
+                                    {timeSlots.map((slot, i) => (
+                                        <div
+                                            key={slot.hour}
+                                            className="flex-1 border-r border-white/20 dark:border-stone-600 last:border-r-0"
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Guest bubbles */}
+                            <div className="flex">
+                                {timeSlots.map(slot => (
+                                    <div key={slot.hour} className="flex-1 flex flex-col items-center gap-1 min-h-[60px]">
+                                        {slot.guests.slice(0, 4).map((guest, idx) => (
+                                            <div
+                                                key={guest.id}
+                                                onClick={(e) => { e.stopPropagation(); onGuestClick?.(guest.id); }}
+                                                className={`group relative w-8 h-8 rounded-full ${getGuestColor(guest)} flex items-center justify-center text-white text-[10px] font-black cursor-pointer hover:scale-125 transition-transform shadow-lg`}
+                                                style={{ animationDelay: `${idx * 50}ms` }}
+                                            >
+                                                {getRoomNumber(guest)}
+
+                                                {/* Tooltip */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                                    <div className="bg-slate-900 text-white px-3 py-2 rounded-xl shadow-2xl whitespace-nowrap text-[10px]">
+                                                        <div className="font-black">{guest.name}</div>
+                                                        <div className="text-slate-400">Room {guest.room} • ETA {guest.eta}</div>
+                                                        {guest.prefillNotes && (
+                                                            <div className="text-[9px] text-[#c5a065] mt-1 max-w-[200px] truncate">
+                                                                {guest.prefillNotes}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45 -bottom-1" />
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {/* Overflow indicator */}
+                                        {slot.guests.length > 4 && (
+                                            <div className="text-[9px] font-bold text-slate-400">
+                                                +{slot.guests.length - 4}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                ))}
                             </div>
-                        ))}
-                    </div>
 
-                    {/* Legend */}
-                    <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-slate-200 dark:border-stone-700">
-                        {[
-                            { color: 'bg-purple-500', label: 'VIP' },
-                            { color: 'bg-red-500', label: 'Allergy' },
-                            { color: 'bg-blue-500', label: 'Return' },
-                            { color: 'bg-emerald-500', label: 'Lake House' },
-                            { color: 'bg-slate-700', label: 'Standard' },
-                        ].map(item => (
-                            <div key={item.label} className="flex items-center gap-2">
-                                <div className={`w-3 h-3 rounded-full ${item.color}`} />
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{item.label}</span>
+                            {/* Legend */}
+                            <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-slate-200 dark:border-stone-700">
+                                {[
+                                    { color: 'bg-purple-500', label: 'VIP' },
+                                    { color: 'bg-red-500', label: 'Allergy' },
+                                    { color: 'bg-blue-500', label: 'Return' },
+                                    { color: 'bg-emerald-500', label: 'Lake House' },
+                                    { color: 'bg-slate-700', label: 'Standard' },
+                                ].map(item => (
+                                    <div key={item.label} className="flex items-center gap-2">
+                                        <div className={`w-3 h-3 rounded-full ${item.color}`} />
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{item.label}</span>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

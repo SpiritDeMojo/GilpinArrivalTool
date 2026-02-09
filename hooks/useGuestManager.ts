@@ -19,7 +19,11 @@ import {
   forceReconnect,
   hardReconnect,
   nuclearReconnect,
-  isReconnecting
+  isReconnecting,
+  waitForConnection,
+  incrementNuclearAttempts,
+  resetNuclearAttempts,
+  getNuclearAttempts
 } from '../services/firebaseService';
 import {
   isPMSConfigured,
@@ -958,46 +962,80 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
   // ── Manual reconnect (nuclear — full SDK teardown) ──────────────────────
   const manualReconnect = useCallback(async () => {
-    console.log('🔄 Manual reconnect triggered by user — going nuclear');
+    // Debounce: prevent rapid re-tapping (15s cooldown)
+    const now = Date.now();
+    const timeSinceLast = now - lastReconnectTsRef.current;
+    if (timeSinceLast < 15000) {
+      const remaining = Math.ceil((15000 - timeSinceLast) / 1000);
+      console.log(`🔄 Reconnect cooldown — wait ${remaining}s`);
+      return;
+    }
+    lastReconnectTsRef.current = now;
+
+    incrementNuclearAttempts();
+    const attempt = getNuclearAttempts();
+    console.log(`🔄 Manual reconnect #${attempt} triggered by user — going nuclear`);
     setConnectionStatus('connecting');
 
     // 1. Tear down ALL listeners, intervals, and cleanups BEFORE nuclear
-    //    This prevents them from accessing null db during teardown.
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
-    if (connectionCleanupRef.current) {
-      connectionCleanupRef.current();
-      connectionCleanupRef.current = null;
-    }
-    if (keepaliveCleanupRef.current) {
-      keepaliveCleanupRef.current();
-      keepaliveCleanupRef.current = null;
-    }
-    if (presenceCleanupRef.current) {
-      presenceCleanupRef.current();
-      presenceCleanupRef.current = null;
-    }
-    if (staleWatchdogRef.current) {
-      clearInterval(staleWatchdogRef.current);
-      staleWatchdogRef.current = null;
-    }
+    if (unsubscribeRef.current) { unsubscribeRef.current(); unsubscribeRef.current = null; }
+    if (connectionCleanupRef.current) { connectionCleanupRef.current(); connectionCleanupRef.current = null; }
+    if (keepaliveCleanupRef.current) { keepaliveCleanupRef.current(); keepaliveCleanupRef.current = null; }
+    if (presenceCleanupRef.current) { presenceCleanupRef.current(); presenceCleanupRef.current = null; }
+    if (staleWatchdogRef.current) { clearInterval(staleWatchdogRef.current); staleWatchdogRef.current = null; }
 
     // 2. Nuclear: destroy Firebase App and re-create from scratch
     const success = await nuclearReconnect();
     if (!success) {
       setConnectionStatus('offline');
-      console.error('❌ Nuclear reconnect failed — try refreshing the page');
+      console.error('❌ Nuclear reconnect failed');
+      // After 2 failures, force page reload
+      if (attempt >= 2) {
+        console.warn('🔄 2 nuclear failures — forcing page reload...');
+        setTimeout(() => window.location.reload(), 500);
+      }
       return;
     }
 
-    // 3. Re-subscribe to connection state with fresh db reference
-    connectionCleanupRef.current = subscribeToConnectionState((connected) => {
-      setConnectionStatus(connected ? 'connected' : 'offline');
+    // 3. Wait for the WebSocket to actually connect (up to 12s)
+    console.log('⏳ Waiting for WebSocket connection...');
+    let connected = await waitForConnection(12000);
+
+    // 4. If timed out, retry once more
+    if (!connected) {
+      console.warn(`⏱️ Connection timed out on attempt #${attempt} — retrying...`);
+
+      // After 2 total failures, force page reload as ultimate escape hatch
+      if (attempt >= 2) {
+        console.warn('🔄 2 nuclear failures — reloading page...');
+        setTimeout(() => window.location.reload(), 500);
+        return;
+      }
+
+      // Try one more quick nuclear
+      const retrySuccess = await nuclearReconnect();
+      if (retrySuccess) {
+        connected = await waitForConnection(12000);
+      }
+
+      if (!connected) {
+        setConnectionStatus('offline');
+        console.error('❌ WebSocket failed to connect after retry — tap again to reload page');
+        return;
+      }
+    }
+
+    // ✅ Connected! Reset attempt counter
+    resetNuclearAttempts();
+    console.log('✅ WebSocket connected — re-establishing subscriptions');
+    setConnectionStatus('connected');
+
+    // 5. Re-subscribe to connection state with fresh db reference
+    connectionCleanupRef.current = subscribeToConnectionState((conn) => {
+      setConnectionStatus(conn ? 'connected' : 'offline');
     });
 
-    // 4. Re-subscribe to session data with fresh db reference
+    // 6. Re-subscribe to session data with fresh db reference
     unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
       lastRemoteDataTs.current = Date.now();
       remoteUpdateGen.current += 1;
@@ -1009,7 +1047,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       });
     });
 
-    // 5. Re-establish keepAlive and presence
+    // 7. Re-establish keepAlive and presence
     const deviceId = localStorage.getItem('gilpin_device_id') || 'unknown';
     const sid = activeSessionIdRef.current;
     if (sid) {
@@ -1017,7 +1055,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       presenceCleanupRef.current = trackPresence(sid, deviceId, userName);
     }
 
-    // 6. Re-establish stale watchdog
+    // 8. Re-establish stale watchdog
     lastRemoteDataTs.current = Date.now();
     staleWatchdogRef.current = setInterval(() => {
       const lastData = lastRemoteDataTs.current;
@@ -1027,7 +1065,6 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       }
     }, 30000);
 
-    // Reset debounce so auto-handlers can fire again
     lastReconnectTsRef.current = Date.now();
     console.log('✅ Nuclear reconnect complete — all subscriptions re-established');
   }, [userName]);

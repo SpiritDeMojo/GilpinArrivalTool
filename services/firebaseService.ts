@@ -31,6 +31,7 @@ let app: FirebaseApp | null = null;
 let db: Database | null = null;
 let _reconnecting = false;
 let _appSeq = 0;
+let _nuclearAttempts = 0;
 
 /**
  * Check if a nuclear reconnect is currently in progress.
@@ -179,7 +180,26 @@ export async function nuclearReconnect(): Promise<boolean> {
         }
     }
 
-    // 4. Re-initialize with unique app name to avoid [DEFAULT] registry conflict
+    // 4. Clear Firebase SDK localStorage flags that block WebSocket reconnection
+    //    The SDK stores 'firebase:previous_websocket_failure' which prevents
+    //    future WebSocket attempts on mobile after a failure.
+    try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('firebase:') || key.startsWith('firebaseLocalStorage'))) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        if (keysToRemove.length > 0) {
+            console.log(`☢️ Cleared ${keysToRemove.length} firebase localStorage keys`);
+        }
+    } catch (e) {
+        console.warn('☢️ Could not clear localStorage (non-fatal):', e);
+    }
+
+    // 5. Re-initialize with unique app name to avoid [DEFAULT] registry conflict
     try {
         _appSeq++;
         const appName = `gilpin-${_appSeq}`;
@@ -194,6 +214,56 @@ export async function nuclearReconnect(): Promise<boolean> {
         _reconnecting = false;
         return false;
     }
+}
+
+/**
+ * Wait for Firebase to establish a connection, with timeout.
+ * Subscribes to .info/connected and resolves when it becomes true.
+ * @returns Promise<boolean> — true if connected, false if timed out
+ */
+export function waitForConnection(timeoutMs: number = 12000): Promise<boolean> {
+    return new Promise((resolve) => {
+        if (!db) {
+            resolve(false);
+            return;
+        }
+
+        let resolved = false;
+        const connRef = ref(db, '.info/connected');
+
+        const unsubscribe = onValue(connRef, (snap) => {
+            if (snap.val() === true && !resolved) {
+                resolved = true;
+                unsubscribe();
+                resolve(true);
+            }
+        });
+
+        setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                unsubscribe();
+                console.warn(`⏱️ waitForConnection timed out after ${timeoutMs}ms`);
+                resolve(false);
+            }
+        }, timeoutMs);
+    });
+}
+
+/**
+ * Get and reset the nuclear attempt counter.
+ * Used by useGuestManager to track consecutive failures.
+ */
+export function getNuclearAttempts(): number {
+    return _nuclearAttempts;
+}
+
+export function incrementNuclearAttempts(): void {
+    _nuclearAttempts++;
+}
+
+export function resetNuclearAttempts(): void {
+    _nuclearAttempts = 0;
 }
 
 /**
