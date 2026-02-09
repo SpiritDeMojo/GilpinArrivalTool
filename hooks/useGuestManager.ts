@@ -390,9 +390,10 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   }, [firebaseEnabled, activeSessionId, userName]);
 
   // 5. Sync initial uploads to Firebase (full session push)
-  // This is used ONLY for PDF uploads, PMS imports, and new session creation.
+  // This is used for PDF uploads, PMS imports, new session creation, and AI Audit.
   // For field-level changes (status updates, notes, etc.), use atomicUpdateGuest().
-  const syncInitialUpload = useCallback((session: ArrivalSession) => {
+  // @param forceWrite — bypass the last-write-wins guard (for truly new data like PDF/PMS imports)
+  const syncInitialUpload = useCallback((session: ArrivalSession, forceWrite = false) => {
     if (!firebaseEnabled) return;
 
     // Debounce to coalesce rapid initial setup writes
@@ -402,8 +403,8 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
     syncTimeoutRef.current = setTimeout(async () => {
       try {
-        await syncSession(session);
-        console.log('✅ Initial sync to Firebase:', session.label);
+        await syncSession(session, forceWrite);
+        console.log('✅ Initial sync to Firebase:', session.label, forceWrite ? '(forced)' : '(guarded)');
       } catch (error) {
         console.error('❌ Firebase initial sync failed:', error);
       }
@@ -477,7 +478,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     };
     setSessions(prev => [...prev, newSession]);
     setActiveSessionId(id);
-    syncInitialUpload(newSession);
+    syncInitialUpload(newSession, true); // New session — always force write
   };
 
   // Load arrivals from PMS API
@@ -516,7 +517,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         }
 
         setActiveSessionId(id);
-        syncInitialUpload(pmsSession);
+        syncInitialUpload(pmsSession, true); // PMS import — always force write
         setProgressMsg(`Loaded ${pmsGuests.length} arrivals from PMS`);
       } else {
         setProgressMsg('No arrivals found for this date');
@@ -577,7 +578,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         guests: result.guests,
         lastModified: Date.now()
       };
-      syncInitialUpload(newSessionData);
+      syncInitialUpload(newSessionData, true); // PDF upload — always force write
     } catch (err) {
       console.error(err);
       alert("Error parsing PDF.");
@@ -669,7 +670,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       };
       setSessions([newSession]);
       setActiveSessionId(newId);
-      syncInitialUpload(newSession);
+      syncInitialUpload(newSession, true); // New session from addManual — always force write
     } else {
       const newGuests = [g, ...guests];
       updateActiveSessionGuests(newGuests);
@@ -802,7 +803,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                 console.warn('[AI Audit] No refinement for guest', original.name, 'at index', idx);
               }
             });
-            const updated = { ...s, guests: updatedGuests, lastModified: Date.now() };
+            const updated = { ...s, guests: updatedGuests, lastModified: Date.now(), aiAuditedAt: Date.now() };
             // Capture the UPDATED session for Firebase sync (avoids stale closure)
             updatedSessionForSync = updated;
             return updated;

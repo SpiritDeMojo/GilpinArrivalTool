@@ -234,11 +234,18 @@ export function subscribeToAllSessions(
 }
 
 /**
- * Sync entire session to Firebase — used ONLY for initial upload (PDF/PMS import).
+ * Sync entire session to Firebase — used for initial upload (PDF/PMS import)
+ * and AI Audit result writes.
+ * 
+ * GUARD: Checks remote `lastModified` before writing. If the remote data is
+ * newer, the write is skipped to prevent stale devices from overwriting
+ * AI Audit results or other recent changes from another device.
+ * 
  * For subsequent field-level changes, use updateGuestFields() instead.
  * @param session - The session to sync
+ * @param forceWrite - If true, skip the staleness check (for initial PDF/PMS uploads)
  */
-export async function syncSession(session: ArrivalSession): Promise<void> {
+export async function syncSession(session: ArrivalSession, forceWrite = false): Promise<void> {
     if (!db) {
         console.warn('Firebase not initialized');
         return;
@@ -246,9 +253,25 @@ export async function syncSession(session: ArrivalSession): Promise<void> {
 
     try {
         const sessionRef = ref(db, `sessions/${session.id}`);
+        const now = Date.now();
+
+        // LAST-WRITE-WINS GUARD: Don't overwrite if remote data is newer
+        if (!forceWrite) {
+            const snapshot = await get(sessionRef);
+            if (snapshot.exists()) {
+                const remote = snapshot.val();
+                const remoteTs = remote.lastModified || 0;
+                const localTs = session.lastModified || 0;
+                if (remoteTs > localTs) {
+                    console.log(`[Sync] ⛔ Skipping write — remote is newer (remote: ${remoteTs}, local: ${localTs})`);
+                    return; // Don't overwrite newer data
+                }
+            }
+        }
+
         await set(sessionRef, {
             ...session,
-            lastModified: Date.now()
+            lastModified: now
         });
     } catch (error) {
         console.error('Failed to sync session:', error);

@@ -106,6 +106,8 @@ export interface ArrivalSession {
   dateObj: string;
   guests: Guest[];
   lastModified?: number;
+  /** Timestamp when AI Audit was last run on this session */
+  aiAuditedAt?: number;
 }
 
 export interface GlobalAnalyticsData {
