@@ -22,7 +22,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               </h2>
             </div>
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-              Standard Operating Procedures • <span className="text-[#c5a065]">v17.0</span>
+              Standard Operating Procedures • <span className="text-[#c5a065]">v17.1</span>
             </p>
           </div>
           <button
@@ -928,6 +928,57 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     <div className="flex items-start gap-2 text-[10px] text-slate-500">
                       <span className="text-[#c5a065] mt-0.5">▸</span>
                       <span><strong>Responsive:</strong> 76px → 62px → 56px → 50px across breakpoints</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 18. NOTIFICATIONS, SMART NOTES & CHAT POLISH */}
+            <section>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
+                <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
+                18. Notifications, Smart Notes &amp; Chat Polish
+                <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222]">
+                  <div className="text-3xl mb-4">🔔</div>
+                  <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">Browser Notifications &amp; Smart Chime</h4>
+                  <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                    The system now <strong>requests browser notification permission</strong> on first load. When a new team message arrives from another user, you get:
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2 text-[10px] text-slate-500">
+                      <span className="text-[#c5a065] mt-0.5">▸</span>
+                      <span><strong>Desktop notification</strong> with sender name, preview text and Gilpin logo icon</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-[10px] text-slate-500">
+                      <span className="text-[#c5a065] mt-0.5">▸</span>
+                      <span><strong>Audio chime</strong> via Web Audio API (AudioContext with auto-resume for suspended contexts)</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-[10px] text-slate-500">
+                      <span className="text-[#c5a065] mt-0.5">▸</span>
+                      <span><strong>FAB pulse ring</strong> — gold ripple animation on the chat button when unread messages exist</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222]">
+                  <div className="text-3xl mb-4">🧠</div>
+                  <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">AI Smart Notes (hkNotes)</h4>
+                  <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                    The AI Audit engine now generates <strong>housekeeping-specific intelligence</strong> in a dedicated <code className="text-[#c5a065]">hkNotes</code> field. Allergies, dietary restrictions, pet requirements, and room prep instructions are routed here automatically.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2 text-[10px] text-slate-500">
+                      <span className="text-[#c5a065] mt-0.5">▸</span>
+                      <span><strong>Dual routing:</strong> Allergy data appears in both intelligence notes AND hkNotes</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-[10px] text-slate-500">
+                      <span className="text-[#c5a065] mt-0.5">▸</span>
+                      <span><strong>Chat animations:</strong> Spring scale-up (sent), blur-in slide-up (received) via Framer Motion</span>
                     </div>
                   </div>
                 </div>

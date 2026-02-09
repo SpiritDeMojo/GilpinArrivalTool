@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessage, sendChatMessage, subscribeToChatMessages, clearChatMessages } from '../services/firebaseService';
 
 /* ──────────────────────────────────────────────
@@ -14,9 +15,11 @@ interface TeamChatTabProps {
 }
 
 // Play a short chat notification chime via Web Audio API
-function playChatChime() {
+async function playChatChime() {
     try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        // Resume context if suspended (required after user interaction guard)
+        if (ctx.state === 'suspended') await ctx.resume();
         // Two-tone ascending chime
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
@@ -49,7 +52,7 @@ function showChatNotification(author: string, text: string) {
         try {
             new Notification(`💬 ${author}`, {
                 body: text.length > 80 ? text.substring(0, 80) + '...' : text,
-                icon: '/favicon.svg',
+                icon: '/gilpin-logo-hq.png',
                 tag: 'team-chat', // Replaces previous chat notification
                 silent: true, // We play our own sound
             });
@@ -82,6 +85,13 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
         isVisibleRef.current = isVisible;
         if (isVisible) onUnreadChange(0);
     }, [isVisible, onUnreadChange]);
+
+    // Request browser notification permission on mount
+    useEffect(() => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }, []);
 
     // Subscribe to messages
     useEffect(() => {
@@ -170,7 +180,23 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                     const isMe = msg.author === userName;
                     const deptColor = DEPT_COLORS[msg.department] || '#94a3b8';
                     return (
-                        <div key={msg.id} className="chat-msg-ripple" style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '82%', alignSelf: isMe ? 'flex-end' : 'flex-start' }}>
+                        <motion.div
+                            key={msg.id}
+                            className="chat-msg-ripple"
+                            initial={isMe
+                                ? { scale: 0.6, opacity: 0 }
+                                : { y: 16, opacity: 0, filter: 'blur(4px)' }
+                            }
+                            animate={isMe
+                                ? { scale: 1, opacity: 1 }
+                                : { y: 0, opacity: 1, filter: 'blur(0px)' }
+                            }
+                            transition={isMe
+                                ? { type: 'spring', stiffness: 500, damping: 30 }
+                                : { duration: 0.3, ease: 'easeOut' }
+                            }
+                            style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '82%', alignSelf: isMe ? 'flex-end' : 'flex-start' }}
+                        >
                             {!isMe && (
                                 <div style={{ fontSize: '10px', fontWeight: 800, color: deptColor, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                     <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: deptColor, display: 'inline-block' }} />
@@ -187,7 +213,7 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                             <div style={{ fontSize: '9px', color: 'var(--text-muted, rgba(148,163,184,0.7))', marginTop: '3px', paddingLeft: isMe ? '0' : '10px', paddingRight: isMe ? '10px' : '0', fontWeight: 600 }}>
                                 {formatTime(msg.timestamp)}
                             </div>
-                        </div>
+                        </motion.div>
                     );
                 })}
             </div>

@@ -82,6 +82,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 * **INCLUDE:** Anything physical going into the room. (Champagne, Ice Bucket, Glasses, Dog Bed, Robes, Spa Hamper, Balloons, Itinerary).
 * **RULE:** If it is in 'notes' as an asset, it MUST also be here.
 
+**C1. hkNotes (Housekeeping Intelligence)**
+* **GOAL:** Housekeeping-specific notes for room preparation.
+* **INCLUDE:** All allergies & dietary restrictions (e.g. "⚠️ Nut Allergy (Epipen)"), any pet requirements ("🐕 Dog Bed + Bowls"), special room setup ("Extra Pillows", "Feather-Free").
+* **RULE:** If an allergy/dietary item appears in 'notes', it MUST also appear in 'hkNotes'.
+
 **D. preferences (Greeting Strategy)**
 * **STYLE:** Short, punchy, imperative instructions. (e.g. "Wish Happy Birthday to Rob. Check Voucher.")
 
@@ -139,9 +144,10 @@ Return a raw JSON array of objects. No markdown.
                                     preferences: { type: Type.STRING },
                                     packages: { type: Type.STRING },
                                     history: { type: Type.STRING },
-                                    car: { type: Type.STRING }
+                                    car: { type: Type.STRING },
+                                    hkNotes: { type: Type.STRING }
                                 },
-                                required: ["notes", "facilities", "inRoomItems", "preferences", "packages", "history", "car"]
+                                required: ["notes", "facilities", "inRoomItems", "preferences", "packages", "history", "car", "hkNotes"]
                             }
                         }
                     }

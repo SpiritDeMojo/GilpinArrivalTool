@@ -17,14 +17,14 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 1600,
       rollupOptions: {
         output: {
           manualChunks: {
-            firebase: ['firebase/app', 'firebase/database'],
-            pdfjs: ['pdfjs-dist'],
+            vendor: ['react', 'react-dom', 'framer-motion'],
+            firebase: ['firebase/app', 'firebase/database', 'firebase/auth'],
+            utils: ['xlsx', 'pdfjs-dist'],
             genai: ['@google/genai'],
-            vendor: ['react', 'react-dom'],
           },
         },
       },

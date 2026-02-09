@@ -43,6 +43,9 @@ export interface Guest {
   isManual?: boolean;
   roomType?: string;
 
+  /** Housekeeping-specific notes (allergies, dietary, room prep) from AI */
+  hkNotes?: string;
+
   // ==========================================
   // HOUSEKEEPING DASHBOARD FIELDS (Phase 6)
   // ==========================================

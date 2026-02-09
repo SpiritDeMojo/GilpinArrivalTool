@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gilpin Hotel - Intelligence Hub</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="apple-touch-icon" href="/favicon.svg">
+    <link rel="icon" type="image/png" href="/gilpin-logo-hq.png">
+    <link rel="apple-touch-icon" href="/gilpin-logo-hq.png">
     <!-- Tailwind CSS is now provided via build pipeline (PostCSS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link
@@ -1719,6 +1719,67 @@
         .bs-checks {
             font-size: 10px;
             color: var(--bs-checks-text);
+        }
+
+        /* ============================================
+           v17.1 PRODUCTION POLISH
+           ============================================ */
+
+        /* Dark mode: force correct text color on all inputs */
+        [data-theme="dark"] input,
+        [data-theme="dark"] textarea,
+        [data-theme="dark"] select {
+            color: #f5f5f4;
+        }
+
+        /* GPU-hint animated elements for smooth compositing */
+        .guest-mobile-card,
+        .chat-fab,
+        .chat-msg-ripple {
+            will-change: transform, opacity;
+        }
+
+        /* Mobile: reduce heavy backdrop filters during animation */
+        @media (max-width: 768px) {
+            .dashboard-view-tabs {
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+            }
+        }
+
+        /* FAB pulse ring when unread messages exist */
+        @keyframes chatFabPulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.6;
+            }
+
+            70% {
+                transform: scale(1.6);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1.6);
+                opacity: 0;
+            }
+        }
+
+        .chat-fab-pulse::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid rgba(197, 160, 101, 0.6);
+            animation: chatFabPulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            pointer-events: none;
+        }
+
+        /* Simplified mobile entrance — just fade, no translate */
+        @media (max-width: 768px) {
+            .guest-mobile-card {
+                animation: none !important;
+            }
         }
     </style>
     <script type="importmap">

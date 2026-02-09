@@ -780,7 +780,9 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                     packageName: correctedPackage || updatedGuests[gIndex].packageName,
                     ll: ref.history || updatedGuests[gIndex].ll,
                     // AI car only fills in if regex parser didn't find one
-                    car: updatedGuests[gIndex].car || ref.car || updatedGuests[gIndex].car
+                    car: updatedGuests[gIndex].car || ref.car || updatedGuests[gIndex].car,
+                    // Housekeeping intelligence (allergies, dietary, room prep)
+                    hkNotes: ref.hkNotes || updatedGuests[gIndex].hkNotes || '',
                   };
                 }
               } else {

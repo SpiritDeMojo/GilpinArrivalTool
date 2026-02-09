@@ -48,7 +48,8 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
 
     // Interactive mouse-follow subtle tilt on FAB
     const handleFabMouseMove = useCallback((e: React.MouseEvent) => {
-        if (!fabRef.current) return;
+        const isTouchDevice = 'ontouchstart' in window;
+        if (isTouchDevice || !fabRef.current) return;
         const rect = fabRef.current.getBoundingClientRect();
         const x = (e.clientX - rect.left - rect.width / 2) / rect.width;
         const y = (e.clientY - rect.top - rect.height / 2) / rect.height;
@@ -70,8 +71,8 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
             {/* ═══ FAB BUTTON — Interactive with 3D tilt + ripple ring ═══ */}
             <button
                 ref={fabRef}
-                className="no-print chat-fab"
-                onClick={() => { setIsOpen(!isOpen); if (!isOpen) setUnread(0); }}
+                className={`no-print chat-fab${unread > 0 && !isOpen ? ' chat-fab-pulse' : ''}`}
+                onClick={() => { setIsOpen(!isOpen); if (!isOpen && activeTab === 'team') setUnread(0); }}
                 onMouseMove={handleFabMouseMove}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={handleFabMouseLeave}
