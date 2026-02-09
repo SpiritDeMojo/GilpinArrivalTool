@@ -19,11 +19,11 @@ import { Guest } from '../types';
 
 /* ── Framer Motion page-transition variants ── */
 const pageVariants = {
-    initial: { opacity: 0, y: 10 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -10 },
+    initial: { opacity: 0, y: 16, scale: 0.97, filter: 'blur(6px)' },
+    animate: { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' },
+    exit: { opacity: 0, y: -10, scale: 0.98, filter: 'blur(4px)' },
 };
-const pageTransition = { duration: 0.2, ease: [0.25, 0.8, 0.25, 1] as [number, number, number, number] };
+const pageTransition = { duration: 0.35, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
 
 /* ── Tab button spring ── */
 const tabSpring = { type: 'spring' as const, stiffness: 400, damping: 25 };
@@ -61,9 +61,11 @@ const ViewManager: React.FC = () => {
                     <div className="view-tabs-container">
                         {isRec && (
                             <motion.button
+                                initial={{ opacity: 0, y: 10, scale: 0.92 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ delay: 0 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                transition={tabSpring}
                                 className={`view-tab ${dashboardView === 'arrivals' ? 'active' : ''}`}
                                 onClick={() => setDashboardView('arrivals')}
                             >
@@ -72,9 +74,11 @@ const ViewManager: React.FC = () => {
                         )}
                         {(department === 'HK' || isRec) && (
                             <motion.button
+                                initial={{ opacity: 0, y: 10, scale: 0.92 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ delay: 1 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                transition={tabSpring}
                                 className={`view-tab ${dashboardView === 'housekeeping' ? 'active' : ''}`}
                                 onClick={() => { setDashboardView('housekeeping'); clearBadge('housekeeping'); }}
                             >
@@ -86,9 +90,11 @@ const ViewManager: React.FC = () => {
                         )}
                         {(department === 'MAIN' || isRec) && (
                             <motion.button
+                                initial={{ opacity: 0, y: 10, scale: 0.92 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ delay: 2 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                transition={tabSpring}
                                 className={`view-tab ${dashboardView === 'maintenance' ? 'active' : ''}`}
                                 onClick={() => { setDashboardView('maintenance'); clearBadge('maintenance'); }}
                             >
@@ -100,9 +106,11 @@ const ViewManager: React.FC = () => {
                         )}
                         {isRec && (
                             <motion.button
+                                initial={{ opacity: 0, y: 10, scale: 0.92 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ delay: 3 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                transition={tabSpring}
                                 className={`view-tab ${dashboardView === 'reception' ? 'active' : ''}`}
                                 onClick={() => { setDashboardView('reception'); clearBadge('reception'); }}
                             >

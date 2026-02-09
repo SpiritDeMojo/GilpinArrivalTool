@@ -101,7 +101,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
       {/* --- Desktop Actions --- */}
       <div className="hidden lg:flex items-center gap-3">
-        <button onClick={toggleTheme} className="px-5 py-2 rounded-full border-2 border-[#c5a065]/30 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-[#c5a065]/10">
+        <button onClick={toggleTheme} className="nav-action-btn">
           {isDark ? 'Obsidian' : 'Ivory'}
         </button>
 
@@ -111,21 +111,21 @@ const Navbar: React.FC<NavbarProps> = ({
               {isRec && (
                 <button
                   onClick={onToggleAnalytics}
-                  className={`${showAnalytics ? 'bg-[#c5a065] text-white' : 'bg-slate-100 dark:bg-stone-800 text-slate-600 dark:text-slate-300'} px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95 border border-[#c5a065]/20`}
+                  className={`nav-action-btn ${showAnalytics ? 'nav-action-btn--active' : ''}`}
                 >
                   📊 Intelligence
                 </button>
               )}
 
               {isRec && (
-                <button onClick={onAIRefine} className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-transform hover:scale-105 active:scale-95">
+                <button onClick={onAIRefine} className="nav-action-btn">
                   ✨ AI Audit
                 </button>
               )}
 
               {isRec && (
                 <div className="relative">
-                  <button onClick={() => setIsPrintOpen(!isPrintOpen)} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all">
+                  <button onClick={() => setIsPrintOpen(!isPrintOpen)} className={`nav-action-btn ${isPrintOpen ? 'nav-action-btn--active' : ''}`}>
                     🖨️ Print
                   </button>
                   {isPrintOpen && (
@@ -141,10 +141,10 @@ const Navbar: React.FC<NavbarProps> = ({
               )}
 
               {isRec && (
-                <button onClick={onExcel} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all">⬇️ Excel</button>
+                <button onClick={onExcel} className="nav-action-btn">⬇️ Excel</button>
               )}
               {isRec && (
-                <button onClick={onAddManual} className="bg-[#c5a065] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#b08d54] transition-all">➕ Add</button>
+                <button onClick={onAddManual} className="nav-action-btn">➕ Add</button>
               )}
 
 
@@ -152,7 +152,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={onToggleMute}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-600' : 'bg-slate-900 hover:bg-black'} shadow-lg active:scale-90`}
+                className={`nav-action-btn nav-action-btn--icon ${isMuted ? 'nav-action-btn--active' : ''}`}
                 title={isMuted ? 'Notifications muted' : 'Notifications on'}
               >
                 <span className="text-lg leading-none">{isMuted ? '🔕' : '🔔'}</span>
@@ -162,13 +162,13 @@ const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => document.getElementById('file-upload-nav')?.click()}
-            className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-stone-800 flex items-center justify-center transition-all hover:bg-slate-200 dark:hover:bg-stone-700 border border-[#c5a065]/20"
+            className="nav-action-btn nav-action-btn--icon"
           >
             <span className="text-lg">📁</span>
           </button>
         </div>
 
-        <button onClick={onOpenSOP} className="w-9 h-9 rounded-full border-2 border-[#c5a065]/30 flex items-center justify-center font-bold text-sm transition-all hover:bg-[#c5a065]/10">?</button>
+        <button onClick={onOpenSOP} className="nav-action-btn nav-action-btn--icon">?</button>
 
         {/* User Badge with Department */}
         {userName && (

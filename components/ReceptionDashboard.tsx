@@ -123,7 +123,7 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
           <div className="header-icon">🛎️</div>
           <div>
             <h1>Reception</h1>
-            <p>Guest arrivals & check-in tracking</p>
+            <p>Guest arrival workflow, check-in management & courtesy call tracking</p>
           </div>
         </div>
         <div className="header-stats">

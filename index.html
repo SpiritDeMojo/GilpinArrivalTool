@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gilpin Hotel - Intelligence Hub</title>
-    <link rel="icon" type="image/png" href="/gilpin-logo-hq.png">
-    <link rel="apple-touch-icon" href="/gilpin-logo-hq.png">
+    <link rel="icon" type="image/png" href="/gilpin-logo.png">
+    <link rel="apple-touch-icon" href="/gilpin-logo.png">
     <!-- Tailwind CSS is now provided via build pipeline (PostCSS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link
@@ -668,6 +668,68 @@
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
         }
 
+        /* --- Unified Navbar Action Buttons --- */
+        .nav-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            border: 1.5px solid rgba(197, 160, 101, 0.3);
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: var(--nav-text);
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .nav-action-btn:hover {
+            background: rgba(197, 160, 101, 0.15);
+            border-color: var(--gilpin-gold);
+            transform: scale(1.04);
+            box-shadow: 0 4px 16px rgba(197, 160, 101, 0.2);
+        }
+
+        .nav-action-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Active / toggle ON state */
+        .nav-action-btn--active {
+            background: var(--gilpin-gold) !important;
+            color: white !important;
+            border-color: var(--gilpin-gold) !important;
+            box-shadow: 0 4px 16px rgba(197, 160, 101, 0.4);
+        }
+
+        /* Icon-only variant */
+        .nav-action-btn--icon {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        [data-theme="dark"] .nav-action-btn {
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        [data-theme="dark"] .nav-action-btn:hover {
+            background: rgba(197, 160, 101, 0.2);
+            box-shadow: 0 4px 16px rgba(197, 160, 101, 0.25);
+        }
+
         .nav-logo-bubble {
             background: white;
             width: 76px;
@@ -721,9 +783,9 @@
         }
 
         .nav-logo-img {
-            width: 92%;
-            height: 92%;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             object-position: center center;
             border-radius: 50%;
             transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275),

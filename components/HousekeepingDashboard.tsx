@@ -123,7 +123,7 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           <div className="header-icon">🧹</div>
           <div>
             <h1>Housekeeping</h1>
-            <p>Room cleaning status & inspection</p>
+            <p>Room preparation, cleaning workflow & inspection tracking</p>
           </div>
         </div>
         <div className="header-stats">

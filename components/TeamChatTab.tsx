@@ -52,7 +52,7 @@ function showChatNotification(author: string, text: string) {
         try {
             new Notification(`💬 ${author}`, {
                 body: text.length > 80 ? text.substring(0, 80) + '...' : text,
-                icon: '/gilpin-logo-hq.png',
+                icon: '/gilpin-logo.png',
                 tag: 'team-chat', // Replaces previous chat notification
                 silent: true, // We play our own sound
             });

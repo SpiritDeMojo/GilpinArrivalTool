@@ -107,7 +107,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
           <div className="header-icon">🔧</div>
           <div>
             <h1>Maintenance</h1>
-            <p>Room checks & issue resolution</p>
+            <p>Pre-arrival room checks, issue logging & resolution tracking</p>
           </div>
         </div>
         <div className="header-stats">
