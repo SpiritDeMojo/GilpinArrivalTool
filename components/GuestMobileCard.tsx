@@ -28,6 +28,8 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
               <input
                 value={guest.room}
                 onChange={(e) => onUpdate({ room: e.target.value })}
+                name="room"
+                aria-label="room"
                 className="bg-transparent text-lg font-black text-[#c5a065] text-center outline-none uppercase"
                 style={{ width: `${Math.max(3, Math.min(guest.room.length + 1, 10))}ch`, maxWidth: '120px', minWidth: '3rem' }}
                 title={guest.room}
@@ -40,6 +42,8 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
               <input
                 value={guest.name}
                 onChange={(e) => onUpdate({ name: e.target.value })}
+                name="name"
+                aria-label="name"
                 className="block w-full bg-transparent text-base font-black text-slate-900 dark:text-white outline-none"
               />
               {guest.packageName && (
@@ -96,6 +100,8 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
               value={guest.preferences}
               onChange={(e) => onUpdate({ preferences: e.target.value })}
               rows={2}
+              name="preferences"
+              aria-label="preferences"
               className="w-full bg-indigo-50/50 dark:bg-indigo-500/5 p-3 rounded-xl border border-indigo-100 dark:border-indigo-500/20 text-[11px] font-semibold text-indigo-800 dark:text-indigo-300 outline-none focus:border-indigo-400 leading-tight"
             />
             {guest.aiTags && guest.aiTags.length > 0 && (
@@ -142,6 +148,8 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
                         value={guest.prefillNotes}
                         onChange={(e) => onUpdate({ prefillNotes: e.target.value })}
                         rows={3}
+                        name="prefillNotes"
+                        aria-label="prefillNotes"
                         className="w-full bg-white dark:bg-stone-800 p-3 rounded-xl border border-slate-200 dark:border-stone-700 text-[11px] italic text-slate-500 dark:text-slate-300 outline-none leading-relaxed"
                       />
                     </div>
@@ -151,6 +159,8 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
                         value={guest.facilities}
                         onChange={(e) => onUpdate({ facilities: e.target.value })}
                         rows={2}
+                        name="facilities"
+                        aria-label="facilities"
                         className="w-full bg-white dark:bg-stone-800 p-3 rounded-xl border border-slate-200 dark:border-stone-700 text-[11px] dark:text-slate-200 outline-none leading-tight"
                       />
                     </div>

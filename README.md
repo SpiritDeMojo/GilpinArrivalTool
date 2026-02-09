@@ -32,6 +32,10 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 - 🧠 **AI Smart Notes (hkNotes)** — Gemini routes allergies, dietary restrictions, pet requirements, and room prep instructions to a dedicated `hkNotes` field for housekeeping-specific intelligence
 - 🌦️ **Live Weather Widget** — Real-time Windermere weather (temperature + emoji icon) in the navbar via Open-Meteo API. Auto-refreshes every 15 minutes. Falls back to static title if offline
 - 🌐 **3D Logo Globe** — 76px spherical logo with perspective tilt, glass overlay, hover pop-out effect (1.6× scale with transparent background), and spin-in entrance animation
+- 🔌 **Connection Recovery** — Auto-reconnect on background return (visibilitychange + focus), stale watchdog (30s), and nuclear reconnect (full Firebase SDK teardown/rebuild) for permanently broken mobile WebSockets
+- 🔀 **Dashboard Sorting** — Sort any dashboard by ETA (earliest first) or Room Number (ascending). Sort preferences persist per dashboard within the session
+- 🧠 **AI Note Placement** — AI notes route to the correct column: Intelligence (preferences), Notes (prefillNotes), HK (tagged [HK]), or Maintenance (tagged [MAINT])
+- 📱 **Mobile Debug Overlay** — Add `?debug=1` to URL for an on-screen console showing all logs, connection state, and errors without DevTools
 - 🎨 **Production-Grade Theming** — Dark mode-aware inputs across all dashboards, GPU-composited animations with `will-change`, reduced `backdrop-filter` on mobile, simplified mobile entrance animations
 
 ---
@@ -69,7 +73,13 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
                      ┌──────────────┐              │
                      │   Firebase   │◀─────────────┘
                      │ (Fleet Sync) │──────▶ All Devices
-                     └──────────────┘        (all days)
+                     └──────┬───────┘        (all days)
+                            │
+                     ┌──────▼───────┐
+                     │  Reconnect   │
+                     │  Engine      │
+                     │ (Auto/Nuclear)│
+                     └──────────────┘
 ```
 
 ### Tech Stack

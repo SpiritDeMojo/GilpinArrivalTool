@@ -16,6 +16,7 @@ import NotificationToast from './components/NotificationToast';
 import ActivityLogPanel from './components/ActivityLogPanel';
 import LoginScreen from './components/LoginScreen';
 import ViewManager from './components/ViewManager';
+import MobileDebugOverlay from './components/MobileDebugOverlay';
 
 const App: React.FC = () => {
   // Context hooks
@@ -155,6 +156,9 @@ const App: React.FC = () => {
           hasMic={hasMic}
         />
       )}
+
+      {/* Mobile Debug Overlay — ?debug=1 or long-press connection dot */}
+      <MobileDebugOverlay connectionStatus={connectionStatus} />
     </div>
   );
 };

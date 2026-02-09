@@ -985,6 +985,155 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               </div>
             </section>
 
+            {/* 19. CONNECTION RECOVERY & RECONNECT */}
+            <section>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
+                <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
+                19. Connection Recovery &amp; Reconnect
+                <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
+              </h3>
+
+              <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] mb-6">
+                <div className="text-3xl mb-4">🔌</div>
+                <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">Connection Status Indicator</h4>
+                <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                  The navbar shows a <strong>colour-coded dot</strong> indicating Firebase sync status. This is the first thing to check if data isn't syncing.
+                </p>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-500/20">
+                    <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]"></span>
+                    <div>
+                      <div className="text-[10px] font-black text-emerald-700 dark:text-emerald-400">Green</div>
+                      <div className="text-[9px] text-slate-500">Connected</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-500/20">
+                    <span className="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)]"></span>
+                    <div>
+                      <div className="text-[10px] font-black text-amber-700 dark:text-amber-400">Amber</div>
+                      <div className="text-[9px] text-slate-500">Reconnecting</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-500/20">
+                    <span className="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]"></span>
+                    <div>
+                      <div className="text-[10px] font-black text-rose-700 dark:text-rose-400">Red</div>
+                      <div className="text-[9px] text-slate-500">Offline</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
+                <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">⚡</span>
+                    <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Auto Recovery</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    The system automatically reconnects when you return from the lock screen, switch apps, or restore network. A soft reconnect (goOffline → goOnline) fires on <strong>visibilitychange</strong> and <strong>focus</strong> events with 5-second debounce.
+                  </p>
+                </div>
+                <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xl">☢️</span>
+                    <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Nuclear Reconnect</div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    If the dot stays red, <strong>tap it</strong> to trigger a "nuclear" reconnect. This completely destroys and rebuilds the Firebase connection, clearing any corrupted SDK state. All listeners and intervals are torn down and re-established automatically.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-5 md:p-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-500/20 rounded-[1.5rem] md:rounded-[2rem]">
+                <h4 className="font-black text-xs uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">📱 Mobile Debug Mode</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Add <strong>?debug=1</strong> to the URL on mobile to see a live console overlay at the bottom of the screen. Shows all log messages, connection state, and errors without needing DevTools.
+                </p>
+              </div>
+            </section>
+
+            {/* 20. DASHBOARD SORTING */}
+            <section>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
+                <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
+                20. Dashboard Sorting
+                <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
+              </h3>
+
+              <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] mb-6">
+                <div className="text-3xl mb-4">🔀</div>
+                <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">Sort by ETA or Room Number</h4>
+                <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                  All three dashboards (Housekeeping, Maintenance, Reception) feature <strong>sort controls</strong> in the filter bar. Toggle between:
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-sm">🕐</span>
+                    <div>
+                      <div className="text-[10px] font-black text-slate-700 dark:text-slate-300">ETA Sort</div>
+                      <div className="text-[9px] text-slate-400">Earliest arrivals first</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-sm">🚪</span>
+                    <div>
+                      <div className="text-[10px] font-black text-slate-700 dark:text-slate-300">Room Sort</div>
+                      <div className="text-[9px] text-slate-400">Ascending room number</div>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-3">Sort preferences persist per dashboard within the session. The arrivals table always shows the original file order.</p>
+              </div>
+            </section>
+
+            {/* 21. AI NOTE PLACEMENT */}
+            <section>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
+                <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
+                21. AI Note Placement
+                <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
+              </h3>
+
+              <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] mb-6">
+                <div className="text-3xl mb-4">🧠</div>
+                <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">Where AI Notes Go</h4>
+                <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                  When speaking to the AI assistant, you can ask it to add notes to specific columns. The AI routes data based on context:
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-500/20">
+                    <span className="text-lg mt-0.5">🎯</span>
+                    <div>
+                      <div className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase">Intelligence Column</div>
+                      <div className="text-[10px] text-slate-500">Guest preferences, dietary needs, VIP notes, return-guest intel. Default for arrival notes.</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                    <span className="text-lg mt-0.5">📝</span>
+                    <div>
+                      <div className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">Notes Column</div>
+                      <div className="text-[10px] text-slate-500">General operational notes, logistics, booking changes.</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-500/20">
+                    <span className="text-lg mt-0.5">🧹</span>
+                    <div>
+                      <div className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase">Housekeeping Notes</div>
+                      <div className="text-[10px] text-slate-500">Room prep, allergies, bed configuration, special cleaning requests. Tagged with [HK].</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-500/20">
+                    <span className="text-lg mt-0.5">🔧</span>
+                    <div>
+                      <div className="text-[10px] font-black text-orange-700 dark:text-orange-400 uppercase">Maintenance Notes</div>
+                      <div className="text-[10px] text-slate-500">Room defects, repairs needed, facility issues. Tagged with [MAINT].</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
           </div>
 
           {/* Footer */}

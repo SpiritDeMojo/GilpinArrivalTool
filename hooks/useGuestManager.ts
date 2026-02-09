@@ -18,7 +18,8 @@ import {
   deleteSessionFromFirebase,
   forceReconnect,
   hardReconnect,
-  nuclearReconnect
+  nuclearReconnect,
+  isReconnecting
 } from '../services/firebaseService';
 import {
   isPMSConfigured,
@@ -121,7 +122,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const remoteUpdateGen = useRef(0);
   const lastPersistedGen = useRef(0);
   // Timestamp of last data received from Firebase — used to detect stale subscriptions
-  const lastRemoteDataTs = useRef(0);
+  const lastRemoteDataTs = useRef(Date.now()); // Init to now to prevent stale watchdog false-positive
   // Track active session ID in a ref so reconnect callbacks always have the latest value
   const activeSessionIdRef = useRef(activeSessionId);
   // Stale subscription watchdog interval ref
@@ -245,6 +246,10 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     // visibilitychange and focus fire on iOS unlock).
     let lastReconnectTs = 0;
     const reconnectAndResubscribe = (bypassDebounce = false) => {
+      if (isReconnecting()) {
+        console.log('🔄 Reconnect skipped — nuclear reconnect in progress');
+        return;
+      }
       const now = Date.now();
       if (!bypassDebounce && now - lastReconnectTs < 5000) {
         console.log('🔄 Reconnect skipped (debounce, last was', now - lastReconnectTs, 'ms ago)');
@@ -956,7 +961,8 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     console.log('🔄 Manual reconnect triggered by user — going nuclear');
     setConnectionStatus('connecting');
 
-    // Tear down all existing subscriptions first
+    // 1. Tear down ALL listeners, intervals, and cleanups BEFORE nuclear
+    //    This prevents them from accessing null db during teardown.
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
@@ -965,21 +971,33 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       connectionCleanupRef.current();
       connectionCleanupRef.current = null;
     }
+    if (keepaliveCleanupRef.current) {
+      keepaliveCleanupRef.current();
+      keepaliveCleanupRef.current = null;
+    }
+    if (presenceCleanupRef.current) {
+      presenceCleanupRef.current();
+      presenceCleanupRef.current = null;
+    }
+    if (staleWatchdogRef.current) {
+      clearInterval(staleWatchdogRef.current);
+      staleWatchdogRef.current = null;
+    }
 
-    // Nuclear: destroy Firebase App and re-create from scratch
+    // 2. Nuclear: destroy Firebase App and re-create from scratch
     const success = await nuclearReconnect();
     if (!success) {
       setConnectionStatus('offline');
-      console.error('❌ Nuclear reconnect failed');
+      console.error('❌ Nuclear reconnect failed — try refreshing the page');
       return;
     }
 
-    // Re-subscribe to connection state with fresh db reference
+    // 3. Re-subscribe to connection state with fresh db reference
     connectionCleanupRef.current = subscribeToConnectionState((connected) => {
       setConnectionStatus(connected ? 'connected' : 'offline');
     });
 
-    // Re-subscribe to session data with fresh db reference
+    // 4. Re-subscribe to session data with fresh db reference
     unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
       lastRemoteDataTs.current = Date.now();
       remoteUpdateGen.current += 1;
@@ -991,10 +1009,28 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       });
     });
 
+    // 5. Re-establish keepAlive and presence
+    const deviceId = localStorage.getItem('gilpin_device_id') || 'unknown';
+    const sid = activeSessionIdRef.current;
+    if (sid) {
+      keepaliveCleanupRef.current = keepAlive(sid, deviceId);
+      presenceCleanupRef.current = trackPresence(sid, deviceId, userName);
+    }
+
+    // 6. Re-establish stale watchdog
+    lastRemoteDataTs.current = Date.now();
+    staleWatchdogRef.current = setInterval(() => {
+      const lastData = lastRemoteDataTs.current;
+      if (lastData > 0 && Date.now() - lastData > 60000) {
+        console.warn('🐕 Stale subscription watchdog: no data for', Math.round((Date.now() - lastData) / 1000), 's — forcing reconnect');
+        forceReconnect();
+      }
+    }, 30000);
+
     // Reset debounce so auto-handlers can fire again
     lastReconnectTsRef.current = Date.now();
     console.log('✅ Nuclear reconnect complete — all subscriptions re-established');
-  }, []);
+  }, [userName]);
 
   return {
     sessions, activeSessionId, switchSession: setActiveSessionId, deleteSession, createNewSession,

@@ -155,6 +155,8 @@ const ResizableTextArea = ({ field, className, value, bold, center, onUpdate }: 
       value={value || ''}
       onChange={(e) => onUpdate({ [field]: e.target.value })}
       rows={1}
+      name={field}
+      aria-label={field}
       spellCheck={false}
       className={`w-full bg-transparent resize-none overflow-hidden outline-none px-2 py-1.5 border border-transparent hover:border-slate-300 dark:hover:border-slate-800 focus:border-[#c5a065] rounded-lg transition-all text-slate-900 dark:text-stone-100 ${center ? 'text-center' : ''} ${bold ? 'font-bold' : 'font-medium'} ${className} block leading-tight text-[11px]`}
     />

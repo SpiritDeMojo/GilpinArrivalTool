@@ -29,6 +29,16 @@ const firebaseConfig = {
 
 let app: FirebaseApp | null = null;
 let db: Database | null = null;
+let _reconnecting = false;
+let _appSeq = 0;
+
+/**
+ * Check if a nuclear reconnect is currently in progress.
+ * Other code should skip Firebase operations when this returns true.
+ */
+export function isReconnecting(): boolean {
+    return _reconnecting;
+}
 
 /**
  * Initialize Firebase app and database
@@ -69,7 +79,7 @@ export function initializeFirebase(): boolean {
  * Check if Firebase is available
  */
 export function isFirebaseEnabled(): boolean {
-    return db !== null;
+    return db !== null && !_reconnecting;
 }
 
 /**
@@ -102,13 +112,14 @@ export function subscribeToConnectionState(
  * may leave the WebSocket dead after suspending it.
  */
 export function forceReconnect(): void {
-    if (!db) return;
+    if (!db || _reconnecting) return;
     console.log('🔄 Forcing Firebase reconnect (offline→online cycle)...');
     // Cycle offline→online to force a FRESH WebSocket.
     // goOnline() alone is a no-op if Firebase thinks it's still connected.
     try { goOffline(db); } catch (e) { /* ignore */ }
     // 500ms delay — mobile carriers need more time to tear down
     setTimeout(() => {
+        if (_reconnecting) return;
         try { goOnline(db); } catch (e) { /* ignore */ }
     }, 500);
 }
@@ -120,10 +131,11 @@ export function forceReconnect(): void {
  * the reconnect button.
  */
 export function hardReconnect(): void {
-    if (!db) return;
+    if (!db || _reconnecting) return;
     console.log('🔄 Hard reconnect (2s cycle) triggered by user...');
     try { goOffline(db); } catch (e) { /* ignore */ }
     setTimeout(() => {
+        if (_reconnecting) return; // Check again in case nuclear reconnect started during delay
         try { goOnline(db); } catch (e) { /* ignore */ }
         console.log('🔄 Hard reconnect: goOnline called');
     }, 2000);
@@ -134,13 +146,17 @@ export function hardReconnect(): void {
  * Use this as a last resort when the SDK's internal WebSocket manager is
  * permanently broken (common on mobile after OS suspends the page).
  *
- * Even goOffline/goOnline can't fix this state because the underlying
- * PersistentConnection object is corrupted. deleteApp() is the only way
- * to force the SDK to create a fresh connection.
+ * IMPORTANT: Callers MUST tear down all listeners, intervals, and cleanups
+ * BEFORE calling this. The guard flag prevents other code from accessing db.
  *
- * @returns Promise that resolves when the new connection is ready
+ * @returns Promise<boolean> — true if reconnect succeeded
  */
 export async function nuclearReconnect(): Promise<boolean> {
+    if (_reconnecting) {
+        console.warn('☢️ Nuclear reconnect already in progress — skipping');
+        return false;
+    }
+    _reconnecting = true;
     console.warn('☢️ NUCLEAR RECONNECT — destroying and re-creating Firebase App...');
 
     // 1. Tear down existing connection
@@ -148,30 +164,34 @@ export async function nuclearReconnect(): Promise<boolean> {
         try { goOffline(db); } catch (e) { /* ignore */ }
     }
 
-    // 2. Destroy the Firebase App entirely
-    if (app) {
+    // 2. Null out immediately so guard checks work
+    const oldApp = app;
+    app = null;
+    db = null;
+
+    // 3. Destroy the Firebase App entirely
+    if (oldApp) {
         try {
-            await deleteApp(app);
+            await deleteApp(oldApp);
             console.log('☢️ Firebase App destroyed');
         } catch (e) {
             console.warn('☢️ deleteApp error (non-fatal):', e);
         }
-        app = null;
-        db = null;
     }
 
-    // 3. Small delay to let the SDK fully clean up
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // 4. Re-initialize from scratch
+    // 4. Re-initialize with unique app name to avoid [DEFAULT] registry conflict
     try {
-        app = initializeApp(firebaseConfig);
+        _appSeq++;
+        const appName = `gilpin-${_appSeq}`;
+        app = initializeApp(firebaseConfig, appName);
         db = getDatabase(app);
         goOnline(db);
-        console.log('☢️ Firebase App re-initialized — fresh WebSocket connection');
+        _reconnecting = false;
+        console.log(`☢️ Firebase App re-initialized as "${appName}" — fresh WebSocket`);
         return true;
     } catch (error) {
         console.error('☢️ Nuclear reconnect FAILED:', error);
+        _reconnecting = false;
         return false;
     }
 }
