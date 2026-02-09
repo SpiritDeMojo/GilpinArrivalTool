@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Guest, FilterType, PropertyFilter } from '../types';
 
 interface DashboardProps {
@@ -8,6 +9,23 @@ interface DashboardProps {
   propertyFilter: PropertyFilter;
   onPropertyChange: (filter: PropertyFilter) => void;
 }
+
+/* ── Stagger variants ── */
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20, scale: 0.95 },
+  show: {
+    opacity: 1, y: 0, scale: 1,
+    transition: { type: 'spring' as const, stiffness: 300, damping: 24 },
+  },
+};
 
 const Dashboard: React.FC<DashboardProps> = ({
   guests,
@@ -46,15 +64,22 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="flex flex-col items-center gap-6 w-full px-2 md:px-0">
-      {/* Stat Cards: Wrapping logic for mobile */}
-      <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
-        {getStats().map((stat, index) => (
-          <div
+      {/* Stat Cards: Staggered entrance */}
+      <motion.div
+        className="flex flex-wrap items-center justify-center gap-2 md:gap-3"
+        variants={container}
+        initial="hidden"
+        animate="show"
+      >
+        {getStats().map((stat) => (
+          <motion.div
             key={stat.id}
+            variants={item}
+            whileHover={{ scale: 1.06, y: -2 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => onFilterChange(stat.id)}
-            style={{ animationDelay: `${index * 0.05}s` }}
-            className={`ripple-container dashboard-stat-card px-3 md:px-6 py-2 md:py-3 cursor-pointer transition-all duration-300 rounded-[1.25rem] md:rounded-full flex flex-col items-center justify-center border min-w-[70px] md:min-w-[110px] ${activeFilter === stat.id
-              ? 'bg-[#c5a065] text-white border-[#c5a065] shadow-lg scale-105 z-10'
+            className={`ripple-container dashboard-stat-card px-3 md:px-6 py-2 md:py-3 cursor-pointer transition-colors duration-200 rounded-[1.25rem] md:rounded-full flex flex-col items-center justify-center border min-w-[70px] md:min-w-[110px] ${activeFilter === stat.id
+              ? 'bg-[#c5a065] text-white border-[#c5a065] shadow-lg z-10'
               : 'bg-white/50 dark:bg-stone-900/50 border-slate-200 dark:border-stone-800 hover:border-[#c5a065]/50'
               }`}
           >
@@ -64,9 +89,9 @@ const Dashboard: React.FC<DashboardProps> = ({
             <span className={`text-base md:text-xl font-black ${activeFilter === stat.id ? 'text-white' : stat.color}`}>
               {stat.val}
             </span>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 };

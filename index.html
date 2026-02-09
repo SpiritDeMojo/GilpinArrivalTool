@@ -7,26 +7,7 @@
     <title>Gilpin Hotel - Intelligence Hub</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="apple-touch-icon" href="/favicon.svg">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: ['selector', '[data-theme="dark"]'],
-            theme: {
-                extend: {
-                    colors: {
-                        gilpin: {
-                            DEFAULT: '#c5a065',
-                            light: '#d4b078',
-                            dark: '#a8864d',
-                        },
-                    },
-                    zIndex: {
-                        sticky: '500',
-                    },
-                },
-            },
-        }
-    </script>
+    <!-- Tailwind CSS is now provided via build pipeline (PostCSS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700&display=swap"
@@ -667,79 +648,135 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 72px;
+            height: 70px;
             background: var(--nav-bg);
-            backdrop-filter: blur(15px);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border-bottom: 1px solid var(--border-ui);
             z-index: 1010;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 48px;
+            padding: 0 32px;
             box-sizing: border-box;
-            box-shadow: var(--shadow-lux);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
             color: var(--nav-text);
             overflow: visible;
         }
 
+        [data-theme="dark"] .navbar {
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+        }
+
         .nav-logo-bubble {
             background: white;
-            width: 80px;
-            height: 80px;
+            width: 76px;
+            height: 76px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12), 0 0 0 2px rgba(197, 160, 101, 0.15);
             border: 3px solid var(--gilpin-gold);
             position: relative;
-            transform: translateY(22px);
             z-index: 1012;
             overflow: hidden;
-            padding: 6px;
+            padding: 0;
             transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            flex-shrink: 0;
+            transform: translateY(12px) perspective(200px) rotateY(-12deg) rotateX(5deg);
+            animation: logoEntrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
+        /* Globe glass overlay */
+        .nav-logo-bubble::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: radial-gradient(ellipse 70% 50% at 40% 28%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 65%);
+            pointer-events: none;
+            z-index: 2;
+            transition: opacity 0.3s ease;
+        }
+
+        /* On hover: pop out! */
         .nav-logo-bubble:hover {
-            transform: translateY(22px) scale(1.1);
-            box-shadow: 0 15px 40px rgba(197, 160, 101, 0.25), 0 0 20px rgba(197, 160, 101, 0.15);
+            overflow: visible;
+            transform: translateY(12px) perspective(200px) rotateY(-4deg) rotateX(2deg) scale(1.05);
+            box-shadow: 0 10px 40px rgba(197, 160, 101, 0.35), 0 0 0 4px rgba(197, 160, 101, 0.18);
+        }
+
+        .nav-logo-bubble:hover::after {
+            opacity: 0;
         }
 
         [data-theme="dark"] .nav-logo-bubble {
             background: #1a1a1a;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4), 0 0 10px rgba(197, 160, 101, 0.1);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(197, 160, 101, 0.2);
         }
 
         [data-theme="dark"] .nav-logo-bubble:hover {
-            box-shadow: 0 15px 40px rgba(197, 160, 101, 0.3), 0 0 25px rgba(197, 160, 101, 0.2);
+            box-shadow: 0 10px 40px rgba(197, 160, 101, 0.4), 0 0 0 4px rgba(197, 160, 101, 0.25);
         }
 
         .nav-logo-img {
-            width: 100%;
-            height: 100%;
+            width: 92%;
+            height: 92%;
             object-fit: contain;
-            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            object-position: center center;
+            border-radius: 50%;
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                box-shadow 0.5s ease;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+            box-shadow: inset 0 -8px 16px rgba(0, 0, 0, 0.12), inset 0 4px 8px rgba(255, 255, 255, 0.3);
         }
 
+        /* Hover: image scales up so letters pop outside the circle */
         .nav-logo-bubble:hover .nav-logo-img {
-            transform: rotate(5deg) scale(1.05);
+            transform: scale(1.6);
+            mix-blend-mode: multiply;
+            box-shadow: inset 0 -12px 24px rgba(0, 0, 0, 0.15), inset 0 6px 12px rgba(255, 255, 255, 0.35), 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        [data-theme="dark"] .nav-logo-img {
+            filter: invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
+        [data-theme="dark"] .nav-logo-bubble:hover .nav-logo-img {
+            mix-blend-mode: screen;
+        }
+
+        @keyframes logoEntrance {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.6) perspective(200px) rotateY(-30deg);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(12px) scale(1) perspective(200px) rotateY(-12deg) rotateX(5deg);
+            }
         }
 
         /* --- PREMIUM DASHBOARD VIEW TABS --- */
         .dashboard-view-tabs {
             z-index: 1005;
             background: var(--nav-bg);
-            backdrop-filter: blur(15px);
-            border-bottom: 1px solid var(--border-ui);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 2px solid var(--gilpin-gold);
             padding: 10px 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
             box-sizing: border-box;
-            transition: box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                border-bottom-color 0.35s ease,
-                backdrop-filter 0.35s ease;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        [data-theme="dark"] .dashboard-view-tabs {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
         .view-tabs-container {
@@ -1044,18 +1081,18 @@
             }
 
             .navbar {
-                padding: 0 24px;
+                padding: 0 20px;
                 height: var(--nav-height);
             }
 
             .nav-logo-bubble {
-                width: 60px;
-                height: 60px;
-                transform: translateY(16px);
+                width: 62px;
+                height: 62px;
+                transform: translateY(10px);
             }
 
             .nav-logo-bubble:hover {
-                transform: translateY(16px) scale(1.05);
+                transform: translateY(10px) scale(1.05);
             }
 
             .dashboard-view-tabs {
@@ -1075,7 +1112,7 @@
             }
 
             .navbar {
-                padding: 0 16px;
+                padding: 0 12px;
                 height: var(--nav-height);
                 justify-content: space-between;
             }
@@ -1090,14 +1127,14 @@
             }
 
             .nav-logo-bubble {
-                width: 50px;
-                height: 50px;
-                transform: translateY(12px);
+                width: 56px;
+                height: 56px;
                 border-width: 2px;
+                transform: translateY(8px);
             }
 
             .nav-logo-bubble:hover {
-                transform: translateY(12px) scale(1.05);
+                transform: translateY(8px) scale(1.05);
             }
 
             /* Make dashboard tabs scrollable on mobile */
@@ -1206,9 +1243,9 @@
             }
 
             .nav-logo-bubble {
-                width: 44px;
-                height: 44px;
-                transform: translateY(10px);
+                width: 50px;
+                height: 50px;
+                transform: translateY(6px);
             }
 
             /* Even larger touch targets (exclude navbar) */
@@ -1244,7 +1281,7 @@
         /* Touch-friendly hover states */
         @media (hover: none) {
             .nav-logo-bubble:hover {
-                transform: translateY(22px);
+                transform: none;
             }
 
             button:hover {
@@ -1260,7 +1297,7 @@
 
             @media (min-width: 769px) {
                 .navbar {
-                    height: calc(72px + env(safe-area-inset-top));
+                    height: calc(70px + env(safe-area-inset-top));
                 }
             }
 

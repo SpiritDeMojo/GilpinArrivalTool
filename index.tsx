@@ -1,3 +1,4 @@
+import './tailwind.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
@@ -5,6 +6,7 @@ import { ThemeProvider } from './contexts/ThemeProvider';
 import { ViewProvider } from './contexts/ViewProvider';
 import { HotkeysProvider } from './contexts/HotkeysProvider';
 import { UserProvider } from './contexts/UserProvider';
+import { GuestProvider } from './contexts/GuestProvider';
 import './styles/design-tokens.css';
 
 const rootElement = document.getElementById('root');
@@ -18,7 +20,9 @@ root.render(
     <ThemeProvider>
       <ViewProvider>
         <HotkeysProvider>
-          <App />
+          <GuestProvider>
+            <App />
+          </GuestProvider>
         </HotkeysProvider>
       </ViewProvider>
     </ThemeProvider>

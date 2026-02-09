@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Guest } from '../types';
 import BookingStream from './BookingStream';
 
@@ -10,6 +11,7 @@ interface GuestRowProps {
   onDuplicate?: () => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  index?: number;
 }
 
 /**
@@ -160,13 +162,18 @@ const ResizableTextArea = ({ field, className, value, bold, center, onUpdate }: 
 };
 
 const GuestRow: React.FC<GuestRowProps> = ({
-  guest, onUpdate, onDelete, onDuplicate, isExpanded, onToggleExpand
+  guest, onUpdate, onDelete, onDuplicate, isExpanded, onToggleExpand, index = 0
 }) => {
   const isReturn = guest.ll.toLowerCase().includes('yes');
 
   return (
     <>
-      <tr className="group guest-row hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-b border-slate-200 dark:border-stone-800/40">
+      <motion.tr
+        className="group guest-row hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-b border-slate-200 dark:border-stone-800/40"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: index * 0.04, ease: [0.25, 0.8, 0.25, 1] as [number, number, number, number] }}
+      >
         <td className="p-1 text-center no-print">
           <div className="flex items-center justify-center gap-1">
             <button onClick={onDelete} className="text-slate-300 hover:text-rose-500 transition-colors font-bold text-xl" title="Delete guest">×</button>
@@ -223,17 +230,33 @@ const GuestRow: React.FC<GuestRowProps> = ({
             </div>
           )}
         </td>
-      </tr>
+      </motion.tr>
       <tr className="no-print">
         <td colSpan={10} className="px-12 py-0">
           <div className="flex items-center gap-2 cursor-pointer py-1.5 text-[9px] font-black uppercase text-[#c5a065] tracking-widest" onClick={onToggleExpand}>
-            <span>{isExpanded ? '▼' : '▶'} Booking Stream</span>
+            <motion.span
+              animate={{ rotate: isExpanded ? 90 : 0 }}
+              transition={{ duration: 0.2 }}
+              style={{ display: 'inline-block' }}
+            >▶</motion.span>
+            <span>Booking Stream</span>
           </div>
-          {isExpanded && (
-            <div className="raw-intel-box p-5 mb-5 rounded-2xl border border-[#c5a065]/20 bg-[#c5a065]/5 animate-in fade-in slide-in-from-top-1">
-              <BookingStream guest={guest} />
-            </div>
-          )}
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div
+                key="booking-stream"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.25, 0.8, 0.25, 1] as [number, number, number, number] }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div className="raw-intel-box p-5 mb-5 rounded-2xl border border-[#c5a065]/20 bg-[#c5a065]/5">
+                  <BookingStream guest={guest} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </td>
       </tr>
     </>

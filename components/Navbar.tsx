@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GILPIN_LOGO_URL } from '../constants';
 import { useUser } from '../contexts/UserProvider';
+import { useWeather } from '../hooks/useWeather';
 import { DEPARTMENT_LABELS } from '../types';
 
 interface NavbarProps {
@@ -29,6 +30,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
   const { userName, department, logout } = useUser();
+  const weather = useWeather();
   const isRec = department === 'REC';
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -57,13 +59,27 @@ const Navbar: React.FC<NavbarProps> = ({
     <nav className="navbar no-print flex justify-between items-center">
       {/* LEFT: Logo + Title */}
       <div className="flex items-center min-w-0">
-        <div role="button" className="nav-logo-bubble scale-75 md:scale-100 flex-shrink-0" style={{ cursor: 'pointer' }} onClick={() => window.location.reload()}>
+        <div role="button" className="nav-logo-bubble flex-shrink-0" style={{ cursor: 'pointer' }} onClick={() => window.location.reload()}>
           <img src={GILPIN_LOGO_URL} alt="Gilpin" className="nav-logo-img" />
         </div>
-        <div className="ml-3 md:ml-12 min-w-0">
-          <h1 className="text-lg md:text-3xl font-black heading-font uppercase tracking-tighter leading-none mb-0.5 truncate">Gilpin Hotel</h1>
-          <div className="font-black text-[#c5a065] text-[8px] md:text-[10px] tracking-[0.15em] md:tracking-[0.4em] uppercase truncate max-w-[110px] md:max-w-none">
-            {arrivalDateStr}
+        <div className="ml-3 md:ml-6 min-w-0">
+          <div className="flex items-center gap-1.5">
+            {weather.loading ? (
+              <div className="flex items-center gap-1.5 animate-pulse">
+                <span className="text-lg md:text-2xl">🌤️</span>
+                <span className="text-base md:text-2xl font-black heading-font tracking-tight text-slate-300 dark:text-slate-600">--°C</span>
+              </div>
+            ) : weather.error ? (
+              <h1 className="text-base md:text-2xl font-black heading-font uppercase tracking-tighter leading-none truncate">Gilpin Hotel</h1>
+            ) : (
+              <div className="flex items-center gap-1" title={`${weather.description} in Windermere`}>
+                <span className="text-lg md:text-2xl leading-none">{weather.icon}</span>
+                <span className="text-base md:text-2xl font-black heading-font tracking-tight leading-none text-[#c5a065]">{weather.temp}°C</span>
+              </div>
+            )}
+          </div>
+          <div className="font-black text-[#c5a065] text-[8px] md:text-[10px] tracking-[0.15em] md:tracking-[0.3em] uppercase truncate max-w-[130px] md:max-w-[200px] whitespace-nowrap overflow-hidden">
+            {arrivalDateStr || 'Intelligence Hub'}
           </div>
         </div>
       </div>

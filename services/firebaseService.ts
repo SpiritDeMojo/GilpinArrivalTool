@@ -55,6 +55,8 @@ export function initializeFirebase(): boolean {
 
         app = initializeApp(firebaseConfig);
         db = getDatabase(app);
+        // Always start with a fresh connection intent
+        goOnline(db);
         console.log('✅ Firebase initialized successfully - Real-time sync ACTIVE');
         return true;
     } catch (error) {
@@ -105,10 +107,10 @@ export function forceReconnect(): void {
     // Cycle offline→online to force a FRESH WebSocket.
     // goOnline() alone is a no-op if Firebase thinks it's still connected.
     try { goOffline(db); } catch (e) { /* ignore */ }
-    // Small delay to ensure the SDK fully tears down the old connection
+    // Generous delay to ensure the SDK fully tears down the old connection
     setTimeout(() => {
         try { goOnline(db); } catch (e) { /* ignore */ }
-    }, 100);
+    }, 250);
 }
 
 /**

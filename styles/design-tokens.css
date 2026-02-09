@@ -101,7 +101,7 @@
   --ease-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   
   /* === Layout === */
-  --nav-height: 72px;
+  --nav-height: 70px;
   --alert-height: 40px;
   --max-content-width: 1800px;
   
@@ -191,3 +191,66 @@
   font-family: monospace;
   border: 1px solid #333;
 }
+
+/* === Premium Entrance Animations === */
+@keyframes entrance {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes viewSwitch {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-entrance {
+  animation: entrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade {
+  animation: fadeIn 0.4s ease both;
+}
+
+.view-switch-animate {
+  animation: viewSwitch 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Tab badge dot animation */
+.tab-badge-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  font-size: 9px;
+  font-weight: 900;
+  color: white;
+  margin-left: 6px;
+  padding: 0 4px;
+  animation: badgePop 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+

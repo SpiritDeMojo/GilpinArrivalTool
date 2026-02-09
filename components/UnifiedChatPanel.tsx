@@ -1,10 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Transcription } from '../hooks/useLiveAssistant';
 import TeamChatTab from './TeamChatTab';
 import AIAssistantTab from './AIAssistantTab';
 
 /* ──────────────────────────────────────────────
    UnifiedChatPanel — Shell with FAB + Tabs
+   Upgraded with interactive floating animation
    ────────────────────────────────────────────── */
 
 interface UnifiedChatPanelProps {
@@ -38,19 +39,42 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>('team');
     const [unread, setUnread] = useState(0);
+    const [isHovered, setIsHovered] = useState(false);
+    const fabRef = useRef<HTMLButtonElement>(null);
 
     const handleUnreadChange = useCallback((count: number) => {
         setUnread(prev => count === 0 ? 0 : prev + count);
     }, []);
 
-    const fabSize = 56;
+    // Interactive mouse-follow subtle tilt on FAB
+    const handleFabMouseMove = useCallback((e: React.MouseEvent) => {
+        if (!fabRef.current) return;
+        const rect = fabRef.current.getBoundingClientRect();
+        const x = (e.clientX - rect.left - rect.width / 2) / rect.width;
+        const y = (e.clientY - rect.top - rect.height / 2) / rect.height;
+        fabRef.current.style.transform = isOpen
+            ? `rotate(45deg) perspective(200px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg)`
+            : `perspective(200px) rotateY(${x * 12}deg) rotateX(${-y * 12}deg) scale(1.08)`;
+    }, [isOpen]);
+
+    const handleFabMouseLeave = useCallback(() => {
+        if (!fabRef.current) return;
+        setIsHovered(false);
+        fabRef.current.style.transform = isOpen ? 'rotate(45deg)' : 'none';
+    }, [isOpen]);
+
+    const fabSize = 58;
 
     return (
         <>
-            {/* ═══ FAB BUTTON ═══ */}
+            {/* ═══ FAB BUTTON — Interactive with 3D tilt + ripple ring ═══ */}
             <button
-                className="no-print"
+                ref={fabRef}
+                className="no-print chat-fab"
                 onClick={() => { setIsOpen(!isOpen); if (!isOpen) setUnread(0); }}
+                onMouseMove={handleFabMouseMove}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={handleFabMouseLeave}
                 style={{
                     position: 'fixed',
                     bottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
@@ -61,16 +85,33 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                         ? 'linear-gradient(135deg, #ef4444, #dc2626)'
                         : isLiveActive
                             ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
-                            : 'linear-gradient(135deg, #c5a065, #b08d54)',
+                            : 'linear-gradient(135deg, #c5a065, #a08050)',
                     border: 'none', cursor: 'pointer', color: 'white',
-                    boxShadow: '0 6px 24px rgba(0,0,0,0.25)', fontSize: '24px',
+                    boxShadow: isHovered
+                        ? '0 8px 32px rgba(197,160,101,0.45), 0 0 0 3px rgba(197,160,101,0.2)'
+                        : '0 6px 24px rgba(0,0,0,0.25)',
+                    fontSize: '24px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.3s ease',
+                    transition: 'box-shadow 0.3s ease, background 0.3s ease',
                     transform: isOpen ? 'rotate(45deg)' : 'none',
+                    willChange: 'transform',
                 }}
             >
                 {isOpen ? '+' : '💬'}
             </button>
+
+            {/* Animated ring pulse behind FAB when not open */}
+            {!isOpen && (
+                <div className="no-print chat-fab-ring" style={{
+                    position: 'fixed',
+                    bottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
+                    right: '20px',
+                    zIndex: 10000,
+                    width: `${fabSize}px`, height: `${fabSize}px`, borderRadius: '50%',
+                    border: `2px solid ${isLiveActive ? 'rgba(99,102,241,0.4)' : 'rgba(197,160,101,0.35)'}`,
+                    pointerEvents: 'none',
+                }} />
+            )}
 
             {/* Unread badge */}
             {unread > 0 && !isOpen && (
@@ -83,6 +124,7 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                     background: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 900,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     padding: '0 5px', boxShadow: '0 2px 8px rgba(239,68,68,0.4)',
+                    animation: 'badgeBounce 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55)',
                 }}>{unread}</div>
             )}
 
@@ -101,21 +143,21 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                 }} />
             )}
 
-            {/* ═══ CHAT PANEL ═══ */}
+            {/* ═══ CHAT PANEL — with entrance animation ═══ */}
             {isOpen && (
-                <div className="no-print" style={{
+                <div className="no-print chat-panel-enter" style={{
                     position: 'fixed',
                     bottom: `max(90px, calc(env(safe-area-inset-bottom, 0px) + 82px))`,
                     right: '20px', zIndex: 10000,
                     width: 'min(380px, calc(100vw - 40px))',
                     height: 'min(520px, calc(100vh - 140px))',
-                    background: 'var(--bg-main, rgba(255,255,255,0.95))',
-                    backdropFilter: 'blur(20px)',
+                    background: 'var(--surface, rgba(255,255,255,0.95))',
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
                     borderRadius: '24px',
-                    boxShadow: '0 12px 48px rgba(0,0,0,0.15), 0 0 0 1px var(--border-ui, rgba(197,160,101,0.15))',
+                    boxShadow: '0 16px 64px rgba(0,0,0,0.18), 0 0 0 1px var(--border-ui, rgba(197,160,101,0.15))',
                     display: 'flex', flexDirection: 'column',
                     overflow: 'hidden',
-                    animation: 'slideUp 0.3s ease',
                 }}>
                     {/* ─── Tab bar ─── */}
                     <div style={{
@@ -134,7 +176,7 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                                     background: 'transparent', border: 'none', cursor: 'pointer',
                                     color: activeTab === tab ? (tab === 'assistant' ? '#6366f1' : '#c5a065') : 'var(--text-muted, #94a3b8)',
                                     borderBottom: activeTab === tab ? `2px solid ${tab === 'assistant' ? '#6366f1' : '#c5a065'}` : '2px solid transparent',
-                                    transition: 'all 0.2s',
+                                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                                 }}
                             >
@@ -187,12 +229,53 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                 </div>
             )}
 
-            {/* ─── Slide-up animation ─── */}
+            {/* ─── Premium Chat Animations ─── */}
             <style>{`
-                @keyframes slideUp {
-                    from { opacity: 0; transform: translateY(20px) scale(0.95); }
-                    to { opacity: 1; transform: translateY(0) scale(1); }
+                /* FAB floating animation */
+                .chat-fab {
+                    animation: fabFloat 3s ease-in-out infinite;
                 }
+                .chat-fab:hover {
+                    animation: none;
+                }
+                @keyframes fabFloat {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-4px); }
+                }
+
+                /* Ring pulse */
+                .chat-fab-ring {
+                    animation: ringPulse 2.5s ease-in-out infinite;
+                }
+                @keyframes ringPulse {
+                    0%, 100% { transform: scale(1); opacity: 0.6; }
+                    50% { transform: scale(1.35); opacity: 0; }
+                }
+
+                /* Panel entrance */
+                .chat-panel-enter {
+                    animation: chatPanelIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+                }
+                @keyframes chatPanelIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(24px) scale(0.92);
+                        filter: blur(4px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                        filter: blur(0);
+                    }
+                }
+
+                /* Badge bounce entrance */
+                @keyframes badgeBounce {
+                    0% { transform: scale(0); }
+                    50% { transform: scale(1.3); }
+                    100% { transform: scale(1); }
+                }
+
                 @keyframes pulse {
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0.5; }

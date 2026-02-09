@@ -22,7 +22,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               </h2>
             </div>
             <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-              Standard Operating Procedures • <span className="text-[#c5a065]">v16.1</span>
+              Standard Operating Procedures • <span className="text-[#c5a065]">v17.0</span>
             </p>
           </div>
           <button
@@ -830,7 +830,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Entrance Animations</div>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Content sections fade in with a subtle upward slide on page load. Dashboard filter pills cascade in with staggered timing (50ms apart). Session tabs slide in from the left (60ms stagger). Table rows enter with a 20ms staggered cascade.
+                    Content sections fade in with a subtle upward slide on page load. Dashboard filter pills cascade in with staggered timing (50ms apart). Session tabs slide in from the left (60ms stagger). Table rows enter with a 20ms staggered cascade. Guest cards and rows use <strong>Framer Motion</strong> AnimatePresence for smooth expand/collapse transitions.
                   </p>
                 </div>
                 <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
@@ -839,7 +839,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Micro-Interactions</div>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Buttons scale down on press (0.96x). Table rows lift with a shadow on hover. Dashboard pills hover-lift with enhanced shadow. Status badges scale up (1.05x) on hover. Input fields gain a golden glow ring on focus. Mobile cards respond to touch with a subtle press-down.
+                    Buttons scale down on press (0.96x). Table rows lift with a shadow on hover. Dashboard pills hover-lift with enhanced shadow. Status badges scale up (1.05x) on hover. Input fields gain a golden glow ring on focus. Mobile cards respond to touch with a subtle press-down. Chat messages enter with a ripple animation (slide-up + scale spring).
                   </p>
                 </div>
                 <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
@@ -848,7 +848,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     <div className="font-black text-sm text-slate-900 dark:text-white uppercase">View Transitions</div>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Switching between dashboard tabs (Arrivals, HK, Maintenance, Reception) triggers a smooth scale-up with fade-in and de-blur transition. The active tab displays a continuous golden shimmer sweep. Non-active tabs show an ambient golden glow on hover.
+                    Switching between dashboard tabs triggers a Framer Motion scale-up with fade-in and de-blur transition (AnimatePresence mode="wait"). The active tab displays a continuous golden shimmer sweep. Non-active tabs show an ambient golden glow on hover. Tab buttons feature whileHover and whileTap spring feedback.
                   </p>
                 </div>
                 <div className="p-6 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] md:rounded-[2rem]">
@@ -857,7 +857,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     <div className="font-black text-sm text-slate-900 dark:text-white uppercase">Theme Transitions</div>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Toggling between light and dark mode smoothly transitions all colours over 0.3 seconds. The navbar logo adapts with a dark background and golden glow shadow in dark mode. The logo image subtly rotates and scales on hover.
+                    Toggling between light and dark mode smoothly transitions all colours over 0.3 seconds. The navbar logo adapts with a dark background and golden glow shadow in dark mode. The logo features a 3D spherical tilt with perspective and an interactive hover pop-out effect.
                   </p>
                 </div>
               </div>
@@ -867,6 +867,70 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                   All animations, transitions, and visual effects are automatically disabled in print mode via <strong>@media print</strong>. Printed documents display static, clean layouts with no motion artifacts.
                 </p>
+              </div>
+            </section>
+
+            {/* 17. WEATHER WIDGET & LOGO GLOBE */}
+            <section>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c5a065] mb-6 md:mb-8 flex items-center gap-4">
+                <span className="w-10 h-[1px] bg-[#c5a065]/30"></span>
+                17. Weather Widget & Logo Globe
+                <span className="flex-1 h-[1px] bg-[#c5a065]/30"></span>
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222]">
+                  <div className="text-3xl mb-4">🌦️</div>
+                  <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">Live Weather Display</h4>
+                  <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                    The navbar shows <strong>live Windermere weather</strong> (temperature + icon) instead of the static &quot;Gilpin Hotel&quot; title. Data is fetched from the Open-Meteo API every 15 minutes with zero API key required.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                      <span className="text-sm">☀️</span>
+                      <span className="text-[10px] text-slate-500">Clear / Sunny</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                      <span className="text-sm">🌧️</span>
+                      <span className="text-[10px] text-slate-500">Rain / Drizzle</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                      <span className="text-sm">🌨️</span>
+                      <span className="text-[10px] text-slate-500">Snow</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-[#0a0a0a] border border-slate-100 dark:border-[#1a1a1a]">
+                      <span className="text-sm">⛈️</span>
+                      <span className="text-[10px] text-slate-500">Thunderstorm</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-3">Falls back to &quot;Gilpin Hotel&quot; if offline or API unavailable.</p>
+                </div>
+
+                <div className="p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222]">
+                  <div className="text-3xl mb-4">🌐</div>
+                  <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white mb-2">3D Logo Globe</h4>
+                  <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                    The Gilpin logo sits inside a <strong>76px gold-bordered sphere</strong> with a 3D perspective tilt. A glass-like radial gradient overlay creates a convex globe illusion.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2 text-[10px] text-slate-500">
+                      <span className="text-[#c5a065] mt-0.5">▸</span>
+                      <span><strong>Hover pop-out:</strong> Logo scales to 1.6× and extends beyond the circle with transparent background</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-[10px] text-slate-500">
+                      <span className="text-[#c5a065] mt-0.5">▸</span>
+                      <span><strong>3D tilt:</strong> perspective(200px) rotateY/X for a side-angled sphere look</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-[10px] text-slate-500">
+                      <span className="text-[#c5a065] mt-0.5">▸</span>
+                      <span><strong>Entrance:</strong> Spins in from -30° rotation with drop + scale bounce</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-[10px] text-slate-500">
+                      <span className="text-[#c5a065] mt-0.5">▸</span>
+                      <span><strong>Responsive:</strong> 76px → 62px → 56px → 50px across breakpoints</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
 

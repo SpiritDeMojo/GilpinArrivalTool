@@ -26,9 +26,11 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 - 📡 **Fleet Sync (Firebase)** — Real-time multi-device synchronisation via Firebase Realtime Database. Upload multiple arrival PDFs on one device, all connected devices update instantly with every day visible as tabs
 - 📅 **Multi-Day Sessions** — Upload Monday, Tuesday, Wednesday PDFs and all appear as tabs in the Session Bar. All connected devices see every day. Deletions propagate across all devices instantly
 - 🖨️ **Smart Print Layouts** — Three print modes (Master, Greeter, Delivery) with auto-sizing columns and dense formatting that maximises paper utilisation in landscape
-- 💬 **Unified Chat Panel** — Tabbed interface with cross-department Team Chat and AI Live Assistant (voice & text). Delete chat, auto-connect, HTTPS voice/HTTP text-only modes
+- 💬 **Unified Chat Panel** — Tabbed interface with cross-department Team Chat and AI Live Assistant (voice & text). Messages enter with ripple animation (slide-up + scale spring). Delete chat, auto-connect, HTTPS voice/HTTP text-only modes
 - 🤖 **AI Live Assistant** — Conversational AI colleague powered by Gemini 2.5 Flash native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands
 - 📊 **Department Dashboards** — Purpose-built views for Reception, Housekeeping, and Maintenance with independent status tracking
+- 🌦️ **Live Weather Widget** — Real-time Windermere weather (temperature + emoji icon) in the navbar via Open-Meteo API. Auto-refreshes every 15 minutes. Falls back to static title if offline
+- 🌐 **3D Logo Globe** — 76px spherical logo with perspective tilt, glass overlay, hover pop-out effect (1.6× scale with transparent background), and spin-in entrance animation
 
 ---
 
@@ -72,11 +74,13 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 
 - **Frontend:** React 19 + TypeScript 5.6 + Tailwind CSS
 - **Build:** Vite 6
+- **Animations:** Framer Motion (AnimatePresence, staggered entrances, view transitions)
 - **Backend:** Vercel Serverless Functions (API routes for AI calls)
 - **PDF Parsing:** pdfjs-dist (Mozilla PDF.js)
 - **AI:** Google Gemini 2.5 Flash (via @google/genai) + Gemini Live API for native audio
 - **Audio Capture:** AudioWorklet API (with ScriptProcessorNode fallback)
 - **Real-time Sync:** Firebase Realtime Database
+- **Weather:** Open-Meteo API (Windermere, no API key required)
 - **Testing:** Vitest
 - **Export:** XLSX (SheetJS)
 
@@ -88,11 +92,11 @@ The interface features a handcrafted animation engine designed for a premium, re
 
 | Category | Effects |
 |----------|---------|
-| **Entrance Animations** | Content fade-slide-up on load, staggered dashboard pill cascade (50ms), session tab slide-in (60ms), table row stagger (20ms) |
-| **Micro-Interactions** | Button press scale (0.96x), table row hover-lift with shadow, dashboard pill hover-lift, status badge scale (1.05x), input focus golden glow, mobile card touch press-down |
-| **View Transitions** | Tab switch scale-up + fade-in + de-blur, active tab golden shimmer sweep, non-active tab ambient golden glow on hover |
-| **Theme Transitions** | All colours transition smoothly (0.3s) on light/dark toggle, logo adapts with dark background + golden shadow |
-| **Navbar** | Logo golden glow halo on hover, image rotation (5°) + scale (1.05x), dark mode adaptive background |
+| **Entrance Animations** | Content fade-slide-up on load, staggered dashboard pill cascade (50ms), session tab slide-in (60ms), table row stagger (20ms), Framer Motion AnimatePresence collapse/expand on guest cards |
+| **Micro-Interactions** | Button press scale (0.96x), table row hover-lift with shadow, dashboard pill hover-lift, status badge scale (1.05x), input focus golden glow, mobile card touch press-down, chat message ripple entrance (slide-up + spring scale) |
+| **View Transitions** | Framer Motion AnimatePresence mode="wait" — tab switch scale-up + fade-in + de-blur, whileHover/whileTap spring feedback, active tab golden shimmer sweep, non-active tab ambient golden glow |
+| **Theme Transitions** | All colours transition smoothly (0.3s) on light/dark toggle, logo adapts with dark background + golden shadow, weather widget inherits theme colours |
+| **Navbar** | 3D logo globe with perspective tilt (rotateY -12°, rotateX 5°), glass radial gradient overlay, hover pop-out (1.6× scale, mix-blend-mode: multiply for transparent background), spin-in entrance animation, live weather display |
 | **Premium Scrollbar** | Custom golden-tinted scrollbar thumb with rounded corners |
 | **Print Safety** | All animations disabled via `@media print` — clean, static print layouts |
 

@@ -35,7 +35,7 @@ export const TABS_HEIGHT = 50;
 export const BATCH_SIZE = 5;
 
 // Brand Assets - Updated to the user-provided direct image link
-export const GILPIN_LOGO_URL = '/gilpin-logo.jpg';
+export const GILPIN_LOGO_URL = '/gilpin-logo-hq.png';
 
 /**
  * Extract room number from a room string

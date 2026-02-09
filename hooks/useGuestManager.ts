@@ -238,7 +238,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     let lastReconnectTs = 0;
     const reconnectAndResubscribe = () => {
       const now = Date.now();
-      if (now - lastReconnectTs < 2000) {
+      if (now - lastReconnectTs < 5000) {
         console.log('🔄 Reconnect skipped (debounce, last was', now - lastReconnectTs, 'ms ago)');
         return; // Already reconnected recently
       }

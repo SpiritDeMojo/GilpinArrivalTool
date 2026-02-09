@@ -170,7 +170,7 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                     const isMe = msg.author === userName;
                     const deptColor = DEPT_COLORS[msg.department] || '#94a3b8';
                     return (
-                        <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '82%', alignSelf: isMe ? 'flex-end' : 'flex-start' }}>
+                        <div key={msg.id} className="chat-msg-ripple" style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '82%', alignSelf: isMe ? 'flex-end' : 'flex-start' }}>
                             {!isMe && (
                                 <div style={{ fontSize: '10px', fontWeight: 800, color: deptColor, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                     <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: deptColor, display: 'inline-block' }} />
@@ -248,5 +248,43 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
         </div>
     );
 };
+
+/* Injected styles for chat message ripple */
+const ChatRippleStyles = () => (
+    <style>{`
+        .chat-msg-ripple {
+            animation: chatMsgIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes chatMsgIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    `}</style>
+);
+
+// Re-export for use as a side-effect
+if (typeof document !== 'undefined') {
+    const styleId = 'chat-ripple-styles';
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+            .chat-msg-ripple {
+                animation: chatMsgIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+            }
+            @keyframes chatMsgIn {
+                from { opacity: 0; transform: translateY(12px) scale(0.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
 
 export default TeamChatTab;
