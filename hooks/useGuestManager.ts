@@ -155,6 +155,8 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const [progressMsg, setProgressMsg] = useState("");
   const [currentBatch, setCurrentBatch] = useState(0);
   const [totalBatches, setTotalBatches] = useState(0);
+  const [auditPhase, setAuditPhase] = useState<'parsing' | 'auditing' | 'applying' | 'complete' | undefined>(undefined);
+  const [auditGuestNames, setAuditGuestNames] = useState<string[]>([]);
 
   // ETA Validation helper
   const validateETA = (eta: string): { valid: boolean; formatted: string } => {
@@ -704,7 +706,9 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const handleAIRefine = async () => {
     if (guests.length === 0) return;
     setIsProcessing(true);
-    setProgressMsg("REFINING DATA...");
+    setAuditPhase('parsing');
+    setProgressMsg("PREPARING DATA...");
+    setAuditGuestNames(guests.map(g => g.name));
     setCurrentBatch(0);
     const batch = guests;
     const chunks = [];
@@ -715,16 +719,25 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       for (let i = 0; i < chunks.length; i++) {
         const currentBatchGuests = chunks[i];
         setCurrentBatch(i + 1);
+        setAuditPhase('auditing');
         setProgressMsg(`AUDITING: ${i + 1}/${chunks.length}...`);
+        setAuditGuestNames(currentBatchGuests.map(g => g.name));
 
         let refinements = await GeminiService.refineGuestBatch(currentBatchGuests, ['notes', 'facilities', 'car']);
-        if (!refinements) {
-          console.warn("Batch failed, retrying...");
-          await new Promise(r => setTimeout(r, 3000));
+        // Enhanced retry: 3 attempts with exponential backoff
+        let retries = 0;
+        while (!refinements && retries < 3) {
+          retries++;
+          const delay = 2000 * Math.pow(2, retries - 1); // 2s, 4s, 8s
+          console.warn(`[AI Audit] Retry ${retries}/3 in ${delay / 1000}s...`);
+          setProgressMsg(`RETRY ${retries}/3...`);
+          await new Promise(r => setTimeout(r, delay));
           refinements = await GeminiService.refineGuestBatch(currentBatchGuests, ['notes', 'facilities', 'car']);
         }
 
         if (refinements) {
+          setAuditPhase('applying');
+          setProgressMsg('APPLYING RESULTS...');
           console.log('[AI Audit] Got refinements:', refinements.length, 'results');
           console.log('[AI Audit] Sample refinement:', JSON.stringify(refinements[0], null, 2));
 
@@ -809,9 +822,15 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         await new Promise(r => setTimeout(r, 2000));
       }
     } finally {
+      setAuditPhase('complete');
+      setProgressMsg('COMPLETE');
+      // Brief flash of complete phase before hiding
+      await new Promise(r => setTimeout(r, 600));
       setIsProcessing(false);
       setCurrentBatch(0);
       setTotalBatches(0);
+      setAuditPhase(undefined);
+      setAuditGuestNames([]);
     }
   };
 
@@ -873,7 +892,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     sessions, activeSessionId, switchSession: setActiveSessionId, deleteSession, createNewSession,
     joinSession,
     guests, filteredGuests, arrivalDateStr, isOldFile, activeFilter, setActiveFilter,
-    isProcessing, progressMsg, currentBatch, totalBatches,
+    isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
     handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest,
     validateETA,
     onExcelExport: () => ExcelService.export(guests),

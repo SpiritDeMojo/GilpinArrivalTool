@@ -37,6 +37,7 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
   const [aiPriorityRooms, setAiPriorityRooms] = useState<string[]>([]);
   const [aiReasoning, setAiReasoning] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [sortMode, setSortMode] = useState<'eta' | 'room'>('eta');
 
   // Filter and sort guests
   const filteredGuests = useMemo(() => {
@@ -53,8 +54,15 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
       result = result.filter(g => (g.hkStatus || 'pending') === statusFilter);
     }
 
-    return result.sort((a, b) => getRoomNumber(a.room) - getRoomNumber(b.room));
-  }, [guests, statusFilter, showMainHotel, showLakeHouse]);
+    return result.sort((a, b) => {
+      if (sortMode === 'eta') {
+        const etaA = a.eta || '23:59';
+        const etaB = b.eta || '23:59';
+        return etaA.localeCompare(etaB);
+      }
+      return getRoomNumber(a.room) - getRoomNumber(b.room);
+    });
+  }, [guests, statusFilter, showMainHotel, showLakeHouse, sortMode]);
 
   // Count by status
   const statusCounts = useMemo(() => {
@@ -150,6 +158,13 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           ))}
         </div>
         <div className="property-toggles">
+          <button
+            className={`sort-toggle-btn`}
+            onClick={() => setSortMode(sortMode === 'eta' ? 'room' : 'eta')}
+            title={`Currently sorted by ${sortMode === 'eta' ? 'ETA' : 'Room Number'}`}
+          >
+            {sortMode === 'eta' ? '🕐 ETA Order' : '🚪 Room Order'}
+          </button>
           <button
             className={`ai-priority-btn ${isLoadingAI ? 'loading' : ''} ${aiPriorityRooms.length > 0 ? 'active' : ''}`}
             disabled={isLoadingAI}
@@ -1023,6 +1038,22 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           opacity: 0.5;
           cursor: not-allowed;
         }
+
+        .sort-toggle-btn {
+          padding: 8px 16px;
+          border-radius: 20px;
+          border: 2px solid var(--gilpin-gold, #c5a065);
+          background: rgba(197, 160, 101, 0.08);
+          color: var(--gilpin-gold, #c5a065);
+          font-weight: 700;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          white-space: nowrap;
+        }
+        .sort-toggle-btn:hover { background: rgba(197, 160, 101, 0.18); }
 
         .ai-priority-btn {
           padding: 8px 16px;

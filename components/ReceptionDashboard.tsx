@@ -34,6 +34,7 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
   const [courtesyNote, setCourtesyNote] = useState('');
   const [courtesyType, setCourtesyType] = useState<'happy' | 'issue' | 'neutral'>('happy');
   const [authorName, setAuthorName] = useState('');
+  const [sortMode, setSortMode] = useState<'eta' | 'room'>('eta');
 
   // Filter guests
   const filteredGuests = useMemo(() => {
@@ -66,11 +67,14 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
     }
 
     return result.sort((a, b) => {
-      const etaA = a.eta || '23:59';
-      const etaB = b.eta || '23:59';
-      return etaA.localeCompare(etaB);
+      if (sortMode === 'eta') {
+        const etaA = a.eta || '23:59';
+        const etaB = b.eta || '23:59';
+        return etaA.localeCompare(etaB);
+      }
+      return getRoomNumber(a.room) - getRoomNumber(b.room);
     });
-  }, [guests, viewFilter, showMainHotel, showLakeHouse]);
+  }, [guests, viewFilter, showMainHotel, showLakeHouse, sortMode]);
 
   // Counts
   const counts = useMemo(() => ({
@@ -181,6 +185,13 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
           📞 Courtesy Due ({counts.courtesyDue})
         </button>
         <div className="property-toggles">
+          <button
+            className={`sort-toggle-btn`}
+            onClick={() => setSortMode(sortMode === 'eta' ? 'room' : 'eta')}
+            title={`Currently sorted by ${sortMode === 'eta' ? 'ETA' : 'Room Number'}`}
+          >
+            {sortMode === 'eta' ? '🕐 ETA Order' : '🚪 Room Order'}
+          </button>
           <label className="toggle-label">
             <input type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
             <span>🏨 Main (1-31)</span>
@@ -916,6 +927,22 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
         }
 
         .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .sort-toggle-btn {
+          padding: 8px 16px;
+          border-radius: 20px;
+          border: 2px solid var(--gilpin-gold, #c5a065);
+          background: rgba(197, 160, 101, 0.08);
+          color: var(--gilpin-gold, #c5a065);
+          font-weight: 700;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          white-space: nowrap;
+        }
+        .sort-toggle-btn:hover { background: rgba(197, 160, 101, 0.18); }
 
         @media (max-width: 768px) {
           .rx-header { flex-direction: column; gap: 16px; text-align: center; }

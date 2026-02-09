@@ -9,6 +9,7 @@ import {
   getRoomReadinessInfo
 } from '../types';
 import { getRoomNumber } from '../constants';
+import { GeminiService } from '../services/geminiService';
 
 interface MaintenanceDashboardProps {
   guests: Guest[];
@@ -34,6 +35,10 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
   const [notePriority, setNotePriority] = useState<RoomNote['priority']>('medium');
   const [noteCategory, setNoteCategory] = useState<RoomNote['category']>('info');
   const [authorName, setAuthorName] = useState('');
+  const [sortMode, setSortMode] = useState<'eta' | 'room'>('eta');
+  const [aiPriorityRooms, setAiPriorityRooms] = useState<string[]>([]);
+  const [aiReasoning, setAiReasoning] = useState('');
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
 
   // Filter guests
   const filteredGuests = useMemo(() => {
@@ -61,9 +66,14 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
       const bUrgent = (b.roomNotes || []).some(n => !n.resolved && n.priority === 'urgent');
       if (aUrgent && !bUrgent) return -1;
       if (!aUrgent && bUrgent) return 1;
+      if (sortMode === 'eta') {
+        const etaA = a.eta || '23:59';
+        const etaB = b.eta || '23:59';
+        return etaA.localeCompare(etaB);
+      }
       return getRoomNumber(a.room) - getRoomNumber(b.room);
     });
-  }, [guests, statusFilter, showOnlyWithNotes, showMainHotel, showLakeHouse]);
+  }, [guests, statusFilter, showOnlyWithNotes, showMainHotel, showLakeHouse, sortMode]);
 
   // Counts
   const pendingCount = guests.filter(g => (g.maintenanceStatus || 'pending') === 'pending').length;
@@ -151,6 +161,33 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
           <span>🚨 Show only rooms with issues</span>
         </label>
         <div className="property-toggles">
+          <button
+            className={`sort-toggle-btn`}
+            onClick={() => setSortMode(sortMode === 'eta' ? 'room' : 'eta')}
+            title={`Currently sorted by ${sortMode === 'eta' ? 'ETA' : 'Room Number'}`}
+          >
+            {sortMode === 'eta' ? '🕐 ETA Order' : '🚪 Room Order'}
+          </button>
+          <button
+            className={`ai-priority-btn ${isLoadingAI ? 'loading' : ''} ${aiPriorityRooms.length > 0 ? 'active' : ''}`}
+            disabled={isLoadingAI}
+            onClick={async () => {
+              if (aiPriorityRooms.length > 0) {
+                setAiPriorityRooms([]);
+                setAiReasoning('');
+                return;
+              }
+              setIsLoadingAI(true);
+              const result = await GeminiService.suggestCleaningOrder(guests);
+              setIsLoadingAI(false);
+              if (result) {
+                setAiPriorityRooms(result.roomOrder);
+                setAiReasoning(result.reasoning);
+              }
+            }}
+          >
+            {isLoadingAI ? '⏳' : '🤖'} {isLoadingAI ? 'Thinking...' : aiPriorityRooms.length > 0 ? 'Clear AI' : 'AI Priority'}
+          </button>
           <label className="toggle-label">
             <input type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
             <span>🏨 Main (1-31)</span>
@@ -161,6 +198,17 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
           </label>
         </div>
       </div>
+
+      {/* AI Reasoning Banner */}
+      {aiPriorityRooms.length > 0 && aiReasoning && (
+        <div className="ai-reasoning-banner">
+          <span className="ai-icon">🤖</span>
+          <div>
+            <div className="ai-reasoning-title">AI Maintenance Priority</div>
+            <p className="ai-reasoning-text">{aiReasoning}</p>
+          </div>
+        </div>
+      )}
 
       {/* Room List */}
       <div className="room-list">
@@ -177,12 +225,19 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
             const readiness = getRoomReadinessInfo(guest);
             const roomNotes = (guest.roomNotes || []).filter(n => !n.resolved);
             const hasUrgentNote = roomNotes.some(n => n.priority === 'urgent' || n.priority === 'high');
+            const aiPriorityIndex = aiPriorityRooms.findIndex(r => r.toLowerCase() === guest.room.toLowerCase());
 
             return (
               <div
                 key={guest.id}
-                className={`room-row ${hasUrgentNote ? 'urgent' : ''}`}
+                className={`room-row ${hasUrgentNote ? 'urgent' : ''} ${aiPriorityIndex >= 0 ? 'ai-highlighted' : ''}`}
               >
+                {/* AI Priority Badge */}
+                {aiPriorityIndex >= 0 && (
+                  <div className="ai-priority-badge">
+                    #{aiPriorityIndex + 1}
+                  </div>
+                )}
                 {/* Room Info */}
                 <div className="row-main">
                   <div className="room-header">
@@ -1009,6 +1064,88 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
         }
 
         .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .sort-toggle-btn {
+          padding: 8px 16px;
+          border-radius: 20px;
+          border: 2px solid var(--gilpin-gold, #c5a065);
+          background: rgba(197, 160, 101, 0.08);
+          color: var(--gilpin-gold, #c5a065);
+          font-weight: 700;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          white-space: nowrap;
+        }
+        .sort-toggle-btn:hover { background: rgba(197, 160, 101, 0.18); }
+
+        .ai-priority-btn {
+          padding: 8px 16px;
+          border-radius: 20px;
+          border: 2px solid #8b5cf6;
+          background: rgba(139, 92, 246, 0.08);
+          color: #8b5cf6;
+          font-weight: 700;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .ai-priority-btn:hover { background: rgba(139, 92, 246, 0.15); }
+        .ai-priority-btn.loading { opacity: 0.6; cursor: wait; }
+        .ai-priority-btn.active {
+          background: #8b5cf6;
+          color: white;
+        }
+
+        .ai-reasoning-banner {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 14px 20px;
+          margin-bottom: 16px;
+          background: rgba(139, 92, 246, 0.06);
+          border: 1px solid rgba(139, 92, 246, 0.2);
+          border-radius: 16px;
+        }
+        .ai-icon { font-size: 20px; margin-top: 2px; }
+        .ai-reasoning-title {
+          font-size: 10px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.15em;
+          color: #8b5cf6;
+          margin-bottom: 4px;
+        }
+        .ai-reasoning-text {
+          font-size: 12px;
+          color: var(--text-main);
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .room-row.ai-highlighted {
+          border: 2px solid #8b5cf6 !important;
+          box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+          position: relative;
+        }
+
+        .ai-priority-badge {
+          position: absolute;
+          top: -10px;
+          right: -6px;
+          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+          color: white;
+          font-weight: 900;
+          font-size: 11px;
+          padding: 3px 10px;
+          border-radius: 20px;
+          z-index: 1;
+          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+        }
 
         @media (max-width: 768px) {
           .mt-header {

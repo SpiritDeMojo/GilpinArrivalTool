@@ -43,6 +43,8 @@ export interface GuestContextValue {
     progressMsg: string;
     currentBatch: number;
     totalBatches: number;
+    auditPhase?: 'parsing' | 'auditing' | 'applying' | 'complete';
+    auditGuestNames: string[];
 
     // Guest actions
     handleFileUpload: (file: File) => void;
@@ -133,7 +135,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // ── Core data hook ──────────────────────────────────────────────────────
     const {
         guests, filteredGuests, arrivalDateStr, isOldFile, activeFilter, setActiveFilter,
-        isProcessing, progressMsg, currentBatch, totalBatches,
+        isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
         handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest, onExcelExport,
         sessions, activeSessionId, switchSession, deleteSession, createNewSession,
         joinSession,
@@ -315,7 +317,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const value = useMemo<GuestContextValue>(() => ({
         guests, filteredGuests, propertyFilteredGuests, arrivalDateStr, isOldFile,
         activeFilter, setActiveFilter, propertyFilter, setPropertyFilter,
-        isProcessing, progressMsg, currentBatch, totalBatches,
+        isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
         handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest, onExcelExport,
         sessions, activeSessionId, switchSession, deleteSession, createNewSession, joinSession,
         firebaseEnabled, connectionStatus, shareSession, getShareUrl,
@@ -329,7 +331,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }), [
         guests, filteredGuests, propertyFilteredGuests, arrivalDateStr, isOldFile,
         activeFilter, setActiveFilter, propertyFilter, setPropertyFilter,
-        isProcessing, progressMsg, currentBatch, totalBatches,
+        isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
         handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest, onExcelExport,
         sessions, activeSessionId, switchSession, deleteSession, createNewSession, joinSession,
         firebaseEnabled, connectionStatus, shareSession, getShareUrl,

@@ -26,7 +26,7 @@ const App: React.FC = () => {
 
   const {
     guests, arrivalDateStr, isOldFile, propertyFilteredGuests,
-    isProcessing, progressMsg, currentBatch, totalBatches,
+    isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
     handleFileUpload, handleAIRefine, addManual, onExcelExport,
     activeSessionId, joinSession, createNewSession,
     connectionStatus,
@@ -92,7 +92,7 @@ const App: React.FC = () => {
       />
 
       {isOldFile && guests.length > 0 && (
-        <div className="no-print pulsate-alert text-white text-center font-black tracking-widest text-[8px] md:text-[10px] fixed w-full z-[1009] flex items-center justify-center" style={{ top: 'var(--nav-height)', height: 'var(--alert-height)' }}>
+        <div className="no-print pulsate-alert text-white text-center font-black tracking-widest text-[8px] md:text-[10px] sticky w-full z-[1009] flex items-center justify-center" style={{ top: 'var(--nav-height)', height: 'var(--alert-height)', marginTop: 0, borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
           ⚠️ HISTORICAL FILE DETECTED • {arrivalDateStr}
         </div>
       )}
@@ -107,6 +107,8 @@ const App: React.FC = () => {
         message={progressMsg}
         currentBatch={currentBatch}
         totalBatches={totalBatches}
+        phase={auditPhase}
+        guestNames={auditGuestNames}
       />
 
       <SOPModal isOpen={isSopOpen} onClose={() => setIsSopOpen(false)} />

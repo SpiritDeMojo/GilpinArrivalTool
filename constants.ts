@@ -32,7 +32,7 @@ export const ALERT_HEIGHT = 28;
 export const TABS_HEIGHT = 50;
 
 // AI Processing Batch Size
-export const BATCH_SIZE = 5;
+export const BATCH_SIZE = 50;
 
 // Brand Assets - Updated to the user-provided direct image link
 export const GILPIN_LOGO_URL = '/gilpin-logo-hq.png';
