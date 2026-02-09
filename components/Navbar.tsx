@@ -20,12 +20,15 @@ interface NavbarProps {
   isMuted: boolean;
   onToggleMute: () => void;
   connectionStatus?: 'connected' | 'connecting' | 'offline';
+  onReconnect?: () => void;
+  onSaveSession?: () => void;
+  isSessionLocked?: boolean;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
   arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP,
   hasGuests, onAIRefine, onToggleAnalytics, showAnalytics,
-  isMuted, onToggleMute, connectionStatus
+  isMuted, onToggleMute, connectionStatus, onReconnect, onSaveSession, isSessionLocked
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
@@ -91,10 +94,18 @@ const Navbar: React.FC<NavbarProps> = ({
             <span className="status-badge connected" title="Real-time sync active">🟢 Synced</span>
           )}
           {connectionStatus === 'connecting' && (
-            <span className="status-badge connecting" title="Connecting...">🟡 Connecting</span>
+            <span
+              className="status-badge connecting cursor-pointer hover:opacity-80 transition-opacity"
+              title="Tap to reconnect"
+              onClick={onReconnect}
+            >🟡 Reconnecting…</span>
           )}
           {connectionStatus === 'offline' && (
-            <span className="status-badge offline" title="Offline">🔴 Offline</span>
+            <span
+              className="status-badge offline cursor-pointer hover:opacity-80 transition-opacity"
+              title="Tap to reconnect"
+              onClick={onReconnect}
+            >🔴 Tap to Reconnect</span>
           )}
         </div>
       )}
@@ -120,6 +131,16 @@ const Navbar: React.FC<NavbarProps> = ({
               {isRec && (
                 <button onClick={onAIRefine} className="nav-action-btn">
                   ✨ AI Audit
+                </button>
+              )}
+
+              {isRec && hasGuests && onSaveSession && (
+                <button
+                  onClick={onSaveSession}
+                  className={`nav-action-btn ${isSessionLocked ? 'nav-action-btn--active' : ''}`}
+                  title={isSessionLocked ? 'Session saved — click to unlock' : 'Save & lock this session'}
+                >
+                  {isSessionLocked ? '🔒 Saved' : '💾 Save'}
                 </button>
               )}
 
@@ -200,9 +221,11 @@ const Navbar: React.FC<NavbarProps> = ({
         {/* Sync dot (mobile: compact) */}
         {connectionStatus && (
           <div
-            title={connectionStatus === 'connected' ? 'Synced' : connectionStatus === 'connecting' ? 'Connecting...' : 'Offline'}
-            style={{ width: 10, height: 10, borderRadius: '50%', flexShrink: 0 }}
+            role="button"
+            title={connectionStatus === 'connected' ? 'Synced' : connectionStatus === 'connecting' ? 'Tap to reconnect' : 'Tap to reconnect'}
+            style={{ width: 10, height: 10, borderRadius: '50%', flexShrink: 0, cursor: connectionStatus !== 'connected' ? 'pointer' : 'default' }}
             className={connectionStatus === 'connected' ? 'bg-green-500' : connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}
+            onClick={() => { if (connectionStatus !== 'connected' && onReconnect) onReconnect(); }}
           />
         )}
 
@@ -337,6 +360,16 @@ const Navbar: React.FC<NavbarProps> = ({
                   <span className="w-6 text-center">✨</span>
                   <span>AI Audit</span>
                 </div>
+
+                {/* Save / Lock */}
+                {onSaveSession && (
+                  <div role="button" onClick={() => { onSaveSession(); closeMenu(); }} style={{ cursor: 'pointer', minHeight: 'auto' }}
+                    className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm border-t border-slate-700/30 active:bg-white/5 transition-colors ${isSessionLocked ? 'text-[#c5a065]' : 'text-white'}`}
+                  >
+                    <span className="w-6 text-center">{isSessionLocked ? '🔒' : '💾'}</span>
+                    <span>{isSessionLocked ? 'Saved — Tap to Unlock' : 'Save & Lock'}</span>
+                  </div>
+                )}
 
                 {/* Intelligence */}
                 <div role="button" onClick={() => { onToggleAnalytics(); closeMenu(); }} style={{ cursor: 'pointer', minHeight: 'auto' }}

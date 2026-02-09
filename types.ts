@@ -108,6 +108,10 @@ export interface ArrivalSession {
   lastModified?: number;
   /** Timestamp when AI Audit was last run on this session */
   aiAuditedAt?: number;
+  /** Timestamp when this session was locked/saved as final */
+  lockedAt?: number;
+  /** Who locked/saved this session */
+  lockedBy?: string;
 }
 
 export interface GlobalAnalyticsData {

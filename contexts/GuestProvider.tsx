@@ -68,6 +68,12 @@ export interface GuestContextValue {
     connectionStatus: ConnectionStatus;
     shareSession: () => Promise<string>;
     getShareUrl: () => string;
+    manualReconnect: () => void;
+
+    // Session lock
+    isSessionLocked: boolean;
+    lockSession: () => void;
+    unlockSession: () => void;
 
     // Department status handlers
     handleUpdateHKStatus: (guestId: string, status: HKStatus) => void;
@@ -140,7 +146,9 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         sessions, activeSessionId, switchSession, deleteSession, createNewSession,
         joinSession,
         firebaseEnabled, connectionStatus,
-        shareSession, getShareUrl
+        shareSession, getShareUrl,
+        isSessionLocked, lockSession, unlockSession,
+        manualReconnect
     } = useGuestManager(DEFAULT_FLAGS);
 
     // ── Local UI state ──────────────────────────────────────────────────────
@@ -207,38 +215,50 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
     }, []);
 
+    // ── Guarded update — prompts on locked sessions ────────────────────────
+    const guardedUpdate = useCallback((guestId: string, updates: Partial<Guest>, updatedBy: string) => {
+        if (isSessionLocked) {
+            if (!window.confirm('This session is saved & locked. Save this change?')) {
+                return; // User cancelled — discard the edit
+            }
+            // Re-lock with new timestamp after confirming
+            lockSession();
+        }
+        auditedUpdate(guestId, updates, updatedBy);
+    }, [isSessionLocked, auditedUpdate, lockSession]);
+
     // ── Status handlers ─────────────────────────────────────────────────────
     const handleUpdateHKStatus = useCallback((guestId: string, status: HKStatus) => {
-        auditedUpdate(guestId, {
+        guardedUpdate(guestId, {
             hkStatus: status,
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: 'User'
         } as Partial<Guest>, 'User');
-    }, [auditedUpdate]);
+    }, [guardedUpdate]);
 
     const handleUpdateMaintenanceStatus = useCallback((guestId: string, status: MaintenanceStatus) => {
-        auditedUpdate(guestId, {
+        guardedUpdate(guestId, {
             maintenanceStatus: status,
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: 'User'
         } as Partial<Guest>, 'User');
-    }, [auditedUpdate]);
+    }, [guardedUpdate]);
 
     const handleUpdateGuestStatus = useCallback((guestId: string, status: GuestStatus) => {
-        auditedUpdate(guestId, {
+        guardedUpdate(guestId, {
             guestStatus: status,
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: 'User'
         } as Partial<Guest>, 'User');
-    }, [auditedUpdate]);
+    }, [guardedUpdate]);
 
     const handleUpdateInRoomDelivery = useCallback((guestId: string, delivered: boolean) => {
-        auditedUpdate(guestId, {
+        guardedUpdate(guestId, {
             inRoomDelivered: delivered,
             inRoomDeliveredAt: delivered ? Date.now() : undefined,
             inRoomDeliveredBy: delivered ? userName || 'Unknown' : undefined
         } as Partial<Guest>, userName || 'Unknown');
-    }, [auditedUpdate, userName]);
+    }, [guardedUpdate, userName]);
 
     // ── Note handlers ───────────────────────────────────────────────────────
     const handleAddRoomNote = useCallback((guestId: string, note: Omit<RoomNote, 'id' | 'timestamp'>) => {
@@ -321,6 +341,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest, onExcelExport,
         sessions, activeSessionId, switchSession, deleteSession, createNewSession, joinSession,
         firebaseEnabled, connectionStatus, shareSession, getShareUrl,
+        isSessionLocked, lockSession, unlockSession, manualReconnect,
         handleUpdateHKStatus, handleUpdateMaintenanceStatus, handleUpdateGuestStatus, handleUpdateInRoomDelivery,
         handleAddRoomNote, handleResolveNote, handleAddCourtesyNote,
         auditLogGuest, setAuditLogGuest,
@@ -335,6 +356,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest, onExcelExport,
         sessions, activeSessionId, switchSession, deleteSession, createNewSession, joinSession,
         firebaseEnabled, connectionStatus, shareSession, getShareUrl,
+        isSessionLocked, lockSession, unlockSession, manualReconnect,
         handleUpdateHKStatus, handleUpdateMaintenanceStatus, handleUpdateGuestStatus, handleUpdateInRoomDelivery,
         handleAddRoomNote, handleResolveNote, handleAddCourtesyNote,
         auditLogGuest,

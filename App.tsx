@@ -29,7 +29,8 @@ const App: React.FC = () => {
     isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
     handleFileUpload, handleAIRefine, addManual, onExcelExport,
     activeSessionId, joinSession, createNewSession,
-    connectionStatus,
+    connectionStatus, manualReconnect,
+    isSessionLocked, lockSession, unlockSession,
     isMuted, toggleMute, notifications, dismissNotification, clearAllNotifications, clearBadge,
     isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput, errorMessage, hasMic,
     startLiveAssistant, toggleMic, sendTextMessage, disconnect, clearHistory,
@@ -81,6 +82,17 @@ const App: React.FC = () => {
         isMuted={isMuted}
         onToggleMute={toggleMute}
         connectionStatus={connectionStatus}
+        onReconnect={manualReconnect}
+        onSaveSession={() => {
+          if (isSessionLocked) {
+            if (window.confirm('This session is currently saved & locked. Unlock it for editing?')) {
+              unlockSession();
+            }
+          } else {
+            lockSession();
+          }
+        }}
+        isSessionLocked={isSessionLocked}
       />
 
       {/* Notification Toast Overlay */}

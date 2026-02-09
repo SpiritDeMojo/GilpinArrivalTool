@@ -122,6 +122,10 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const lastRemoteDataTs = useRef(0);
   // Track active session ID in a ref so reconnect callbacks always have the latest value
   const activeSessionIdRef = useRef(activeSessionId);
+  // Stale subscription watchdog interval ref
+  const staleWatchdogRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Reconnect debounce ref (shared between auto and manual)
+  const lastReconnectTsRef = useRef(0);
 
   // PMS state
   const [dataSource, setDataSource] = useState<DataSource>(() => {
@@ -238,13 +242,14 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     // triggers when multiple lifecycle events fire together (e.g., both
     // visibilitychange and focus fire on iOS unlock).
     let lastReconnectTs = 0;
-    const reconnectAndResubscribe = () => {
+    const reconnectAndResubscribe = (bypassDebounce = false) => {
       const now = Date.now();
-      if (now - lastReconnectTs < 5000) {
+      if (!bypassDebounce && now - lastReconnectTs < 5000) {
         console.log('🔄 Reconnect skipped (debounce, last was', now - lastReconnectTs, 'ms ago)');
         return; // Already reconnected recently
       }
       lastReconnectTs = now;
+      lastReconnectTsRef.current = now;
 
       console.log('📱 Reconnecting Firebase + resubscribing...');
       forceReconnect();
@@ -307,9 +312,23 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     window.addEventListener('focus', handleFocus);
     window.addEventListener('online', handleOnline);
 
+    // === STALE SUBSCRIPTION WATCHDOG ===
+    // If no remote data received for 60s while we think we're connected,
+    // force a reconnect. Catches cases where the WebSocket silently dies.
+    staleWatchdogRef.current = setInterval(() => {
+      const lastData = lastRemoteDataTs.current;
+      if (lastData > 0 && Date.now() - lastData > 60000) {
+        console.warn('🐕 Stale subscription watchdog: no data for 60s — forcing reconnect');
+        reconnectAndResubscribe(true); // bypass debounce
+      }
+    }, 30000); // Check every 30s
+
     return () => {
       if (connectionCleanupRef.current) {
         connectionCleanupRef.current();
+      }
+      if (staleWatchdogRef.current) {
+        clearInterval(staleWatchdogRef.current);
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pageshow', handlePageShow);
@@ -889,6 +908,76 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     updateURLWithSession(session.id);
   }, []);
 
+  // ── Session lock/unlock ─────────────────────────────────────────────────
+  const isSessionLocked = useMemo(() => {
+    return !!(activeSession?.lockedAt);
+  }, [activeSession]);
+
+  const lockSession = useCallback(() => {
+    if (!activeSessionId) return;
+    const now = Date.now();
+    setSessions(prev => prev.map(s => {
+      if (s.id !== activeSessionId) return s;
+      return { ...s, lockedAt: now, lockedBy: 'User', lastModified: now };
+    }));
+    // Sync lock state to Firebase
+    if (firebaseEnabled) {
+      const session = sessions.find(s => s.id === activeSessionId);
+      if (session) {
+        syncInitialUpload({ ...session, lockedAt: now, lockedBy: 'User', lastModified: now }, true);
+      }
+    }
+    console.log('🔒 Session locked:', activeSessionId);
+  }, [activeSessionId, firebaseEnabled, sessions, syncInitialUpload]);
+
+  const unlockSession = useCallback(() => {
+    if (!activeSessionId) return;
+    const now = Date.now();
+    setSessions(prev => prev.map(s => {
+      if (s.id !== activeSessionId) return s;
+      const { lockedAt, lockedBy, ...rest } = s;
+      return { ...rest, lockedAt: undefined, lockedBy: undefined, lastModified: now };
+    }));
+    // Sync unlock state to Firebase
+    if (firebaseEnabled) {
+      const session = sessions.find(s => s.id === activeSessionId);
+      if (session) {
+        const { lockedAt, lockedBy, ...rest } = session;
+        syncInitialUpload({ ...rest, lockedAt: undefined, lockedBy: undefined, lastModified: now }, true);
+      }
+    }
+    console.log('🔓 Session unlocked:', activeSessionId);
+  }, [activeSessionId, firebaseEnabled, sessions, syncInitialUpload]);
+
+  // ── Manual reconnect ────────────────────────────────────────────────────
+  const manualReconnect = useCallback(() => {
+    console.log('🔄 Manual reconnect triggered by user');
+    setConnectionStatus('connecting');
+    forceReconnect();
+
+    // Tear down and re-subscribe after the goOffline→goOnline cycle
+    setTimeout(() => {
+      console.log('🔄 Re-subscribing to Firebase after manual reconnect...');
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
+        lastRemoteDataTs.current = Date.now();
+        remoteUpdateGen.current += 1;
+        setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
+        setActiveSessionId(prev => {
+          if (remoteSessions.length === 0) return '';
+          if (prev && remoteSessions.some(s => s.id === prev)) return prev;
+          return remoteSessions[0].id;
+        });
+      });
+    }, 500);
+
+    // Reset debounce so auto-handlers can fire again
+    lastReconnectTsRef.current = Date.now();
+  }, []);
+
   return {
     sessions, activeSessionId, switchSession: setActiveSessionId, deleteSession, createNewSession,
     joinSession,
@@ -903,6 +992,12 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     // Session sharing
     shareSession,
     getShareUrl,
+    // Session lock
+    isSessionLocked,
+    lockSession,
+    unlockSession,
+    // Manual reconnect
+    manualReconnect,
     // PMS integration
     dataSource,
     toggleDataSource,
