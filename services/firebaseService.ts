@@ -1,4 +1,4 @@
-import { initializeApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, deleteApp, FirebaseApp } from 'firebase/app';
 import {
     getDatabase,
     ref,
@@ -127,6 +127,53 @@ export function hardReconnect(): void {
         try { goOnline(db); } catch (e) { /* ignore */ }
         console.log('🔄 Hard reconnect: goOnline called');
     }, 2000);
+}
+
+/**
+ * Nuclear reconnect — completely destroys and re-creates the Firebase App.
+ * Use this as a last resort when the SDK's internal WebSocket manager is
+ * permanently broken (common on mobile after OS suspends the page).
+ *
+ * Even goOffline/goOnline can't fix this state because the underlying
+ * PersistentConnection object is corrupted. deleteApp() is the only way
+ * to force the SDK to create a fresh connection.
+ *
+ * @returns Promise that resolves when the new connection is ready
+ */
+export async function nuclearReconnect(): Promise<boolean> {
+    console.warn('☢️ NUCLEAR RECONNECT — destroying and re-creating Firebase App...');
+
+    // 1. Tear down existing connection
+    if (db) {
+        try { goOffline(db); } catch (e) { /* ignore */ }
+    }
+
+    // 2. Destroy the Firebase App entirely
+    if (app) {
+        try {
+            await deleteApp(app);
+            console.log('☢️ Firebase App destroyed');
+        } catch (e) {
+            console.warn('☢️ deleteApp error (non-fatal):', e);
+        }
+        app = null;
+        db = null;
+    }
+
+    // 3. Small delay to let the SDK fully clean up
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // 4. Re-initialize from scratch
+    try {
+        app = initializeApp(firebaseConfig);
+        db = getDatabase(app);
+        goOnline(db);
+        console.log('☢️ Firebase App re-initialized — fresh WebSocket connection');
+        return true;
+    } catch (error) {
+        console.error('☢️ Nuclear reconnect FAILED:', error);
+        return false;
+    }
 }
 
 /**

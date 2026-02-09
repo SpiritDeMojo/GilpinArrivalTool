@@ -93,7 +93,7 @@ export const useLiveAssistant = ({ guests, onAddRoomNote, onUpdateGuest }: UseLi
     }
   }, [guests, onAddRoomNote]);
 
-  // Parse AI output for arrivals-table note actions (appends to prefillNotes)
+  // Parse AI output for arrivals-table note actions (appends to preferences / Intelligence column)
   const parseArrivalNoteActions = useCallback((text: string) => {
     const actionRegex = /\[ACTION:ADD_ARRIVAL_NOTE\](\{[^}]+\})/g;
     let match;
@@ -107,10 +107,12 @@ export const useLiveAssistant = ({ guests, onAddRoomNote, onUpdateGuest }: UseLi
             return roomNum === targetNum;
           });
           if (guest) {
-            const existing = guest.prefillNotes || '';
+            // Route based on target field
+            const field = noteData.field === 'notes' ? 'prefillNotes' : 'preferences';
+            const existing = (field === 'prefillNotes' ? guest.prefillNotes : guest.preferences) || '';
             const separator = existing.trim() ? ' | ' : '';
             onUpdateGuest(guest.id, {
-              prefillNotes: existing + separator + noteData.message
+              [field]: existing + separator + noteData.message
             } as Partial<Guest>);
           }
         }
@@ -431,19 +433,20 @@ You operate on a strict hierarchy to ensure the team can trust the edited data:
 
 **4. Note-Taking Mode**
    When the user says things like "Note for Room X: ...", "Room X requested ...", "Add a note for Room X ...", or "Room X needs ...":
-   - **FIRST, ask the user:** "Where would you like this note displayed? 1) Arrivals table, 2) Housekeeping section, or 3) Maintenance section?"
+   - **FIRST, ask the user:** "Where would you like this note displayed? 1) Arrivals Intelligence, 2) Arrivals Notes, 3) Housekeeping notes, or 4) Maintenance notes?"
    - Wait for the user's answer before placing the note.
-   - **If the user says "Arrivals" or "arrivals table" or "1":**
-     Confirm conversationally, then output: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"Guest requested extra pillows"}
-     This adds the note to the arrivals table Notes column.
-   - **If the user says "Housekeeping" or "HK" or "2":**
-     Confirm conversationally, then output: [ACTION:ADD_NOTE]{"room":"5","message":"Guest requested extra pillows","priority":"medium","category":"request","department":"housekeeping"}
-   - **If the user says "Maintenance" or "3":**
-     Confirm conversationally, then output: [ACTION:ADD_NOTE]{"room":"5","message":"Guest requested extra pillows","priority":"medium","category":"request","department":"maintenance"}
+   - **If the user says "Intelligence" or "arrivals" or "1" (DEFAULT):**
+     Confirm, then output: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"Guest has nut allergy","field":"intelligence"}
+     This adds the note to the Intelligence column on the arrivals table.
+   - **If the user says "Notes" or "2":**
+     Confirm, then output: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"Guest has nut allergy","field":"notes"}
+     This adds the note to the Notes column on the arrivals table.
+   - **If the user says "Housekeeping" or "HK" or "3":**
+     Confirm, then output: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"[HK] Guest has nut allergy","field":"notes"}
+   - **If the user says "Maintenance" or "4":**
+     Confirm, then output: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"[MAINT] Radiator needs checking","field":"notes"}
    - **If the user doesn't specify or says "just add it":**
-     Default to the arrivals table: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"..."}
-   - Valid priorities: "low", "medium", "high", "urgent"
-   - Valid categories: "request", "issue", "info"
+     Default to Intelligence: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"...","field":"intelligence"}
    - IMPORTANT: Always include the action block so the system can automatically create the note and sync it across all devices.
 
 

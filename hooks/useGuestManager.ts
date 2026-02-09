@@ -17,7 +17,8 @@ import {
   trackPresence,
   deleteSessionFromFirebase,
   forceReconnect,
-  hardReconnect
+  hardReconnect,
+  nuclearReconnect
 } from '../services/firebaseService';
 import {
   isPMSConfigured,
@@ -950,33 +951,49 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     console.log('🔓 Session unlocked:', activeSessionId);
   }, [activeSessionId, firebaseEnabled, sessions, syncInitialUpload]);
 
-  // ── Manual reconnect ────────────────────────────────────────────────────
-  const manualReconnect = useCallback(() => {
-    console.log('🔄 Manual reconnect triggered by user');
+  // ── Manual reconnect (nuclear — full SDK teardown) ──────────────────────
+  const manualReconnect = useCallback(async () => {
+    console.log('🔄 Manual reconnect triggered by user — going nuclear');
     setConnectionStatus('connecting');
-    hardReconnect(); // 2s goOffline→goOnline cycle for mobile
 
-    // Re-subscribe after the hard reconnect cycle (2s + 500ms margin)
-    setTimeout(() => {
-      console.log('🔄 Re-subscribing to Firebase after manual reconnect...');
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-      unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
-        lastRemoteDataTs.current = Date.now();
-        remoteUpdateGen.current += 1;
-        setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
-        setActiveSessionId(prev => {
-          if (remoteSessions.length === 0) return '';
-          if (prev && remoteSessions.some(s => s.id === prev)) return prev;
-          return remoteSessions[0].id;
-        });
+    // Tear down all existing subscriptions first
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+    if (connectionCleanupRef.current) {
+      connectionCleanupRef.current();
+      connectionCleanupRef.current = null;
+    }
+
+    // Nuclear: destroy Firebase App and re-create from scratch
+    const success = await nuclearReconnect();
+    if (!success) {
+      setConnectionStatus('offline');
+      console.error('❌ Nuclear reconnect failed');
+      return;
+    }
+
+    // Re-subscribe to connection state with fresh db reference
+    connectionCleanupRef.current = subscribeToConnectionState((connected) => {
+      setConnectionStatus(connected ? 'connected' : 'offline');
+    });
+
+    // Re-subscribe to session data with fresh db reference
+    unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
+      lastRemoteDataTs.current = Date.now();
+      remoteUpdateGen.current += 1;
+      setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
+      setActiveSessionId(prev => {
+        if (remoteSessions.length === 0) return '';
+        if (prev && remoteSessions.some(s => s.id === prev)) return prev;
+        return remoteSessions[0].id;
       });
-    }, 2500); // Wait for full hard reconnect cycle
+    });
 
     // Reset debounce so auto-handlers can fire again
     lastReconnectTsRef.current = Date.now();
+    console.log('✅ Nuclear reconnect complete — all subscriptions re-established');
   }, []);
 
   return {
