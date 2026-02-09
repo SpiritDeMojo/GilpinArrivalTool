@@ -254,3 +254,70 @@
   100% { transform: scale(1); }
 }
 
+/* === Connection Status Badge === */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-bold);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.status-badge.connected {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
+}
+
+.status-badge.connecting {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-badge.offline {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  cursor: pointer;
+}
+
+.status-badge.offline:hover,
+.status-badge.connecting:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+}
+
+.status-badge.connecting:hover {
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* === Navbar Action Button Active State === */
+.nav-action-btn--active {
+  background: rgba(197, 160, 101, 0.15) !important;
+  color: var(--gilpin-gold) !important;
+  border-color: rgba(197, 160, 101, 0.4) !important;
+}
+
+/* === Mobile Reconnect Dot Press Animation === */
+.reconnect-dot-mobile {
+  transition: transform 0.15s ease;
+}
+.reconnect-dot-mobile:active {
+  transform: scale(0.7);
+}

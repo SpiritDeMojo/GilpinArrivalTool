@@ -95,17 +95,18 @@ const Navbar: React.FC<NavbarProps> = ({
           )}
           {connectionStatus === 'connecting' && (
             <span
-              className="status-badge connecting cursor-pointer hover:opacity-80 transition-opacity"
-              title="Tap to reconnect"
+              className="status-badge connecting"
+              title="Click to reconnect"
+              style={{ cursor: 'pointer' }}
               onClick={onReconnect}
-            >🟡 Reconnecting…</span>
+            >🟡 Connecting</span>
           )}
           {connectionStatus === 'offline' && (
             <span
-              className="status-badge offline cursor-pointer hover:opacity-80 transition-opacity"
-              title="Tap to reconnect"
+              className="status-badge offline"
+              title="Click to reconnect"
               onClick={onReconnect}
-            >🔴 Tap to Reconnect</span>
+            >🔴 Offline</span>
           )}
         </div>
       )}
@@ -222,9 +223,9 @@ const Navbar: React.FC<NavbarProps> = ({
         {connectionStatus && (
           <div
             role="button"
-            title={connectionStatus === 'connected' ? 'Synced' : connectionStatus === 'connecting' ? 'Tap to reconnect' : 'Tap to reconnect'}
-            style={{ width: 10, height: 10, borderRadius: '50%', flexShrink: 0, cursor: connectionStatus !== 'connected' ? 'pointer' : 'default' }}
-            className={connectionStatus === 'connected' ? 'bg-green-500' : connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}
+            title={connectionStatus === 'connected' ? 'Synced' : 'Tap to reconnect'}
+            style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, cursor: connectionStatus !== 'connected' ? 'pointer' : 'default' }}
+            className={`reconnect-dot-mobile ${connectionStatus === 'connected' ? 'bg-green-500' : connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`}
             onClick={() => { if (connectionStatus !== 'connected' && onReconnect) onReconnect(); }}
           />
         )}

@@ -107,10 +107,26 @@ export function forceReconnect(): void {
     // Cycle offline→online to force a FRESH WebSocket.
     // goOnline() alone is a no-op if Firebase thinks it's still connected.
     try { goOffline(db); } catch (e) { /* ignore */ }
-    // Generous delay to ensure the SDK fully tears down the old connection
+    // 500ms delay — mobile carriers need more time to tear down
     setTimeout(() => {
         try { goOnline(db); } catch (e) { /* ignore */ }
-    }, 250);
+    }, 500);
+}
+
+/**
+ * Hard reconnect — aggressive 2-second cycle for manual reconnect button.
+ * Gives mobile carriers plenty of time to fully tear down the old WebSocket
+ * before establishing a fresh one. Use this when the user explicitly taps
+ * the reconnect button.
+ */
+export function hardReconnect(): void {
+    if (!db) return;
+    console.log('🔄 Hard reconnect (2s cycle) triggered by user...');
+    try { goOffline(db); } catch (e) { /* ignore */ }
+    setTimeout(() => {
+        try { goOnline(db); } catch (e) { /* ignore */ }
+        console.log('🔄 Hard reconnect: goOnline called');
+    }, 2000);
 }
 
 /**

@@ -16,7 +16,8 @@ import {
   updateGuestFields,
   trackPresence,
   deleteSessionFromFirebase,
-  forceReconnect
+  forceReconnect,
+  hardReconnect
 } from '../services/firebaseService';
 import {
   isPMSConfigured,
@@ -953,9 +954,9 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const manualReconnect = useCallback(() => {
     console.log('🔄 Manual reconnect triggered by user');
     setConnectionStatus('connecting');
-    forceReconnect();
+    hardReconnect(); // 2s goOffline→goOnline cycle for mobile
 
-    // Tear down and re-subscribe after the goOffline→goOnline cycle
+    // Re-subscribe after the hard reconnect cycle (2s + 500ms margin)
     setTimeout(() => {
       console.log('🔄 Re-subscribing to Firebase after manual reconnect...');
       if (unsubscribeRef.current) {
@@ -972,7 +973,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
           return remoteSessions[0].id;
         });
       });
-    }, 500);
+    }, 2500); // Wait for full hard reconnect cycle
 
     // Reset debounce so auto-handlers can fire again
     lastReconnectTsRef.current = Date.now();
