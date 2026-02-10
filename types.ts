@@ -98,6 +98,37 @@ export interface Guest {
 
   /** AI-generated tags from sentiment analysis */
   aiTags?: string[];
+
+  // ==========================================
+  // PDF PARSER ENHANCED FIELDS
+  // ==========================================
+
+  /** Number of adults (from ACEB column) */
+  adults?: number;
+
+  /** Number of children (from ACEB column) */
+  children?: number;
+
+  /** Number of infants (from ACEB column) */
+  infants?: number;
+
+  /** Whether guest completed pre-registration online */
+  preRegistered?: boolean;
+
+  /** Booking source / agent (e.g. "Booking.com", "Direct") */
+  bookingSource?: string;
+
+  /** Smoking preference */
+  smokingPreference?: string;
+
+  /** Deposit amount in GBP */
+  depositAmount?: string;
+
+  /** Billing method (e.g. "Pay Own Account", "Company Invoice") */
+  billingMethod?: string;
+
+  /** Previous stay history */
+  stayHistory?: { arrival: string; departure: string; room: string }[];
 }
 
 export interface ArrivalSession {

@@ -326,6 +326,10 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
                     minHeight: '36px',
                 }}>
                     <input
+                        id="ai-assistant-input"
+                        name="aiCommand"
+                        autoComplete="off"
+                        aria-label="AI assistant command"
                         type="text"
                         value={input}
                         onChange={e => setInput(e.target.value)}

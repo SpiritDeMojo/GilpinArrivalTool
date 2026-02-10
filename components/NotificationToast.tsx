@@ -174,4 +174,4 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
     );
 };
 
-export default NotificationToast;
+export default React.memo(NotificationToast);

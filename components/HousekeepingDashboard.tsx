@@ -185,12 +185,12 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           >
             {isLoadingAI ? '⏳' : '🤖'} {isLoadingAI ? 'Thinking...' : aiPriorityRooms.length > 0 ? 'Clear AI' : 'AI Priority'}
           </button>
-          <label className="toggle-label">
-            <input type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
+          <label className="toggle-label" htmlFor="hk-show-main">
+            <input id="hk-show-main" name="showMainHotel" type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
             <span>🏨 Main (1-31)</span>
           </label>
-          <label className="toggle-label">
-            <input type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
+          <label className="toggle-label" htmlFor="hk-show-lake">
+            <input id="hk-show-lake" name="showLakeHouse" type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
             <span>🏡 Lake (51-58)</span>
           </label>
         </div>
@@ -342,6 +342,9 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
 
                 {/* Status Dropdown */}
                 <select
+                  id={`hk-status-${guest.id}`}
+                  name="hkStatus"
+                  aria-label={`Housekeeping status for room ${guest.room}`}
                   className="status-select"
                   value={hkStatus}
                   onChange={(e) => onUpdateHKStatus(guest.id, e.target.value as HKStatus)}
@@ -364,8 +367,11 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
             <p className="modal-subtitle">This note will be visible to all departments</p>
 
             <div className="form-group">
-              <label>Your Name</label>
+              <label htmlFor="hk-note-author">Your Name</label>
               <input
+                id="hk-note-author"
+                name="authorName"
+                autoComplete="name"
                 type="text"
                 value={authorName}
                 onChange={(e) => setAuthorName(e.target.value)}
@@ -408,8 +414,11 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
             </div>
 
             <div className="form-group">
-              <label>Note</label>
+              <label htmlFor="hk-note-msg">Note</label>
               <textarea
+                id="hk-note-msg"
+                name="noteMessage"
+                autoComplete="off"
                 value={noteMessage}
                 onChange={(e) => setNoteMessage(e.target.value)}
                 placeholder="Describe the issue or note (e.g., 'Broken lamp in bathroom needs replacement')"
@@ -1182,4 +1191,4 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
   );
 };
 
-export default HousekeepingDashboard;
+export default React.memo(HousekeepingDashboard);

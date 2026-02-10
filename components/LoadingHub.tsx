@@ -217,4 +217,4 @@ const LoadingHub: React.FC<LoadingHubProps> = ({
   );
 };
 
-export default LoadingHub;
+export default React.memo(LoadingHub);

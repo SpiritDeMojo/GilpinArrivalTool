@@ -37,6 +37,10 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 - 🧠 **AI Note Placement** — AI notes route to the correct column: Intelligence (preferences), Notes (prefillNotes), HK (tagged [HK]), or Maintenance (tagged [MAINT])
 - 📱 **Mobile Debug Overlay** — Add `?debug=1` to URL for an on-screen console showing all logs, connection state, and errors without DevTools
 - 🎨 **Production-Grade Theming** — Dark mode-aware inputs across all dashboards, GPU-composited animations with `will-change`, reduced `backdrop-filter` on mobile, simplified mobile entrance animations
+- 🛡️ **Defense-in-Depth Sanitisation** — All Firebase write paths (`syncSession` + `updateGuestFields`) sanitise `undefined → null` before writing. Prevents Firebase RTDB crashes from any source
+- ⚡ **React.memo Optimisation** — 10 core components (GuestRow, GuestMobileCard, ETATimeline, SearchFilter, BookingStream, all 3 dashboards, NotificationToast, LoadingHub) wrapped with `React.memo` to prevent cascading re-renders
+- 🔄 **37 Rate Code Variants** — Parser recognises MINIMOON, DBB, BB_2, WIN codes, underscore variants, Lake House prefixes — ordered longest-first for accurate matching
+- 📦 **13 Package Mappings** — AI audit maps rate codes to human-readable names: Winter Offer, B&B, Room Only, DBB, Mini Moon, Magical Escape, Celebration, Complimentary, Advanced Purchase, and Lake House variants
 
 ---
 
@@ -84,17 +88,18 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 
 ### Tech Stack
 
-- **Frontend:** React 19 + TypeScript 5.6 + Vanilla CSS (custom design system with CSS variables)
+- **Frontend:** React 19 + TypeScript 5.7 + Vanilla CSS (custom design system with CSS variables)
 - **Build:** Vite 6
 - **Animations:** Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes (FAB breathing, ring pulse, panel transitions)
 - **Backend:** Vercel Serverless Functions (API routes for AI calls)
 - **PDF Parsing:** pdfjs-dist (Mozilla PDF.js)
 - **AI:** Google Gemini 2.5 Flash (via @google/genai) + Gemini Live API for native audio
 - **Audio Capture:** AudioWorklet API (with ScriptProcessorNode fallback)
-- **Real-time Sync:** Firebase Realtime Database
+- **Real-time Sync:** Firebase Realtime Database (with defense-in-depth sanitisation)
 - **Weather:** Open-Meteo API (Windermere, no API key required)
 - **Testing:** Vitest
 - **Export:** XLSX (SheetJS)
+- **Performance:** React.memo on 10 core components, debounced reconnect handlers, stable useCallback references
 
 ---
 

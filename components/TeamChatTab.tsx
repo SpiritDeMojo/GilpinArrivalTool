@@ -623,6 +623,10 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                     minHeight: '36px',
                 }}>
                     <input
+                        id="team-chat-input"
+                        name="chatMessage"
+                        autoComplete="off"
+                        aria-label="Chat message"
                         type="text"
                         value={input}
                         onChange={e => handleInputChange(e.target.value)}

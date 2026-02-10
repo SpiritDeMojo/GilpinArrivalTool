@@ -422,10 +422,11 @@ export async function syncSession(session: ArrivalSession, forceWrite = false): 
             }
         }
 
-        await set(sessionRef, {
+        // sanitizeForFirebase converts undefined → null (Firebase rejects undefined)
+        await set(sessionRef, sanitizeForFirebase({
             ...session,
             lastModified: now
-        });
+        }));
     } catch (error) {
         console.error('Failed to sync session:', error);
         throw error;

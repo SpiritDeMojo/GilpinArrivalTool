@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from './contexts/ThemeProvider';
 import { useView } from './contexts/ViewProvider';
 import { useHotkeys } from './contexts/HotkeysProvider';
 import { useUser } from './contexts/UserProvider';
 import { useGuestContext } from './contexts/GuestProvider';
-import { NavPrintMode, PrintMode } from './types';
+import { NavPrintMode, PrintMode, DashboardView } from './types';
 
 import Navbar from './components/Navbar';
 import UnifiedChatPanel from './components/UnifiedChatPanel';
@@ -25,6 +26,10 @@ const App: React.FC = () => {
   const { userName, department } = useUser();
   const { printMode, triggerPrint } = useHotkeys();
 
+  // React Router
+  const { sessionId: urlSessionId, tab: urlTab } = useParams<{ sessionId?: string; tab?: string }>();
+  const navigate = useNavigate();
+
   const {
     guests, arrivalDateStr, isOldFile, isSticky, propertyFilteredGuests,
     isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
@@ -40,6 +45,24 @@ const App: React.FC = () => {
     auditLogGuest, setAuditLogGuest,
     mainPaddingTop,
   } = useGuestContext();
+
+  // ── Route sync: URL tab → dashboardView ───────────────────────────────
+  const validTabs: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'reception'];
+  useEffect(() => {
+    if (urlTab && validTabs.includes(urlTab as DashboardView) && urlTab !== dashboardView) {
+      setDashboardView(urlTab as DashboardView);
+    }
+  }, [urlTab]); // Only sync when URL changes
+
+  // ── Route sync: dashboardView → URL ───────────────────────────────────
+  useEffect(() => {
+    if (activeSessionId && dashboardView) {
+      const expected = `/session/${activeSessionId}/${dashboardView}`;
+      if (window.location.pathname !== expected) {
+        navigate(expected, { replace: true });
+      }
+    }
+  }, [dashboardView, activeSessionId, navigate]);
 
   // Early return: Show login screen when not authenticated
   if (!userName || !department) {

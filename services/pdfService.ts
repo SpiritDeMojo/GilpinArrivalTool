@@ -80,19 +80,30 @@ export class PDFService {
     // The header row contains "Car Reg" (or similar) — detect its x-position
     // before we filter it out, so we know exactly where car reg data lives.
     let carRegColumnX: { min: number; max: number } | null = null;
+    let agentColumnX: { min: number; max: number } | null = null;
     for (const line of lines) {
       const lineText = line.items.map((i: any) => i.str).join(' ');
       if (/^ID\s+Guest Name|Req\.\s+Vip/i.test(lineText)) {
-        // This is a header row — find the Car Reg column
+        const sortedItems = [...line.items].sort((a: any, b: any) => a.x - b.x);
+        // Find Car Reg column
         for (const item of line.items) {
           if (/car\s*reg/i.test(item.str)) {
-            // The column spans from this item's x to the next column header's x
-            // Find items to the right to determine column width
-            const sortedItems = [...line.items].sort((a: any, b: any) => a.x - b.x);
             const idx = sortedItems.findIndex((i: any) => /car\s*reg/i.test(i.str));
             const nextItem = sortedItems[idx + 1];
             carRegColumnX = {
-              min: item.x - 5,  // small tolerance
+              min: item.x - 5,
+              max: nextItem ? nextItem.x - 5 : item.x + 150
+            };
+            break;
+          }
+        }
+        // Find Agent column
+        for (const item of line.items) {
+          if (/^agent$/i.test(item.str.trim())) {
+            const idx = sortedItems.findIndex((i: any) => /^agent$/i.test(i.str.trim()));
+            const nextItem = sortedItems[idx + 1];
+            agentColumnX = {
+              min: item.x - 5,
               max: nextItem ? nextItem.x - 5 : item.x + 150
             };
             break;
@@ -121,7 +132,7 @@ export class PDFService {
     });
     if (currentBlock) guestBlocks.push(currentBlock);
 
-    const guests = guestBlocks.map(block => this.parseBlock(block, arrivalDateObj, carRegColumnX)).filter(g => g !== null);
+    const guests = guestBlocks.map(block => this.parseBlock(block, arrivalDateObj, carRegColumnX, agentColumnX)).filter(g => g !== null);
 
     // Final Sort by Room Number using forced map values
     guests.sort((a, b) => {
@@ -262,7 +273,7 @@ export class PDFService {
     return result.join(" • ");
   }
 
-  private static parseBlock(block: any, arrivalDate: Date | null, carRegColumnX?: { min: number; max: number } | null): Guest {
+  private static parseBlock(block: any, arrivalDate: Date | null, carRegColumnX?: { min: number; max: number } | null, agentColumnX?: { min: number; max: number } | null): Guest {
     const rawItems = block.lines.flatMap((l: any) => l.items);
     const rawTextLines = block.lines.map((l: any) => l.items.map((i: any) => i.str).join(" "));
     const singleLineText = rawTextLines.join(" ").replace(/\s+/g, " ");
@@ -312,7 +323,7 @@ export class PDFService {
       if (looseTypeMatch) roomType = looseTypeMatch[1].toUpperCase();
     }
 
-    // --- 2. GUEST NAME ---
+    // --- 2. GUEST NAME (with couple name handling) ---
     let nameRaw = "";
     const line0Items = block.lines[0].items;
     let foundId = false;
@@ -330,6 +341,13 @@ export class PDFService {
       .replace(/VIP\s*-\s*\w+/gi, "")
       .replace(/(\s(Mr|Mrs|Miss|Ms|Dr|\&|Sir|Lady|\+)+)+[*]*$/i, "")
       .trim();
+
+    // Improvement #11: Better couple name handling
+    // "Wood Adrian & Denise" → "Adrian & Denise Wood"
+    const coupleMatch = name.match(/^([A-Z][a-z]+)\s+([A-Za-z]+)\s*&\s*([A-Za-z]+)$/i);
+    if (coupleMatch) {
+      name = `${coupleMatch[2]} & ${coupleMatch[3]} ${coupleMatch[1]}`;
+    }
 
     // --- 3. FACILITIES ---
     const facilityMatches = singleLineText.match(/\/(Spice|Source|The Lake House|GH\s+Pure|GH\s+ESPA|Pure\s*Lakes?|Pure|Massage|Aromatherapy|Treatments|Steam|Couples|Tea|Afternoon|Spa|Mud|Bento)[^/]+/gi) || [];
@@ -504,14 +522,20 @@ export class PDFService {
 
     // --- 6. LOYALTY (L&L) ---
     let ll = "No";
-    const beenBeforeMatch = singleLineText.match(/Been Before:\s*(Yes|Y|True)(?:\s*\(?x\s*(\d+)\)?)?/i);
+    let stayHistoryCount: number | undefined = undefined;
+    const beenBeforeMatch = singleLineText.match(/Been Before:\s*(Yes|Y|True)(?:\s*[-–—]\s*(?:Was last here|x)\s*(\d+))?(?:\s*\(?x\s*(\d+)\)?)?/i);
     if (beenBeforeMatch) {
-      const count = beenBeforeMatch[2];
-      ll = count ? `Yes (x${count})` : "Yes";
+      const count = beenBeforeMatch[2] || beenBeforeMatch[3];
+      if (count) {
+        stayHistoryCount = parseInt(count);
+        ll = `Yes (x${count})`;
+      } else {
+        ll = "Yes";
+      }
     } else if (singleLineText.match(/_(Stayed|Regular)/i)) {
       ll = "Yes";
       const looseCount = singleLineText.match(/\b(?:Yes|Stays)\s*x\s*(\d+)/i);
-      if (looseCount) ll = `Yes (x${looseCount[1]})`;
+      if (looseCount) { ll = `Yes (x${looseCount[1]})`; stayHistoryCount = parseInt(looseCount[1]); }
     } else if (scanLower.includes("previous stays") || singleLineText.match(/Stayed\s+\d{2}\/\d{2}\/\d{4}/i)) {
       ll = "Yes";
     }
@@ -545,8 +569,77 @@ export class PDFService {
       }
     }
 
-    // --- 9. CONSOLIDATED NOTES ---
-    const packageRegex = /\b(MIN|MAGESC|BB1|BB2|BB3|BB|APR_1_BB|APR_2_BB|APR_3_BB|COMP|LHAPR|LHMAG|LHBB|LHBB1|LHBB2|RO|CEL|POB_STAFF)\b/i;
+    // --- 9. ACEB PAX COUNT (Improvement #6) ---
+    // Pattern: Pack column abbreviation followed by ACEB digits: "BB2 2 0 0 0 0", "MIN 2 0 0 0 0", "MAG 2 0 0 0 0"
+    let adults: number | undefined = undefined;
+    let children: number | undefined = undefined;
+    let infants: number | undefined = undefined;
+    const acebMatch = singleLineText.match(/\b(?:BB\d?|MAG|MIN|RO|APR|COMP|CEL|LHBB\d?|LHAPR|LHMAG|POB|STAFF)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/i);
+    if (acebMatch) {
+      adults = parseInt(acebMatch[1]);
+      children = parseInt(acebMatch[2]);
+      // acebMatch[3] = extra beds, acebMatch[4] = infants/babies
+      infants = parseInt(acebMatch[4]);
+    }
+
+    // --- 10. PRE-REGISTRATION (Improvement #10) ---
+    const preRegistered = /completed pre-registration online|pre-registration complete/i.test(singleLineText);
+
+    // --- 11. BOOKING SOURCE / AGENT (Improvement #4) ---
+    let bookingSource = "";
+    if (agentColumnX) {
+      const agentItems = firstLineItems
+        .filter((i: any) => i.x >= agentColumnX!.min && i.x <= agentColumnX!.max)
+        .sort((a: any, b: any) => a.x - b.x);
+      if (agentItems.length > 0) {
+        bookingSource = agentItems.map((i: any) => i.str.trim()).join(' ');
+        // Clean up internal codes
+        bookingSource = bookingSource.replace(/^(Gilpin\s*Hotel)$/i, 'Direct').trim();
+      }
+    }
+    if (!bookingSource) {
+      // Fallback: look for known OTA names in text
+      if (scanLower.includes('booking.com')) bookingSource = 'Booking.com';
+      else if (/\bexpedia\b/i.test(singleLineText)) bookingSource = 'Expedia';
+    }
+
+    // --- 12. SMOKING PREFERENCE (Improvement #3) ---
+    let smokingPreference = "";
+    const smokingMatch = singleLineText.match(/\*?smoking preference:\s*(.+?)(?=\s*(?:Checked:|8 Day|4 day|$))/i);
+    if (smokingMatch) smokingPreference = smokingMatch[1].trim();
+
+    // --- 13. BILLING METHOD (Improvement #1) ---
+    let billingMethod = "";
+    const billingMatch = singleLineText.match(/Billing:\s*(.+?)(?=\s*(?:Unit:|Token|$))/i);
+    if (billingMatch) {
+      billingMethod = billingMatch[1].trim();
+      // Remove noise
+      billingMethod = billingMethod.replace(/\s+/g, ' ').trim();
+    }
+
+    // --- 14. DEPOSIT AMOUNT (Improvement #12) ---
+    let depositAmount = "";
+    const depositMatch = singleLineText.match(/Deposit:\s*([\d,.]+)/i);
+    if (depositMatch) depositAmount = `£${depositMatch[1]}`;
+
+    // --- 15. PREVIOUS STAYS (Improvement #2) ---
+    let stayHistory: { arrival: string; departure: string; room: string }[] = [];
+    const prevStaysMatch = singleLineText.match(/Previous Stays.*?(?=Facility Bookings|Allergies|HK Notes|$)/is);
+    if (prevStaysMatch) {
+      const stayRows = prevStaysMatch[0].matchAll(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{1,3}[.\s]\s*[A-Za-z]+)/gi);
+      for (const row of stayRows) {
+        stayHistory.push({ arrival: row[1], departure: row[2], room: row[3].trim() });
+      }
+    }
+
+    // --- 16. CHECKED-BY STAFF (Improvement #8) ---
+    let checkedBy = "";
+    const checkedByMatch = singleLineText.match(/Checked:\s*([A-Z]{2,3})(?:\s|$)/i);
+    if (checkedByMatch) checkedBy = checkedByMatch[1].toUpperCase();
+
+    // --- CONSOLIDATED NOTES ---
+    // Rate Code extraction: try full RateCode column values first (longest match), then Pack abbreviations
+    const packageRegex = /\b(MINIMOON|MINI_MOON|MAGESC|MAG_ESC|APR_3_BB|APR_2_BB|APR_1_BB|POB_STAFF|BB_1_WIN|BB_2_WIN|BB_3_WIN|BB1_WIN|BB2_WIN|BB3_WIN|LHBB_3|LHBB_2|LHBB_1|LHBB3|LHBB2|LHBB1|LHAPR|LHMAG|LHBB|DBB_2|DBB_1|BB_3|BB_2|BB_1|DBB|BB3|BB2|BB1|RO_2|RO_1|CEL|MIN|COMP|RO|BB|POB|STAFF)\b/i;
     const rateMatch = singleLineText.match(packageRegex);
     const rateCode = rateMatch ? rateMatch[1].toUpperCase() : "";
 
@@ -555,8 +648,10 @@ export class PDFService {
       this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:", "Booking Notes:", "Allergies:"]),
       this.extractSection(singleLineText, "Booking Notes:", ["Unit:", "Page", "HK Notes:", "Guest Notes:", "Allergies:", "Facility Bookings:"]),
       this.extractSection(singleLineText, "Traces:", ["Booking Notes", "Been Before", "Occasion:", "Facility Bookings:"]),
-      this.extractSection(singleLineText, "In Room(?: on Arrival)?:", ["Checked:", "8 Day Check", "4 day Call", "Billing:", "Flowers"])
     ];
+
+    // --- Improvement #7: Better In-Room Items (exact names from "In Room on Arrival:") ---
+    const inRoomSection = this.extractSection(singleLineText, "In Room(?: on Arrival)?:", ["Checked:", "8 Day Check", "4 day Call", "Billing:", "Flowers on"]);
 
     // Expanded in-room keyword list for Gilpin
     const keywords = [
@@ -569,6 +664,10 @@ export class PDFService {
       "Spa Hamper", "Gift", "Candles"
     ];
     const foundKeywords = keywords.filter(k => scanLower.includes(k.toLowerCase()));
+    // Use exact in-room section text if available, otherwise fall back to keywords
+    const inRoomItemsText = inRoomSection && inRoomSection.trim().length > 1
+      ? inRoomSection.trim()
+      : [...new Set(foundKeywords)].join(" • ");
 
     let consolidatedNotes: string[] = [];
 
@@ -579,6 +678,19 @@ export class PDFService {
     if (occasionNote) consolidatedNotes.push(occasionNote);
 
     if (rateCode === "POB_STAFF") consolidatedNotes.push("⭐ VIP (POB Staff)");
+
+    // Pre-registration badge
+    if (preRegistered) consolidatedNotes.push("✅ Pre-Registered Online");
+
+    // Children/infant note for HK
+    if (children && children > 0) consolidatedNotes.push(`👶 ${children} child${children > 1 ? 'ren' : ''}`);
+    if (infants && infants > 0) consolidatedNotes.push(`🍼 ${infants} infant${infants > 1 ? 's' : ''}`);
+
+    // Smoking preference note
+    if (smokingPreference) consolidatedNotes.push(`🚬 ${smokingPreference}`);
+
+    // Checked-by for context
+    if (checkedBy) consolidatedNotes.push(`📋 Checked: ${checkedBy}`);
 
     // Staff initials and internal codes to exclude from notes
     const noisePatterns = /^(NDR|None|N\/A|LV|KW|AM|JS|SL|SS|CB|EW|RH|GRP|DEF|CHI|VAC|Token|Gilpin Hotel|Pay Own Account|Unit:|Deposit:|Total Rate:|Balance|Contact Details:|P\.O\.Nr:|Company:)$/i;
@@ -606,12 +718,23 @@ export class PDFService {
       duration,
       facilities: facilitiesFormatted,
       prefillNotes: [...new Set(consolidatedNotes)].join(" • "),
-      inRoomItems: [...new Set(foundKeywords)].join(" • "),
+      inRoomItems: inRoomItemsText,
       preferences: "",
       packageName: rateCode,
       rateCode,
       rawHtml: rawTextLines.join("\n"),
-      roomType
+      roomType,
+      // Enhanced fields — only include when present (Firebase rejects undefined)
+      ...(adults != null ? { adults } : {}),
+      ...(children != null ? { children } : {}),
+      ...(infants != null ? { infants } : {}),
+      ...(preRegistered ? { preRegistered } : {}),
+      ...(bookingSource ? { bookingSource } : {}),
+      ...(smokingPreference ? { smokingPreference } : {}),
+      ...(depositAmount ? { depositAmount } : {}),
+      ...(billingMethod ? { billingMethod } : {}),
+      ...(stayHistory.length > 0 ? { stayHistory } : {}),
+      ...(stayHistoryCount != null ? { stayHistoryCount } : {}),
     };
   }
 }

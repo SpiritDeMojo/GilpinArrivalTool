@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { RefineGuestSchema, validateAIResponse } from '../lib/aiSchemas';
 
 // ── Inline origin guard (Vercel bundles each API route independently) ──
 function isOriginAllowed(origin: string): boolean {
@@ -44,8 +45,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ai = new GoogleGenAI({ apiKey });
         const modelName = 'gemini-2.0-flash';
 
-        const systemInstruction = `**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v6.0).
+        const systemInstruction = `**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v7.0).
 **MISSION:** Extract EVERY operational detail. If a detail is in the text, it MUST appear in the output. Do not summarize away important nuances.
+
+### 0. 📊 STRUCTURED DATA (Pre-Parsed by System)
+Each guest may include pre-parsed structured fields alongside rawHtml. USE THESE for accuracy:
+* **adults/children/infants** — Room occupancy (e.g. adults:2, children:1 → include "👶 1 child" in notes AND hkNotes for cot/extra bed setup)
+* **preRegistered** — If true, include "✅ Pre-Registered Online" in notes
+* **bookingSource** — Agent/OTA (e.g. "Booking.com", "Direct") — include in notes if OTA
+* **smokingPreference** — If present, include "🚬 [Preference]" in hkNotes
+* **billingMethod** — Payment method (e.g. "Pay Own Account")
+* **inRoomItems** — Parser-extracted in-room items (enhance, don't discard)
 
 ### 1. 🛡️ REVENUE & SECURITY GUARD
 * **APR / LHAPR:** IF RateCode has 'APR'/'ADV' -> Start 'notes' with: "✅ PAID IN FULL (Extras Only)".
@@ -69,26 +79,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 * **CRITICAL:** Preserve specific details (Names, severity, specific requests).
 * **HIERARCHY (Concatenate with " • "):**
     1.  **Status:** ✅ PAID / ⭐ VIP / 🔵 STAFF / 🟢 COMP
-    2.  **Alerts:** ⚠️ [Allergies + Details] (e.g. "Nut Allergy (Carries Epipen)") / 💰 [Billing] / 🤫 [Silent]
-    3.  **Room:** 🟠 NO BREAKFAST / 👤 SINGLE / 👥 3+ GUESTS
-    4.  **Occasions:** 🎉 [Birthday - Name/Age] / 🥂 Anniversary / 💒 Honeymoon
-    5.  **Requests & Logistics:** 📌 [Any special request: "Spa Hamper", "Feather Pillows", "Dinner in Garden Room", "Specific Room Requested"]
-    6.  **History:** 📜 Prev: [Dates if listed]
-    7.  **ASSETS:** 🎁 [Champagne, Flowers, Balloons, Tickets, Hampers]
-* **Example:** "✅ PAID IN FULL • ⚠️ Nut Allergy (Carries Epipen) • 🎉 Birthday (Rob - 50th) • 📌 Spa Hamper, Garden Room Req • 🎁 Champagne"
+    2.  **Pre-Reg:** ✅ Pre-Registered Online (if preRegistered=true)
+    3.  **Alerts:** ⚠️ [Allergies + Details] (e.g. "Nut Allergy (Carries Epipen)") / 💰 [Billing] / 🤫 [Silent]
+    4.  **Room:** 🟠 NO BREAKFAST / 👤 SINGLE / 👥 3+ GUESTS / 👶 Children/Infants
+    5.  **Occasions:** 🎉 [Birthday - Name/Age] / 🥂 Anniversary / 💒 Honeymoon
+    6.  **Requests & Logistics:** 📌 [Any special request: "Spa Hamper", "Feather Pillows", "Dinner in Garden Room", "Specific Room Requested"]
+    7.  **History:** 📜 Prev: [Dates if listed]
+    8.  **ASSETS:** 🎁 [Champagne, Flowers, Balloons, Tickets, Hampers]
+    9.  **Source:** If bookingSource is an OTA (Booking.com, Expedia), add "📲 [OTA Name]"
+* **Example:** "✅ PAID IN FULL • ✅ Pre-Registered Online • ⚠️ Nut Allergy (Carries Epipen) • 👶 1 child • 🎉 Birthday (Rob - 50th) • 📌 Spa Hamper, Garden Room Req • 🎁 Champagne"
 
 **C. inRoomItems (Physical Checklist)**
 * **GOAL:** Physical list for Housekeeping/Bar.
-* **INCLUDE:** Anything physical going into the room. (Champagne, Ice Bucket, Glasses, Dog Bed, Robes, Spa Hamper, Balloons, Itinerary).
+* **INCLUDE:** Anything physical going into the room. (Champagne, Ice Bucket, Glasses, Dog Bed, Robes, Spa Hamper, Balloons, Itinerary, Cot, Extra Bed).
 * **RULE:** If it is in 'notes' as an asset, it MUST also be here.
+* **RULE:** If children/infants > 0 and cot/extra bed mentioned, include in this list.
+* **RULE:** Use the parser's inRoomItems field as a base — enhance with AI analysis, don't discard.
 
 **C1. hkNotes (Housekeeping Intelligence)**
 * **GOAL:** Housekeeping-specific notes for room preparation.
-* **INCLUDE:** All allergies & dietary restrictions (e.g. "⚠️ Nut Allergy (Epipen)"), any pet requirements ("🐕 Dog Bed + Bowls"), special room setup ("Extra Pillows", "Feather-Free").
+* **INCLUDE:** All allergies & dietary restrictions (e.g. "⚠️ Nut Allergy (Epipen)"), any pet requirements ("🐕 Dog Bed + Bowls"), special room setup ("Extra Pillows", "Feather-Free"), smoking preference ("🚬 Non-Smoking"), children/infant setup ("👶 Cot Required").
 * **RULE:** If an allergy/dietary item appears in 'notes', it MUST also appear in 'hkNotes'.
+* **RULE:** If children > 0, include child-related setup notes.
 
 **D. preferences (Greeting Strategy)**
 * **STYLE:** Short, punchy, imperative instructions. (e.g. "Wish Happy Birthday to Rob. Check Voucher.")
+* **RULE:** If preRegistered, add "Pre-registered — fast check-in."
 
 **E. packages (Human Readable)**
 * **CRITICAL:** Match the exact RateCode format. Underscores matter!
@@ -118,9 +134,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 Return a raw JSON array of objects. No markdown.
 `;
 
-        const guestDataPayload = guests.map((g: any, i: number) =>
-            `--- GUEST ${i + 1} ---\nNAME: ${g.name} | RATE: ${g.rateCode || 'Standard'}\nRAW: ${g.rawHtml}`
-        ).join("\n\n");
+        const guestDataPayload = guests.map((g: any, i: number) => {
+            let structured = `--- GUEST ${i + 1} ---\nNAME: ${g.name} | RATE: ${g.rateCode || 'Standard'}`;
+            // Append structured fields when available
+            if (g.adults !== undefined) structured += ` | ADULTS: ${g.adults}`;
+            if (g.children) structured += ` | CHILDREN: ${g.children}`;
+            if (g.infants) structured += ` | INFANTS: ${g.infants}`;
+            if (g.preRegistered) structured += ` | PRE-REGISTERED: Yes`;
+            if (g.bookingSource) structured += ` | SOURCE: ${g.bookingSource}`;
+            if (g.smokingPreference) structured += ` | SMOKING: ${g.smokingPreference}`;
+            if (g.billingMethod) structured += ` | BILLING: ${g.billingMethod}`;
+            if (g.inRoomItems) structured += `\nIN-ROOM ITEMS (Parser): ${g.inRoomItems}`;
+            structured += `\nRAW: ${g.rawHtml}`;
+            return structured;
+        }).join("\n\n");
 
         let retries = 3;
         let delay = 2000;
@@ -154,12 +181,8 @@ Return a raw JSON array of objects. No markdown.
                 });
 
                 const text = response.text || "";
-                let cleanJson = text;
-                if (typeof text === 'string') {
-                    cleanJson = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-                }
-                const result = JSON.parse(cleanJson || "[]");
-                return res.status(200).json(result);
+                const data = validateAIResponse(RefineGuestSchema, text);
+                return res.status(200).json(data);
             } catch (error: any) {
                 const isTransient = error.status === 503 || error.status === 429 || error.message?.toLowerCase().includes('overloaded');
                 if (retries > 1 && isTransient) {

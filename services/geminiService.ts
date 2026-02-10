@@ -1,5 +1,44 @@
 import { Guest, RefinementField } from "../types";
 
+// ── Shared fetch-with-retry utility ────────────────────────────────────────
+// Retries on network errors and 5xx (server) responses.
+// 3 attempts with exponential backoff: 1s → 2s → 4s.
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3
+): Promise<Response> {
+  let lastError: Error | null = null;
+  let delay = 1000;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      // Don't retry on 4xx (client errors) — only on 5xx (server/AI errors)
+      if (response.ok || (response.status >= 400 && response.status < 500)) {
+        return response;
+      }
+      // 5xx — retryable
+      if (attempt < maxRetries) {
+        console.warn(`[AI] Request to ${url} returned ${response.status}, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})`);
+        await new Promise(r => setTimeout(r, delay));
+        delay *= 2;
+        continue;
+      }
+      return response; // Last attempt — return whatever we got
+    } catch (error: any) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        console.warn(`[AI] Network error for ${url}, retrying in ${delay}ms (attempt ${attempt}/${maxRetries}):`, error.message);
+        await new Promise(r => setTimeout(r, delay));
+        delay *= 2;
+        continue;
+      }
+    }
+  }
+  throw lastError || new Error('fetchWithRetry exhausted all retries');
+}
+
 export class GeminiService {
   static async refineGuestBatch(
     guests: Guest[],
@@ -8,14 +47,23 @@ export class GeminiService {
     console.log('[AI Audit] Starting refinement for', guests.length, 'guests');
 
     try {
-      const response = await fetch('/api/gemini-refine', {
+      const response = await fetchWithRetry('/api/gemini-refine', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           guests: guests.map(g => ({
             name: g.name,
             rateCode: g.rateCode,
-            rawHtml: g.rawHtml
+            rawHtml: g.rawHtml,
+            // Enhanced parser fields for better AI output
+            adults: g.adults,
+            children: g.children,
+            infants: g.infants,
+            preRegistered: g.preRegistered,
+            bookingSource: g.bookingSource,
+            smokingPreference: g.smokingPreference,
+            billingMethod: g.billingMethod,
+            inRoomItems: g.inRoomItems,
           }))
         })
       });
@@ -51,7 +99,7 @@ export class GeminiService {
     guests: Guest[]
   ): Promise<{ roomOrder: string[]; reasoning: string } | null> {
     try {
-      const response = await fetch('/api/gemini-cleaning-order', {
+      const response = await fetchWithRetry('/api/gemini-cleaning-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -62,7 +110,11 @@ export class GeminiService {
             hkStatus: g.hkStatus,
             rateCode: g.rateCode,
             prefillNotes: g.prefillNotes,
-            rawHtml: g.rawHtml
+            rawHtml: g.rawHtml,
+            // Enhanced fields for smarter prioritization
+            children: g.children,
+            infants: g.infants,
+            inRoomItems: g.inRoomItems,
           }))
         })
       });
@@ -90,7 +142,7 @@ export class GeminiService {
     guests: { name: string; notes: string; preferences: string; room: string }[]
   ): Promise<{ guestIndex: number; tags: string[] }[] | null> {
     try {
-      const response = await fetch('/api/gemini-sentiment', {
+      const response = await fetchWithRetry('/api/gemini-sentiment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ guests })

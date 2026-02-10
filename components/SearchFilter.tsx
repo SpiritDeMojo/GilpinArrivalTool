@@ -27,8 +27,8 @@ const SearchFilter: React.FC<SearchFilterProps> = ({
         <div className="relative w-full max-w-md">
             <div
                 className={`flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all duration-300 bg-white/50 dark:bg-white/5 backdrop-blur-lg ${isFocused
-                        ? 'border-[#c5a065] shadow-lg shadow-[#c5a065]/10'
-                        : 'border-slate-200 dark:border-stone-800 hover:border-[#c5a065]/50'
+                    ? 'border-[#c5a065] shadow-lg shadow-[#c5a065]/10'
+                    : 'border-slate-200 dark:border-stone-800 hover:border-[#c5a065]/50'
                     }`}
             >
                 {/* Search Icon */}
@@ -36,6 +36,10 @@ const SearchFilter: React.FC<SearchFilterProps> = ({
 
                 {/* Input */}
                 <input
+                    id="guest-search"
+                    name="guestSearch"
+                    autoComplete="off"
+                    aria-label="Search guests"
                     type="text"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
@@ -73,4 +77,4 @@ const SearchFilter: React.FC<SearchFilterProps> = ({
     );
 };
 
-export default SearchFilter;
+export default React.memo(SearchFilter);

@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { CleaningOrderSchema, validateAIResponse } from '../lib/aiSchemas';
 
 // ── Inline origin guard (Vercel bundles each API route independently) ──
 function isOriginAllowed(origin: string): boolean {
@@ -43,34 +44,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ai = new GoogleGenAI({ apiKey });
 
         const guestSummary = guests.map((g: any) =>
-            `Room ${g.room}: ${g.name} | ETA: ${g.eta || 'Unknown'} | VIP: ${g.prefillNotes?.includes('VIP') || g.rawHtml?.includes('VIP') ? 'Yes' : 'No'} | HK Status: ${g.hkStatus || 'pending'} | Rate: ${g.rateCode || 'Standard'}`
+            `Room ${g.room}: ${g.name} | ETA: ${g.eta || 'Unknown'} | VIP: ${g.prefillNotes?.includes('VIP') || g.rawHtml?.includes('VIP') ? 'Yes' : 'No'} | HK Status: ${g.hkStatus || 'pending'} | Rate: ${g.rateCode || 'Standard'}${g.children ? ` | Children: ${g.children}` : ''}${g.infants ? ` | Infants: ${g.infants}` : ''}${g.inRoomItems ? ` | In-Room: ${g.inRoomItems}` : ''}`
         ).join('\n');
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: `Here are today's arrivals at a luxury hotel:\n\n${guestSummary}\n\nWhich 5 rooms should Housekeeping clean FIRST? Consider: earliest ETAs, VIP guests, and operational efficiency.`,
-            config: {
-                systemInstruction: 'You are a luxury hotel operations expert. Analyze the arrivals and suggest the optimal cleaning order. Be concise but justify each choice.',
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        roomOrder: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING },
-                        },
-                        reasoning: { type: Type.STRING },
-                    },
-                    required: ['roomOrder', 'reasoning'],
-                },
-            },
-        });
+        // Retry loop — 3 attempts with exponential backoff (2s → 4s → 8s)
+        let retries = 3;
+        let delay = 2000;
 
-        const text = response.text || '';
-        const clean = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-        return res.status(200).json(JSON.parse(clean || '{}'));
+        while (retries > 0) {
+            try {
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.0-flash',
+                    contents: `Here are today's arrivals at a luxury hotel:\n\n${guestSummary}\n\nWhich 5 rooms should Housekeeping clean FIRST? Consider: earliest ETAs, VIP guests, and operational efficiency.`,
+                    config: {
+                        systemInstruction: 'You are a luxury hotel operations expert. Analyze the arrivals and suggest the optimal cleaning order. Be concise but justify each choice.',
+                        responseMimeType: 'application/json',
+                        responseSchema: {
+                            type: Type.OBJECT,
+                            properties: {
+                                roomOrder: {
+                                    type: Type.ARRAY,
+                                    items: { type: Type.STRING },
+                                },
+                                reasoning: { type: Type.STRING },
+                            },
+                            required: ['roomOrder', 'reasoning'],
+                        },
+                    },
+                });
+
+                const text = response.text || '';
+                const data = validateAIResponse(CleaningOrderSchema, text);
+                return res.status(200).json(data);
+            } catch (error: any) {
+                const isTransient = error.status === 503 || error.status === 429 || error.message?.toLowerCase().includes('overloaded');
+                if (retries > 1 && isTransient) {
+                    await new Promise(r => setTimeout(r, delay));
+                    retries--;
+                    delay *= 2;
+                    continue;
+                }
+                console.error("[API Cleaning Order] Error:", error);
+                return res.status(502).json({ error: 'AI service error', details: error.message });
+            }
+        }
+        return res.status(502).json({ error: 'AI service exhausted retries' });
     } catch (error: any) {
-        console.error("[API Cleaning Order] Error:", error);
-        return res.status(502).json({ error: 'AI service error', details: error.message });
+        console.error("API Route Error:", error);
+        return res.status(500).json({ error: 'Server error', details: error.message });
     }
 }

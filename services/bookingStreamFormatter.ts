@@ -99,8 +99,8 @@ export function formatBookingStream(rawText: string, guestId?: string, guestName
         // Extract room type code
         const typeMatch = firstLine.match(/\b(SL|MR|CR|JS|GR|SS|LHC|LHM|LHS|LHSS)\b/i);
         if (typeMatch) data.header.type = typeMatch[1].toUpperCase();
-        // Extract rate code (BB_2, RO, MIN, etc.)
-        const rateMatch = firstLine.match(/\b(BB_?\d?|RO|MIN|MAGESC|CEL|COMP|LHBB_?\d?|APR_?\d?_?BB|POB_STAFF|POB|STAFF|DBB_?\d?)\b/i);
+        // Extract rate code (BB_2, RO, MINIMOON, MAGESC, etc.) — longest match first
+        const rateMatch = firstLine.match(/\b(MINIMOON|MINI_MOON|MAGESC|MAG_ESC|APR_\d_BB|POB_STAFF|BB_?\d?_?WIN|LHBB_?\d?|DBB_?\d?|BB_?\d?|RO_?\d?|MIN|CEL|COMP|LHAPR|LHMAG|POB|STAFF)\b/i);
         if (rateMatch) data.header.rateCode = rateMatch[1].toUpperCase();
         // Extract rate amount
         const rateAmountMatch = firstLine.match(/(\d{2,4}\.\d{2})\b/);

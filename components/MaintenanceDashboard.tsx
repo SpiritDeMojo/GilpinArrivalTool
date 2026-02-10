@@ -152,8 +152,10 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
             </button>
           ))}
         </div>
-        <label className="toggle-label highlight">
+        <label className="toggle-label highlight" htmlFor="mt-show-notes-only">
           <input
+            id="mt-show-notes-only"
+            name="showOnlyWithNotes"
             type="checkbox"
             checked={showOnlyWithNotes}
             onChange={e => setShowOnlyWithNotes(e.target.checked)}
@@ -188,12 +190,12 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
           >
             {isLoadingAI ? '⏳' : '🤖'} {isLoadingAI ? 'Thinking...' : aiPriorityRooms.length > 0 ? 'Clear AI' : 'AI Priority'}
           </button>
-          <label className="toggle-label">
-            <input type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
+          <label className="toggle-label" htmlFor="mt-show-main">
+            <input id="mt-show-main" name="showMainHotel" type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
             <span>🏨 Main (1-31)</span>
           </label>
-          <label className="toggle-label">
-            <input type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
+          <label className="toggle-label" htmlFor="mt-show-lake">
+            <input id="mt-show-lake" name="showLakeHouse" type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
             <span>🏡 Lake (51-58)</span>
           </label>
         </div>
@@ -320,6 +322,9 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
                 {/* Actions */}
                 <div className="row-actions">
                   <select
+                    id={`mt-status-${guest.id}`}
+                    name="maintenanceStatus"
+                    aria-label={`Maintenance status for room ${guest.room}`}
                     className="status-select"
                     value={maintStatus}
                     onChange={(e) => onUpdateMaintenanceStatus(guest.id, e.target.value as MaintenanceStatus)}
@@ -366,8 +371,11 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
             <p className="modal-subtitle">This note will be visible to all departments</p>
 
             <div className="form-group">
-              <label>Your Name</label>
+              <label htmlFor="mt-note-author">Your Name</label>
               <input
+                id="mt-note-author"
+                name="authorName"
+                autoComplete="name"
                 type="text"
                 value={authorName}
                 onChange={(e) => setAuthorName(e.target.value)}
@@ -410,8 +418,11 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
             </div>
 
             <div className="form-group">
-              <label>Note</label>
+              <label htmlFor="mt-note-msg">Note</label>
               <textarea
+                id="mt-note-msg"
+                name="noteMessage"
+                autoComplete="off"
                 value={noteMessage}
                 onChange={(e) => setNoteMessage(e.target.value)}
                 placeholder="Describe the issue or work completed..."
@@ -1163,4 +1174,4 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
   );
 };
 
-export default MaintenanceDashboard;
+export default React.memo(MaintenanceDashboard);

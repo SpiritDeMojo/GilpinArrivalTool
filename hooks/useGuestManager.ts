@@ -37,8 +37,12 @@ export type ConnectionStatus = 'connected' | 'connecting' | 'offline';
 // Data source type
 export type DataSource = 'pdf' | 'pms';
 
-// Helper to get session ID from URL
+// Helper to get session ID from URL path (/session/:sessionId or legacy ?session=id)
 const getSessionIdFromURL = (): string | null => {
+  // New path-based format: /session/abc123 or /session/abc123/housekeeping
+  const pathMatch = window.location.pathname.match(/^\/session\/([^/]+)/);
+  if (pathMatch) return pathMatch[1];
+  // Legacy query-param format: ?session=abc123
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('session');
 };
@@ -46,9 +50,11 @@ const getSessionIdFromURL = (): string | null => {
 // Helper to update URL with session ID (without page reload)
 const updateURLWithSession = (sessionId: string) => {
   if (sessionId) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('session', sessionId);
-    window.history.replaceState({}, '', url.toString());
+    const currentTab = window.location.pathname.match(/^\/session\/[^/]+\/(.+)/)?.[1] || '';
+    const newPath = currentTab ? `/session/${sessionId}/${currentTab}` : `/session/${sessionId}`;
+    if (window.location.pathname !== newPath) {
+      window.history.replaceState({}, '', newPath);
+    }
   }
 };
 
@@ -799,15 +805,19 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                     correctedPackage = 'Room Only';
                   } else if (rateCode.match(/^DBB/i)) {
                     correctedPackage = 'Dinner, Bed & Breakfast';
-                  } else if (rateCode.match(/^MINI|MINIMOON/i)) {
+                  } else if (rateCode.match(/^MIN/i)) {
                     correctedPackage = '🌙 Mini Moon';
-                  } else if (rateCode.match(/^MAGESC|MAG_ESC/i)) {
+                  } else if (rateCode.match(/^MAG/i)) {
                     correctedPackage = '✨ Magical Escape';
                   } else if (rateCode.match(/^CEL/i)) {
                     correctedPackage = '🎉 Celebration';
-                  } else if (rateCode.match(/^POB|STAFF/i)) {
+                  } else if (rateCode.match(/^COMP/i)) {
+                    correctedPackage = '🎁 Complimentary';
+                  } else if (rateCode.match(/^POB|^STAFF/i)) {
                     correctedPackage = 'Pride of Britain Staff';
-                  } else if (rateCode.match(/^APR|ADV|LHAPR/i)) {
+                  } else if (rateCode.match(/^LHMAG/i)) {
+                    correctedPackage = '✨ Magical Escape (Lake House)';
+                  } else if (rateCode.match(/^APR|^ADV|^LHAPR/i)) {
                     correctedPackage = '💳 Advanced Purchase';
                   }
 
@@ -823,10 +833,12 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                     preferences: ref.preferences || updatedGuests[gIndex].preferences,
                     packageName: correctedPackage || updatedGuests[gIndex].packageName,
                     ll: ref.history || updatedGuests[gIndex].ll,
-                    // AI car only fills in if regex parser didn't find one
-                    car: updatedGuests[gIndex].car || ref.car || updatedGuests[gIndex].car,
-                    // Housekeeping intelligence (allergies, dietary, room prep)
+                    // Parser car is more reliable (regex-based) — AI only fills gaps
+                    car: updatedGuests[gIndex].car || ref.car || '',
+                    // Housekeeping intelligence (allergies, dietary, room prep, smoking, children)
                     hkNotes: ref.hkNotes || updatedGuests[gIndex].hkNotes || '',
+                    // Structured parser fields are preserved via spread (adults, children,
+                    // infants, preRegistered, bookingSource, etc. survive untouched)
                   };
                 }
               } else {
@@ -900,9 +912,8 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   // Get current share URL (for QR code, etc.)
   const getShareUrl = useCallback((): string => {
     if (!activeSessionId) return '';
-    const url = new URL(window.location.href);
-    url.searchParams.set('session', activeSessionId);
-    return url.toString();
+    const origin = window.location.origin;
+    return `${origin}/session/${activeSessionId}`;
   }, [activeSessionId]);
 
   // Join an existing session from Firebase (used by SessionBrowser)

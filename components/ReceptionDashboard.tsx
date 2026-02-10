@@ -192,12 +192,12 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
           >
             {sortMode === 'eta' ? '🕐 ETA Order' : '🚪 Room Order'}
           </button>
-          <label className="toggle-label">
-            <input type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
+          <label className="toggle-label" htmlFor="rx-show-main">
+            <input id="rx-show-main" name="showMainHotel" type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
             <span>🏨 Main (1-31)</span>
           </label>
-          <label className="toggle-label">
-            <input type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
+          <label className="toggle-label" htmlFor="rx-show-lake">
+            <input id="rx-show-lake" name="showLakeHouse" type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
             <span>🏡 Lake (51-58)</span>
           </label>
         </div>
@@ -296,8 +296,10 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
                 {/* In-Room Delivery */}
                 {guest.inRoomItems && (
                   <div className="delivery-section">
-                    <label className="delivery-toggle">
+                    <label className="delivery-toggle" htmlFor={`rx-delivery-${guest.id}`}>
                       <input
+                        id={`rx-delivery-${guest.id}`}
+                        name="inRoomDelivered"
                         type="checkbox"
                         checked={guest.inRoomDelivered || false}
                         onChange={(e) => onUpdateInRoomDelivery(guest.id, e.target.checked)}
@@ -340,6 +342,9 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
                 {/* Actions */}
                 <div className="card-actions">
                   <select
+                    id={`rx-status-${guest.id}`}
+                    name="guestStatus"
+                    aria-label={`Guest status for ${guest.name}`}
                     className="status-select"
                     value={guestStatus}
                     onChange={(e) => onUpdateGuestStatus(guest.id, e.target.value as GuestStatus)}
@@ -395,8 +400,11 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
             <p className="modal-room">{courtesyModal.room} - {courtesyModal.guestName}</p>
 
             <div className="form-group">
-              <label>Your Name</label>
+              <label htmlFor="rx-courtesy-author">Your Name</label>
               <input
+                id="rx-courtesy-author"
+                name="authorName"
+                autoComplete="name"
                 type="text"
                 value={authorName}
                 onChange={(e) => setAuthorName(e.target.value)}
@@ -429,8 +437,11 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
             </div>
 
             <div className="form-group">
-              <label>Notes</label>
+              <label htmlFor="rx-courtesy-note">Notes</label>
               <textarea
+                id="rx-courtesy-note"
+                name="courtesyNote"
+                autoComplete="off"
                 value={courtesyNote}
                 onChange={(e) => setCourtesyNote(e.target.value)}
                 placeholder="Enter notes from the call..."
@@ -973,4 +984,4 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
   );
 };
 
-export default ReceptionDashboard;
+export default React.memo(ReceptionDashboard);

@@ -170,4 +170,4 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
     );
 };
 
-export default BookingStream;
+export default React.memo(BookingStream);

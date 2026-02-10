@@ -3,199 +3,201 @@ import { subscribeToSessionList, SessionSummary, isFirebaseEnabled, initializeFi
 import { ArrivalSession } from '../types';
 
 interface SessionBrowserProps {
-    onJoinSession: (session: ArrivalSession) => void;
-    onCreateNew: () => void;
-    onUploadPDF: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onJoinSession: (session: ArrivalSession) => void;
+  onCreateNew: () => void;
+  onUploadPDF: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreateNew, onUploadPDF }) => {
-    const [sessions, setSessions] = useState<SessionSummary[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [joining, setJoining] = useState<string | null>(null);
-    const [deleting, setDeleting] = useState<string | null>(null);
-    const [presenceMap, setPresenceMap] = useState<Record<string, number>>({});
-    const unsubRef = useRef<(() => void) | null>(null);
-    const presenceUnsubRef = useRef<(() => void) | null>(null);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [presenceMap, setPresenceMap] = useState<Record<string, number>>({});
+  const unsubRef = useRef<(() => void) | null>(null);
+  const presenceUnsubRef = useRef<(() => void) | null>(null);
 
-    useEffect(() => {
-        if (!isFirebaseEnabled()) {
-            initializeFirebase();
-        }
+  useEffect(() => {
+    if (!isFirebaseEnabled()) {
+      initializeFirebase();
+    }
 
-        unsubRef.current = subscribeToSessionList((list) => {
-            setSessions(list);
-            setLoading(false);
-        });
+    unsubRef.current = subscribeToSessionList((list) => {
+      setSessions(list);
+      setLoading(false);
+    });
 
-        presenceUnsubRef.current = subscribeToPresence((map) => {
-            setPresenceMap(map);
-        });
+    presenceUnsubRef.current = subscribeToPresence((map) => {
+      setPresenceMap(map);
+    });
 
-        return () => {
-            if (unsubRef.current) unsubRef.current();
-            if (presenceUnsubRef.current) presenceUnsubRef.current();
-        };
-    }, []);
-
-    const handleJoin = (sessionId: string) => {
-        setJoining(sessionId);
-        fetchSession(sessionId, (session) => {
-            if (session) {
-                onJoinSession(session);
-            } else {
-                setJoining(null);
-                alert('Could not load session. It may have been deleted.');
-            }
-        });
+    return () => {
+      if (unsubRef.current) unsubRef.current();
+      if (presenceUnsubRef.current) presenceUnsubRef.current();
     };
+  }, []);
 
-    const handleDelete = async (e: React.MouseEvent, sessionId: string, label: string) => {
-        e.stopPropagation();
-        const confirmed = window.confirm(`Delete session "${label}"?\n\nThis will remove it from all devices.`);
-        if (!confirmed) return;
+  const handleJoin = (sessionId: string) => {
+    setJoining(sessionId);
+    fetchSession(sessionId, (session) => {
+      if (session) {
+        onJoinSession(session);
+      } else {
+        setJoining(null);
+        alert('Could not load session. It may have been deleted.');
+      }
+    });
+  };
 
-        setDeleting(sessionId);
-        try {
-            await deleteSessionFromFirebase(sessionId);
-        } catch (error) {
-            alert('Failed to delete session');
-        } finally {
-            setDeleting(null);
-        }
-    };
+  const handleDelete = async (e: React.MouseEvent, sessionId: string, label: string) => {
+    e.stopPropagation();
+    const confirmed = window.confirm(`Delete session "${label}"?\n\nThis will remove it from all devices.`);
+    if (!confirmed) return;
 
-    const formatTime = (timestamp: number) => {
-        if (!timestamp) return 'Unknown';
-        const d = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now.getTime() - d.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
+    setDeleting(sessionId);
+    try {
+      await deleteSessionFromFirebase(sessionId);
+    } catch (error) {
+      alert('Failed to delete session');
+    } finally {
+      setDeleting(null);
+    }
+  };
 
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-    };
+  const formatTime = (timestamp: number) => {
+    if (!timestamp) return 'Unknown';
+    const d = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
 
-    const formatDate = (dateObj?: string) => {
-        if (!dateObj) return '';
-        try {
-            return new Date(dateObj).toLocaleDateString('en-GB', {
-                weekday: 'short', day: '2-digit', month: 'short'
-            });
-        } catch { return ''; }
-    };
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  };
 
-    return (
-        <div className="session-browser">
-            {/* Header */}
-            <div className="session-browser__header">
-                <h1 className="session-browser__title heading-font">Gilpin Intelligence Hub</h1>
-                <p className="session-browser__subtitle">Select a session or create a new one</p>
-            </div>
+  const formatDate = (dateObj?: string) => {
+    if (!dateObj) return '';
+    try {
+      return new Date(dateObj).toLocaleDateString('en-GB', {
+        weekday: 'short', day: '2-digit', month: 'short'
+      });
+    } catch { return ''; }
+  };
 
-            {/* Session List */}
-            <div className="session-browser__list">
-                {loading ? (
-                    <div className="session-browser__empty">
-                        <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🔄</div>
-                        Connecting to Firebase...
+  return (
+    <div className="session-browser">
+      {/* Header */}
+      <div className="session-browser__header">
+        <h1 className="session-browser__title heading-font">Gilpin Intelligence Hub</h1>
+        <p className="session-browser__subtitle">Select a session or create a new one</p>
+      </div>
+
+      {/* Session List */}
+      <div className="session-browser__list">
+        {loading ? (
+          <div className="session-browser__empty">
+            <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🔄</div>
+            Connecting to Firebase...
+          </div>
+        ) : sessions.length === 0 ? (
+          <div className="session-browser__empty session-browser__empty--boxed">
+            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📭</div>
+            <p style={{ fontWeight: 600 }}>No active sessions</p>
+            <p style={{ fontSize: '0.85rem', marginTop: '8px', opacity: 0.7 }}>
+              Upload a PDF or create a new session to get started.
+            </p>
+          </div>
+        ) : (
+          sessions.map(s => {
+            const activeViewers = presenceMap[s.id] || 0;
+            const isDeleting = deleting === s.id;
+
+            return (
+              <div
+                key={s.id}
+                className={`session-card ${joining === s.id ? 'session-card--joining' : ''} ${isDeleting ? 'session-card--deleting' : ''}`}
+                style={{ opacity: (joining && joining !== s.id) || isDeleting ? 0.5 : 1 }}
+              >
+                {/* Clickable area */}
+                <button
+                  onClick={() => handleJoin(s.id)}
+                  disabled={joining !== null || isDeleting}
+                  className="session-card__main"
+                >
+                  {/* Icon */}
+                  <div className="session-card__icon">
+                    {s.guestCount > 0 ? '📋' : '📝'}
+                  </div>
+
+                  {/* Info */}
+                  <div className="session-card__info">
+                    <div className="session-card__label">{s.label}</div>
+                    <div className="session-card__meta">
+                      {s.dateObj && <span>📅 {formatDate(s.dateObj)}</span>}
+                      <span>👥 {s.guestCount}</span>
+                      <span>🕐 {formatTime(s.lastModified)}</span>
                     </div>
-                ) : sessions.length === 0 ? (
-                    <div className="session-browser__empty session-browser__empty--boxed">
-                        <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📭</div>
-                        <p style={{ fontWeight: 600 }}>No active sessions</p>
-                        <p style={{ fontSize: '0.85rem', marginTop: '8px', opacity: 0.7 }}>
-                            Upload a PDF or create a new session to get started.
-                        </p>
+                  </div>
+
+                  {/* Active viewers badge */}
+                  {activeViewers > 0 && (
+                    <div className="session-card__presence">
+                      <span className="session-card__presence-dot"></span>
+                      {activeViewers}
                     </div>
-                ) : (
-                    sessions.map(s => {
-                        const activeViewers = presenceMap[s.id] || 0;
-                        const isDeleting = deleting === s.id;
+                  )}
 
-                        return (
-                            <div
-                                key={s.id}
-                                className={`session-card ${joining === s.id ? 'session-card--joining' : ''} ${isDeleting ? 'session-card--deleting' : ''}`}
-                                style={{ opacity: (joining && joining !== s.id) || isDeleting ? 0.5 : 1 }}
-                            >
-                                {/* Clickable area */}
-                                <button
-                                    onClick={() => handleJoin(s.id)}
-                                    disabled={joining !== null || isDeleting}
-                                    className="session-card__main"
-                                >
-                                    {/* Icon */}
-                                    <div className="session-card__icon">
-                                        {s.guestCount > 0 ? '📋' : '📝'}
-                                    </div>
-
-                                    {/* Info */}
-                                    <div className="session-card__info">
-                                        <div className="session-card__label">{s.label}</div>
-                                        <div className="session-card__meta">
-                                            {s.dateObj && <span>📅 {formatDate(s.dateObj)}</span>}
-                                            <span>👥 {s.guestCount}</span>
-                                            <span>🕐 {formatTime(s.lastModified)}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Active viewers badge */}
-                                    {activeViewers > 0 && (
-                                        <div className="session-card__presence">
-                                            <span className="session-card__presence-dot"></span>
-                                            {activeViewers}
-                                        </div>
-                                    )}
-
-                                    {/* Arrow */}
-                                    <div className="session-card__arrow">
-                                        {joining === s.id ? '⏳' : '→'}
-                                    </div>
-                                </button>
-
-                                {/* Delete button */}
-                                <button
-                                    onClick={(e) => handleDelete(e, s.id, s.label)}
-                                    disabled={joining !== null || isDeleting}
-                                    className="session-card__delete"
-                                    title="Delete session"
-                                >
-                                    {isDeleting ? '⏳' : '🗑️'}
-                                </button>
-                            </div>
-                        );
-                    })
-                )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="session-browser__actions">
-                <label className="session-browser__btn session-browser__btn--primary">
-                    📄 Upload PDF
-                    <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={onUploadPDF}
-                        style={{ display: 'none' }}
-                    />
-                </label>
-
-                <button onClick={onCreateNew} className="session-browser__btn session-browser__btn--secondary">
-                    ✏️ New Session
+                  {/* Arrow */}
+                  <div className="session-card__arrow">
+                    {joining === s.id ? '⏳' : '→'}
+                  </div>
                 </button>
-            </div>
 
-            {/* Footer */}
-            <div className="session-browser__footer">
-                <div className="session-browser__status">
-                    <span className="session-browser__status-dot" style={{ background: !loading ? '#22c55e' : '#ef4444' }}></span>
-                    {loading ? 'Connecting...' : `Connected • ${sessions.length} sessions`}
-                </div>
-            </div>
+                {/* Delete button */}
+                <button
+                  onClick={(e) => handleDelete(e, s.id, s.label)}
+                  disabled={joining !== null || isDeleting}
+                  className="session-card__delete"
+                  title="Delete session"
+                >
+                  {isDeleting ? '⏳' : '🗑️'}
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
 
-            <style>{`
+      {/* Action Buttons */}
+      <div className="session-browser__actions">
+        <label htmlFor="session-pdf-upload" className="session-browser__btn session-browser__btn--primary">
+          📄 Upload PDF
+          <input
+            id="session-pdf-upload"
+            name="pdfUpload"
+            type="file"
+            accept=".pdf"
+            onChange={onUploadPDF}
+            style={{ display: 'none' }}
+          />
+        </label>
+
+        <button onClick={onCreateNew} className="session-browser__btn session-browser__btn--secondary">
+          ✏️ New Session
+        </button>
+      </div>
+
+      {/* Footer */}
+      <div className="session-browser__footer">
+        <div className="session-browser__status">
+          <span className="session-browser__status-dot" style={{ background: !loading ? '#22c55e' : '#ef4444' }}></span>
+          {loading ? 'Connecting...' : `Connected • ${sessions.length} sessions`}
+        </div>
+      </div>
+
+      <style>{`
         .session-browser {
           min-height: 100vh;
           display: flex;
@@ -512,8 +514,8 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
           }
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 };
 
 export default SessionBrowser;

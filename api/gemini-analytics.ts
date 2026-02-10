@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { AnalyticsSchema, validateAIResponse } from '../lib/aiSchemas';
 
 // ── Inline origin guard (Vercel bundles each API route independently) ──
 function isOriginAllowed(origin: string): boolean {
@@ -116,9 +117,8 @@ ${s.guests.map((g: any) => `- ${g.name} | Rm: ${g.room} | LL: ${g.ll} | Nts: ${g
                 });
 
                 const text = response.text || "";
-                const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                const parsed = JSON.parse(cleanJson || "null");
-                return res.status(200).json(parsed ? { ...parsed, lastUpdated: Date.now() } : null);
+                const data = validateAIResponse(AnalyticsSchema, text);
+                return res.status(200).json({ ...data, lastUpdated: Date.now() });
             } catch (error: any) {
                 const isTransient = error.status === 503 || error.status === 429 || error.message?.toLowerCase().includes('overloaded');
                 if (retries > 1 && isTransient) {

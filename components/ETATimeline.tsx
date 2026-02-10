@@ -192,4 +192,4 @@ const ETATimeline: React.FC<ETATimelineProps> = ({ guests, onGuestClick }) => {
     );
 };
 
-export default ETATimeline;
+export default React.memo(ETATimeline);
