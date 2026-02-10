@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, Type } from '@google/genai';
 
 // ── Inline origin guard (Vercel bundles each API route independently) ──
-const ALLOWED_PROJECT = 'gilpinarrivaltool';
+const ALLOWED_PROJECT = 'gilpin-arrival-tool';
 function isOriginAllowed(origin: string): boolean {
     if (!origin) return true;
     if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
