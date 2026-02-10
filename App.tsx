@@ -1,4 +1,5 @@
 import React from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useTheme } from './contexts/ThemeProvider';
 import { useView } from './contexts/ViewProvider';
 import { useHotkeys } from './contexts/HotkeysProvider';
@@ -159,6 +160,9 @@ const App: React.FC = () => {
 
       {/* Mobile Debug Overlay — ?debug=1 or long-press connection dot */}
       <MobileDebugOverlay connectionStatus={connectionStatus} />
+
+      {/* Vercel Speed Insights */}
+      <SpeedInsights />
     </div>
   );
 };
