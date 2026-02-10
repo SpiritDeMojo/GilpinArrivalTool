@@ -21,18 +21,18 @@ import MobileDebugOverlay from './components/MobileDebugOverlay';
 const App: React.FC = () => {
   // Context hooks
   const { isDark, toggleTheme } = useTheme();
-  const { setDashboardView, showAnalytics, toggleAnalytics } = useView();
+  const { dashboardView, setDashboardView, showAnalytics, toggleAnalytics } = useView();
   const { userName, department } = useUser();
   const { printMode, triggerPrint } = useHotkeys();
 
   const {
-    guests, arrivalDateStr, isOldFile, propertyFilteredGuests,
+    guests, arrivalDateStr, isOldFile, isSticky, propertyFilteredGuests,
     isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
     handleFileUpload, handleAIRefine, addManual, onExcelExport,
     activeSessionId, joinSession, createNewSession,
     connectionStatus, manualReconnect,
     isSessionLocked, lockSession, unlockSession,
-    isMuted, toggleMute, notifications, dismissNotification, clearAllNotifications, clearBadge,
+    isMuted, toggleMute, notifications, pushNotification, dismissNotification, clearAllNotifications, clearBadge,
     isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput, errorMessage, hasMic,
     startLiveAssistant, toggleMic, sendTextMessage, disconnect, clearHistory,
     showSessionBrowser,
@@ -94,6 +94,7 @@ const App: React.FC = () => {
           }
         }}
         isSessionLocked={isSessionLocked}
+        isSticky={isSticky}
       />
 
       {/* Notification Toast Overlay */}
@@ -154,6 +155,7 @@ const App: React.FC = () => {
           onClearHistory={clearHistory}
           errorMessage={errorMessage}
           hasMic={hasMic}
+          onPushNotification={pushNotification}
         />
       )}
 

@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Transcription } from '../hooks/useLiveAssistant';
+import { motion, AnimatePresence } from 'framer-motion';
 
-/* ──────────────────────────────────────────────
-   AIAssistantTab — Gemini Live session panel
-   Auto-connects when visible, text + voice input
-   ────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   AIAssistantTab — Messenger-style Gemini Live panel
+   ═══════════════════════════════════════════════════════════
+   • Matching Messenger bubble style with AI purple gradient
+   • Status bar with live indicators
+   • Smooth spring-animated message entries
+   • Auto-connect on tab visibility
+   • Inline text + voice input
+   ═══════════════════════════════════════════════════════════ */
 
 export interface AIAssistantTabProps {
     isLiveActive: boolean;
@@ -31,21 +37,17 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
     const scrollRef = useRef<HTMLDivElement>(null);
     const hasAutoStarted = useRef(false);
 
-    // Auto-start session when tab becomes visible
+    /* ─── Auto-start session on visibility ─── */
     useEffect(() => {
         if (isVisible && !isLiveActive && !hasAutoStarted.current) {
             hasAutoStarted.current = true;
-            // Small delay to let the tab render first
             const timer = setTimeout(() => onStart(), 300);
             return () => clearTimeout(timer);
         }
-        // Reset auto-start flag when tab is hidden so it re-connects next time
-        if (!isVisible) {
-            hasAutoStarted.current = false;
-        }
+        if (!isVisible) hasAutoStarted.current = false;
     }, [isVisible, isLiveActive, onStart]);
 
-    // Auto-scroll
+    /* ─── Auto-scroll ─── */
     useEffect(() => {
         if (isVisible && scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -61,163 +63,312 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-            {/* Status bar */}
+            {/* ─── Status Bar ─── */}
             <div style={{
-                padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'var(--surface, rgba(197,160,101,0.04))',
-                borderBottom: '1px solid var(--border-ui, rgba(197,160,101,0.1))',
+                padding: '10px 14px', display: 'flex',
+                alignItems: 'center', justifyContent: 'space-between',
+                background: 'var(--surface, rgba(120,120,128,0.04))',
+                borderBottom: '0.5px solid var(--border-ui, rgba(197,160,101,0.1))',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{
-                        width: '8px', height: '8px', borderRadius: '50%',
-                        background: isLiveActive ? (isMicEnabled ? '#ef4444' : '#22c55e') : '#f59e0b',
-                        boxShadow: isLiveActive ? `0 0 8px ${isMicEnabled ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)'}` : '0 0 6px rgba(245,158,11,0.4)',
-                        animation: isLiveActive
-                            ? (isMicEnabled ? 'pulse 1.5s infinite' : undefined)
-                            : 'pulse 1s infinite',
-                    }} />
+                    {/* Status dot */}
+                    <motion.div
+                        animate={isLiveActive ? {
+                            scale: [1, 1.2, 1],
+                            opacity: [1, 0.7, 1],
+                        } : { scale: 1, opacity: [1, 0.4, 1] }}
+                        transition={{ duration: isLiveActive ? 2.5 : 1.5, repeat: Infinity }}
+                        style={{
+                            width: '8px', height: '8px', borderRadius: '50%',
+                            background: isLiveActive
+                                ? (isMicEnabled ? '#ff3b30' : '#34c759')
+                                : '#ff9500',
+                            boxShadow: isLiveActive
+                                ? `0 0 8px ${isMicEnabled ? 'rgba(255,59,48,0.5)' : 'rgba(52,199,89,0.5)'}`
+                                : '0 0 6px rgba(255,149,0,0.4)',
+                        }}
+                    />
                     <span style={{
-                        fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em',
-                        color: isLiveActive ? (isMicEnabled ? '#ef4444' : '#22c55e') : '#f59e0b'
+                        fontSize: '12px', fontWeight: 600,
+                        color: isLiveActive
+                            ? (isMicEnabled ? '#ff3b30' : '#34c759')
+                            : '#ff9500',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
                     }}>
-                        {isLiveActive ? (isMicEnabled ? 'Listening' : 'Live') : 'Connecting...'}
+                        {isLiveActive ? (isMicEnabled ? 'Listening' : 'Live') : 'Connecting…'}
                     </span>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
                     {isLiveActive && (
                         <>
                             {hasMic && (
-                                <button onClick={onToggleMic} style={{
-                                    padding: '5px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: 900,
-                                    textTransform: 'uppercase', cursor: 'pointer', border: 'none',
-                                    background: isMicEnabled ? '#ef4444' : 'var(--surface, rgba(200,200,200,0.3))',
-                                    color: isMicEnabled ? 'white' : 'var(--text-muted, #94a3b8)',
-                                }}>🎙️ {isMicEnabled ? 'Mic On' : 'Mic Off'}</button>
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={onToggleMic}
+                                    style={{
+                                        padding: '5px 12px', borderRadius: '14px',
+                                        fontSize: '11px', fontWeight: 600,
+                                        cursor: 'pointer', border: 'none',
+                                        background: isMicEnabled
+                                            ? '#ff3b30'
+                                            : 'var(--surface, rgba(120,120,128,0.12))',
+                                        color: isMicEnabled
+                                            ? 'white'
+                                            : 'var(--text-muted, #8e8e93)',
+                                        fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+                                    }}
+                                >🎙️ {isMicEnabled ? 'Mic On' : 'Mic Off'}</motion.button>
                             )}
-                            <button onClick={onDisconnect} style={{
-                                padding: '5px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: 900,
-                                textTransform: 'uppercase', cursor: 'pointer', border: 'none',
-                                background: 'var(--surface, rgba(239,68,68,0.1))', color: '#ef4444',
-                            }}>⏹ Stop</button>
+                            <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                onClick={onDisconnect}
+                                style={{
+                                    padding: '5px 12px', borderRadius: '14px',
+                                    fontSize: '11px', fontWeight: 600,
+                                    cursor: 'pointer', border: 'none',
+                                    background: 'var(--surface, rgba(255,59,48,0.1))',
+                                    color: '#ff3b30',
+                                    fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+                                }}
+                            >⏹ Stop</motion.button>
                         </>
                     )}
                     {transcriptions.length > 0 && !isLiveActive && (
-                        <button onClick={onClearHistory} style={{
-                            padding: '5px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: 900,
-                            textTransform: 'uppercase', cursor: 'pointer', border: 'none',
-                            background: 'var(--surface, rgba(148,163,184,0.1))', color: 'var(--text-muted, #94a3b8)',
-                        }}>Clear</button>
+                        <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={onClearHistory}
+                            style={{
+                                padding: '5px 12px', borderRadius: '14px',
+                                fontSize: '11px', fontWeight: 600,
+                                cursor: 'pointer', border: 'none',
+                                background: 'var(--surface, rgba(120,120,128,0.12))',
+                                color: 'var(--text-muted, #8e8e93)',
+                                fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+                            }}
+                        >Clear</motion.button>
                     )}
                 </div>
             </div>
 
-            {/* Error banner */}
-            {errorMessage && (
-                <div style={{
-                    padding: '10px 16px', fontSize: '11px', fontWeight: 700,
-                    background: 'var(--surface, rgba(239,68,68,0.1))', color: '#ef4444',
-                    borderBottom: '1px solid rgba(239,68,68,0.25)',
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                }}>
-                    <span>⚠️</span>
-                    <span style={{ flex: 1 }}>{errorMessage}</span>
-                    <button onClick={onStart} style={{
-                        padding: '3px 10px', borderRadius: '8px', fontSize: '9px', fontWeight: 900,
-                        background: '#6366f1', color: 'white', border: 'none', cursor: 'pointer',
-                        textTransform: 'uppercase',
-                    }}>Retry</button>
-                </div>
-            )}
+            {/* ─── Error banner ─── */}
+            <AnimatePresence>
+                {errorMessage && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        style={{
+                            overflow: 'hidden',
+                            background: 'var(--surface, rgba(255,59,48,0.06))',
+                            borderBottom: '0.5px solid rgba(255,59,48,0.2)',
+                        }}
+                    >
+                        <div style={{
+                            padding: '10px 14px', fontSize: '12px', fontWeight: 600,
+                            color: '#ff3b30', display: 'flex', alignItems: 'center', gap: '8px',
+                        }}>
+                            <span>⚠️</span>
+                            <span style={{ flex: 1 }}>{errorMessage}</span>
+                            <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                onClick={onStart}
+                                style={{
+                                    padding: '4px 12px', borderRadius: '12px',
+                                    fontSize: '11px', fontWeight: 600,
+                                    background: '#5856d6', color: 'white',
+                                    border: 'none', cursor: 'pointer',
+                                }}
+                            >Retry</motion.button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-            {/* Messages area */}
-            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* ─── Messages ─── */}
+            <div ref={scrollRef} style={{
+                flex: 1, overflowY: 'auto', padding: '14px',
+                display: 'flex', flexDirection: 'column', gap: '6px',
+            }}>
                 {transcriptions.length === 0 && !interimInput && !interimOutput && (
-                    <div style={{ textAlign: 'center', color: 'var(--text-muted, #94a3b8)', fontSize: '12px', fontWeight: 700, paddingTop: '40px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                        <div style={{ fontSize: '32px', marginBottom: '12px' }}>🤖</div>
-                        {isLiveActive ? 'Assistant is ready. Speak or type.' : 'Connecting to assistant...'}
-                        <div style={{ fontSize: '10px', marginTop: '12px', color: '#94a3b8', textTransform: 'none', letterSpacing: 'normal', lineHeight: '1.6', fontWeight: 500 }}>
-                            Try: "Morning briefing" • "What room is [Guest]?" • "Mark Room 5 cleaned" • "Note for Room 3: extra towels"
+                    <div style={{
+                        textAlign: 'center', paddingTop: '40px',
+                        color: 'var(--text-muted, #8e8e93)',
+                    }}>
+                        <div style={{
+                            width: '64px', height: '64px', borderRadius: '32px',
+                            background: 'linear-gradient(135deg, #5856d6, #af52de)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 16px', fontSize: '28px',
+                            boxShadow: '0 4px 16px rgba(88,86,214,0.3)',
+                        }}>🤖</div>
+                        <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-main, #1c1c1e)' }}>
+                            {isLiveActive ? 'Assistant Ready' : 'Connecting…'}
+                        </div>
+                        <div style={{ fontSize: '13px', fontWeight: 400, opacity: 0.7, lineHeight: 1.5 }}>
+                            Speak or type a command
+                        </div>
+                        <div style={{
+                            fontSize: '11px', marginTop: '16px',
+                            color: 'var(--text-muted, #8e8e93)',
+                            lineHeight: 1.7, fontWeight: 400,
+                        }}>
+                            Try: "Morning briefing" · "What room is [Guest]?"<br />
+                            "Mark Room 5 cleaned" · "Note for Room 3"
                         </div>
                     </div>
                 )}
 
-                {transcriptions.map((t, i) => (
-                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: t.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%', alignSelf: t.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                        <div style={{
-                            padding: '10px 14px', fontSize: '12px', lineHeight: '1.6', fontWeight: 500, wordBreak: 'break-word',
-                            borderRadius: t.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                            background: t.role === 'user'
-                                ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
-                                : 'var(--surface, rgba(255,255,255,0.7))',
-                            color: t.role === 'user' ? 'white' : 'var(--text-main)',
-                            border: t.role === 'user' ? 'none' : '1px solid var(--border-ui, rgba(197,160,101,0.15))',
-                            boxShadow: t.role === 'user' ? '0 2px 8px rgba(99,102,241,0.3)' : '0 1px 4px rgba(0,0,0,0.04)',
-                        }}>{t.text}</div>
-                    </div>
-                ))}
+                {transcriptions.map((t, i) => {
+                    const isUser = t.role === 'user';
+                    return (
+                        <motion.div
+                            key={i}
+                            initial={isUser
+                                ? { scale: 0.85, opacity: 0, x: 20 }
+                                : { scale: 0.85, opacity: 0, x: -20 }
+                            }
+                            animate={{ scale: 1, opacity: 1, x: 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                            style={{
+                                display: 'flex', flexDirection: 'column',
+                                alignItems: isUser ? 'flex-end' : 'flex-start',
+                                maxWidth: '85%',
+                                alignSelf: isUser ? 'flex-end' : 'flex-start',
+                            }}
+                        >
+                            <div style={{
+                                padding: '10px 14px',
+                                fontSize: '13px', lineHeight: 1.55, fontWeight: 450,
+                                wordBreak: 'break-word',
+                                borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                                background: isUser
+                                    ? 'linear-gradient(135deg, #5856d6, #4f46e5)'
+                                    : 'var(--surface, rgba(229,229,234,0.6))',
+                                color: isUser ? 'white' : 'var(--text-main, #1c1c1e)',
+                                boxShadow: isUser
+                                    ? '0 1px 4px rgba(88,86,214,0.25)'
+                                    : '0 0.5px 1px rgba(0,0,0,0.04)',
+                            }}>{t.text}</div>
+                        </motion.div>
+                    );
+                })}
 
-                {interimInput && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', maxWidth: '88%', alignSelf: 'flex-end', opacity: 0.6 }}>
-                        <div style={{
-                            padding: '10px 14px', fontSize: '12px', lineHeight: '1.6', fontStyle: 'italic',
-                            borderRadius: '16px 16px 4px 16px', background: 'rgba(99,102,241,0.3)', color: 'white',
-                        }}>{interimInput}...</div>
-                    </div>
-                )}
-                {interimOutput && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: '88%', alignSelf: 'flex-start', opacity: 0.6 }}>
-                        <div style={{
-                            padding: '10px 14px', fontSize: '12px', lineHeight: '1.6', fontStyle: 'italic',
-                            borderRadius: '16px 16px 16px 4px',
-                            background: 'var(--surface, rgba(255,255,255,0.5))',
-                            border: '1px solid var(--border-ui, rgba(197,160,101,0.1))',
-                            color: 'var(--text-muted, #94a3b8)',
-                        }}>{interimOutput}...</div>
-                    </div>
-                )}
+                {/* Interim input (live transcription) */}
+                <AnimatePresence>
+                    {interimInput && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 0.6, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            style={{
+                                alignSelf: 'flex-end', maxWidth: '85%',
+                            }}
+                        >
+                            <div style={{
+                                padding: '10px 14px', fontSize: '13px', lineHeight: 1.55,
+                                fontStyle: 'italic',
+                                borderRadius: '18px 18px 4px 18px',
+                                background: 'rgba(88,86,214,0.25)',
+                                color: 'white',
+                            }}>{interimInput}…</div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Interim output (AI typing) */}
+                <AnimatePresence>
+                    {interimOutput && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 0.6, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            style={{ alignSelf: 'flex-start', maxWidth: '85%' }}
+                        >
+                            <div style={{
+                                padding: '10px 14px', fontSize: '13px', lineHeight: 1.55,
+                                fontStyle: 'italic',
+                                borderRadius: '18px 18px 18px 4px',
+                                background: 'var(--surface, rgba(229,229,234,0.4))',
+                                color: 'var(--text-muted, #8e8e93)',
+                            }}>
+                                {interimOutput}…
+                                {/* Animated cursor */}
+                                <motion.span
+                                    animate={{ opacity: [1, 0] }}
+                                    transition={{ duration: 1, repeat: Infinity }}
+                                    style={{ display: 'inline-block', width: '2px', height: '14px', background: '#8e8e93', marginLeft: '2px', verticalAlign: 'text-bottom' }}
+                                />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
-            {/* Input bar */}
+            {/* ═══ INPUT BAR ═══ */}
             <div style={{
-                padding: '12px 14px',
-                borderTop: '1px solid var(--border-ui, rgba(197, 160, 101, 0.1))',
-                display: 'flex', gap: '8px', alignItems: 'center',
-                background: 'var(--surface, rgba(197, 160, 101, 0.03))',
+                padding: '8px 12px calc(env(safe-area-inset-bottom, 0px) + 8px)',
+                borderTop: '0.5px solid var(--border-ui, rgba(197,160,101,0.1))',
+                display: 'flex', gap: '8px', alignItems: 'flex-end',
+                background: 'var(--surface, rgba(249,249,249,0.94))',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
                 opacity: isLiveActive ? 1 : 0.4,
                 pointerEvents: isLiveActive ? 'auto' : 'none',
+                transition: 'opacity 0.3s ease',
             }}>
-                <input
-                    type="text"
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder={isLiveActive ? 'Type a command...' : 'Connecting...'}
-                    disabled={!isLiveActive}
-                    style={{
-                        flex: 1,
-                        background: 'var(--surface, rgba(255, 255, 255, 0.5))',
-                        border: '1px solid var(--border-ui, rgba(197, 160, 101, 0.2))',
-                        borderRadius: '14px',
-                        padding: '10px 14px',
-                        color: 'var(--text-main)',
-                        fontSize: '13px',
-                        outline: 'none',
-                        fontFamily: 'inherit',
-                    }}
-                />
-                <button
-                    onClick={handleSend}
-                    disabled={!isLiveActive || !input.trim()}
-                    style={{
-                        width: '38px', height: '38px', borderRadius: '12px',
-                        background: (isLiveActive && input.trim()) ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : 'var(--surface, rgba(255,255,255,0.3))',
-                        color: (isLiveActive && input.trim()) ? 'white' : 'var(--text-muted, rgba(148,163,184,0.5))',
-                        border: (isLiveActive && input.trim()) ? 'none' : '1px solid var(--border-ui, rgba(197,160,101,0.15))',
-                        cursor: (isLiveActive && input.trim()) ? 'pointer' : 'default',
-                        fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'all 0.2s', flexShrink: 0,
-                    }}
-                >↑</button>
+                <div style={{
+                    flex: 1,
+                    background: 'var(--surface, rgba(255,255,255,0.8))',
+                    border: '1px solid var(--border-ui, rgba(197,160,101,0.18))',
+                    borderRadius: '20px',
+                    display: 'flex', alignItems: 'center',
+                    padding: '0 4px 0 14px',
+                    minHeight: '36px',
+                }}>
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                            }
+                        }}
+                        placeholder={isLiveActive ? 'Type a command…' : 'Connecting…'}
+                        disabled={!isLiveActive}
+                        style={{
+                            flex: 1, border: 'none', background: 'transparent',
+                            outline: 'none', fontSize: '14px', fontFamily: 'inherit',
+                            color: 'var(--text-main, #1c1c1e)',
+                            padding: '8px 0',
+                        }}
+                    />
+                    <motion.button
+                        whileTap={{ scale: 0.8 }}
+                        onClick={handleSend}
+                        disabled={!isLiveActive || !input.trim()}
+                        animate={{
+                            scale: input.trim() ? 1 : 0,
+                            opacity: input.trim() ? 1 : 0,
+                        }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                        style={{
+                            width: '30px', height: '30px', borderRadius: '15px',
+                            background: 'linear-gradient(135deg, #5856d6, #4f46e5)',
+                            color: 'white', border: 'none',
+                            cursor: input.trim() ? 'pointer' : 'default',
+                            fontSize: '14px', fontWeight: 700,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0,
+                        }}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="19" x2="12" y2="5" />
+                            <polyline points="5 12 12 5 19 12" />
+                        </svg>
+                    </motion.button>
+                </div>
             </div>
         </div>
     );

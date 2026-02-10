@@ -26,7 +26,7 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 - 📡 **Fleet Sync (Firebase)** — Real-time multi-device synchronisation via Firebase Realtime Database. Upload multiple arrival PDFs on one device, all connected devices update instantly with every day visible as tabs
 - 📅 **Multi-Day Sessions** — Upload Monday, Tuesday, Wednesday PDFs and all appear as tabs in the Session Bar. All connected devices see every day. Deletions propagate across all devices instantly
 - 🖨️ **Smart Print Layouts** — Three print modes (Master, Greeter, Delivery) with auto-sizing columns and dense formatting that maximises paper utilisation in landscape
-- 💬 **Unified Chat Panel** — Tabbed interface with cross-department Team Chat and AI Live Assistant (voice & text). Framer Motion spring scale-up (sent) and blur-in slide-up (received) animations. Browser notifications + audio chime for new messages. FAB pulse ring when unread
+- 💬 **Messenger** — Tabbed chat panel with cross-department Team Chat and AI Live Assistant (voice & text). Messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime for new messages, and FAB pulse ring when unread
 - 🤖 **AI Live Assistant** — Conversational AI colleague powered by Gemini 2.5 Flash native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands
 - 📊 **Department Dashboards** — Purpose-built views for Reception, Housekeeping, and Maintenance with independent status tracking
 - 🧠 **AI Smart Notes (hkNotes)** — Gemini routes allergies, dietary restrictions, pet requirements, and room prep instructions to a dedicated `hkNotes` field for housekeeping-specific intelligence
@@ -84,9 +84,9 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 
 ### Tech Stack
 
-- **Frontend:** React 19 + TypeScript 5.6 + Tailwind CSS
+- **Frontend:** React 19 + TypeScript 5.6 + Vanilla CSS (custom design system with CSS variables)
 - **Build:** Vite 6
-- **Animations:** Framer Motion (AnimatePresence, staggered entrances, view transitions)
+- **Animations:** Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes (FAB breathing, ring pulse, panel transitions)
 - **Backend:** Vercel Serverless Functions (API routes for AI calls)
 - **PDF Parsing:** pdfjs-dist (Mozilla PDF.js)
 - **AI:** Google Gemini 2.5 Flash (via @google/genai) + Gemini Live API for native audio
@@ -105,7 +105,7 @@ The interface features a handcrafted animation engine designed for a premium, re
 | Category | Effects |
 |----------|---------|
 | **Entrance Animations** | Content fade-slide-up on load, staggered dashboard pill cascade (50ms), session tab slide-in (60ms), table row stagger (20ms), Framer Motion AnimatePresence collapse/expand on guest cards |
-| **Micro-Interactions** | Button press scale (0.96x), table row hover-lift with shadow, dashboard pill hover-lift, status badge scale (1.05x), input focus golden glow, mobile card touch press-down, chat message ripple entrance (slide-up + spring scale) |
+| **Micro-Interactions** | Button press scale (0.96×), table row hover-lift with shadow, dashboard pill hover-lift, status badge scale (1.05×), input focus golden glow, mobile card touch press-down, chat message spring entrance (slide + scale), long-press emoji reaction picker, typing indicator dots |
 | **View Transitions** | Framer Motion AnimatePresence mode="wait" — tab switch scale-up + fade-in + de-blur, whileHover/whileTap spring feedback, active tab golden shimmer sweep, non-active tab ambient golden glow |
 | **Theme Transitions** | All colours transition smoothly (0.3s) on light/dark toggle, logo adapts with dark background + golden shadow, weather widget inherits theme colours |
 | **Navbar** | 3D logo globe with perspective tilt (rotateY -12°, rotateX 5°), glass radial gradient overlay, hover pop-out (1.6× scale, mix-blend-mode: multiply for transparent background), spin-in entrance animation, live weather display |

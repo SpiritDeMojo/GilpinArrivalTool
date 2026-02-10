@@ -23,12 +23,13 @@ interface NavbarProps {
   onReconnect?: () => void;
   onSaveSession?: () => void;
   isSessionLocked?: boolean;
+  isSticky?: boolean;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
   arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP,
   hasGuests, onAIRefine, onToggleAnalytics, showAnalytics,
-  isMuted, onToggleMute, connectionStatus, onReconnect, onSaveSession, isSessionLocked
+  isMuted, onToggleMute, connectionStatus, onReconnect, onSaveSession, isSessionLocked, isSticky
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
@@ -36,6 +37,22 @@ const Navbar: React.FC<NavbarProps> = ({
   const weather = useWeather();
   const isRec = department === 'REC';
   const menuRef = useRef<HTMLDivElement>(null);
+  const globeRef = useRef<HTMLDivElement>(null);
+
+  // Listen for page-change events to spin the globe
+  useEffect(() => {
+    const spinGlobe = () => {
+      const el = globeRef.current;
+      if (!el) return;
+      el.classList.remove('globe-spin');
+      // Force reflow to restart animation
+      void el.offsetWidth;
+      el.classList.add('globe-spin');
+      setTimeout(() => el.classList.remove('globe-spin'), 1500);
+    };
+    document.addEventListener('gilpin:viewchange', spinGlobe);
+    return () => document.removeEventListener('gilpin:viewchange', spinGlobe);
+  }, []);
 
   // Close menu on route change or escape key
   useEffect(() => {
@@ -62,8 +79,20 @@ const Navbar: React.FC<NavbarProps> = ({
     <nav className="navbar no-print flex justify-between items-center">
       {/* LEFT: Logo + Title */}
       <div className="flex items-center min-w-0">
-        <div role="button" className="nav-logo-bubble flex-shrink-0" style={{ cursor: 'pointer' }} onClick={() => window.location.reload()}>
-          <img src={GILPIN_LOGO_URL} alt="Gilpin" className="nav-logo-img" />
+        <div className={`nav-logo-wrapper relative flex-shrink-0${isSticky ? ' globe-tucked' : ''}`}>
+          <div ref={globeRef} role="button" className="nav-logo-bubble" style={{ cursor: 'pointer', position: 'absolute', inset: 4 }}
+            onClick={() => window.location.reload()}
+            onTouchStart={(e) => {
+              const el = e.currentTarget;
+              el.classList.add('globe-bounce');
+            }}
+            onTouchEnd={(e) => {
+              const el = e.currentTarget;
+              setTimeout(() => el.classList.remove('globe-bounce'), 500);
+            }}
+          >
+            <img src={GILPIN_LOGO_URL} alt="Gilpin" className="nav-logo-img" />
+          </div>
         </div>
         <div className="ml-3 md:ml-6 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -81,7 +110,7 @@ const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
           </div>
-          <div className="font-black text-[#c5a065] text-[8px] md:text-[10px] tracking-[0.15em] md:tracking-[0.3em] uppercase truncate max-w-[130px] md:max-w-[200px] whitespace-nowrap overflow-hidden">
+          <div className="font-black text-[#c5a065] text-[8px] md:text-[10px] tracking-[0.15em] md:tracking-[0.3em] uppercase truncate max-w-[160px] md:max-w-[250px] whitespace-nowrap overflow-hidden">
             {arrivalDateStr || 'Intelligence Hub'}
           </div>
         </div>
@@ -89,7 +118,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
       {/* CENTER-RIGHT: Sync indicator (visible on all sizes) */}
       {connectionStatus && (
-        <div className="hidden md:flex items-center mx-4 flex-shrink-0">
+        <div className="hidden xl:flex items-center mx-4 flex-shrink-0">
           {connectionStatus === 'connected' && (
             <span className="status-badge connected" title="Real-time sync active">🟢 Synced</span>
           )}
@@ -112,7 +141,7 @@ const Navbar: React.FC<NavbarProps> = ({
       )}
 
       {/* --- Desktop Actions --- */}
-      <div className="hidden lg:flex items-center gap-3">
+      <div className="hidden xl:flex items-center gap-3">
         <button onClick={toggleTheme} className="nav-action-btn">
           {isDark ? 'Obsidian' : 'Ivory'}
         </button>
@@ -218,14 +247,14 @@ const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* ===== MOBILE ACTIONS BAR ===== */}
-      <div className="flex lg:hidden items-center gap-1.5 flex-shrink-0 relative z-[1015]">
+      <div className="flex xl:hidden items-center gap-1.5 flex-shrink-0 relative z-[1015]">
         {/* Sync dot (mobile: compact) */}
         {connectionStatus && (
           <div
             role="button"
             title={connectionStatus === 'connected' ? 'Synced' : 'Tap to reconnect'}
-            style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, cursor: connectionStatus !== 'connected' ? 'pointer' : 'default' }}
-            className={`reconnect-dot-mobile ${connectionStatus === 'connected' ? 'bg-green-500' : connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`}
+            style={{ width: 10, height: 10, borderRadius: '50%', flexShrink: 0, cursor: connectionStatus !== 'connected' ? 'pointer' : 'default' }}
+            className={`reconnect-dot-mobile ${connectionStatus === 'connected' ? 'bg-green-500 sync-dot-connected' : connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`}
             onClick={() => { if (connectionStatus !== 'connected' && onReconnect) onReconnect(); }}
           />
         )}
@@ -289,12 +318,12 @@ const Navbar: React.FC<NavbarProps> = ({
 
       {/* Tap-outside dismiss */}
       {(isPrintOpen || isMenuOpen) && (
-        <div className="lg:hidden fixed inset-0 z-[2999]" onClick={() => { setIsPrintOpen(false); setIsMenuOpen(false); }} />
+        <div className="xl:hidden fixed inset-0 z-[2999]" onClick={() => { setIsPrintOpen(false); setIsMenuOpen(false); }} />
       )}
 
       {/* ===== MOBILE SLIDE-OUT MENU (2 compact groups) ===== */}
       {isMenuOpen && (
-        <div ref={menuRef} className="lg:hidden fixed left-0 right-0 z-[3000]"
+        <div ref={menuRef} className="xl:hidden fixed left-0 right-0 z-[3000]"
           style={{
             top: 56,
             background: 'rgba(2, 6, 23, 0.97)',

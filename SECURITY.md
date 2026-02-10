@@ -1,7 +1,7 @@
 # 🔐 Security Policy
 
-**Last Audit:** 9 February 2026  
-**Status:** ✅ Secure — CSP fix applied for Vercel toolbar
+**Last Audit:** 10 February 2026  
+**Status:** ✅ Secure — Full audit, Firebase rules updated for typing indicators
 
 ---
 
@@ -14,6 +14,7 @@ graph LR
     Client -->|VITE_ config| Firebase["🔥 Firebase RTDB"]
     API -->|Bearer token| PMS["🏨 PMS API"]
     API -->|API key| Gemini["🤖 Gemini AI"]
+    Client -->|WebSocket| GeminiLive["🎙️ Gemini Live"]
 ```
 
 ---
@@ -39,6 +40,11 @@ Firebase API keys are **project identifiers**, not secrets. They identify which 
 - GET-only method enforcement
 - Key never baked into the JS bundle
 
+### Source Code Audit (10 Feb 2026)
+
+✅ **No hardcoded API keys** found in source code  
+✅ **No API key patterns** (e.g. `AIza*`, `sk-*`) detected in any `.ts`, `.tsx`, `.js`, or `.json` files
+
 ---
 
 ## 2. API Route Protection
@@ -51,7 +57,7 @@ All 7 Vercel serverless functions in `/api/` implement consistent security via a
 | `gemini-analytics.ts` | ✅ `withCors()` | POST | `sessions` array required |
 | `gemini-sentiment.ts` | ✅ `withCors()` | POST | `guests` array required |
 | `gemini-cleaning-order.ts` | ✅ `withCors()` | POST | `guests` array required |
-| `live-token.ts` | ✅ `withCors()` | GET | N/A |
+| `live-token.ts` | ✅ Inline guard | GET | N/A |
 | `pms-proxy.ts` | ✅ `withCors()` | POST | `action` + `date` required |
 | `_apiGuard.ts` | Shared guard module | — | — |
 
@@ -60,6 +66,8 @@ All 7 Vercel serverless functions in `/api/` implement consistent security via a
 - **Method guards** — rejects unexpected HTTP methods with 405
 - **CORS preflight** — proper OPTIONS handling with 24h cache
 - **Error boundaries** — structured error responses (400/403/405/500/502)
+
+> **Note:** `live-token.ts` uses an inline origin guard duplicating `_apiGuard.ts` logic. This is intentional — Vercel bundles each API route independently, and the inline guard ensures the token endpoint is self-contained.
 
 ---
 
@@ -74,13 +82,25 @@ Defined in `vercel.json` with these headers on all routes:
 | `X-Frame-Options` | `DENY` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 
-**CSP highlights:**
-- `frame-src: https://vercel.live` — allows Vercel toolbar only
-- `object-src: 'none'` — blocks Flash/Java plugins
-- `base-uri: 'self'` — prevents base tag injection
-- `connect-src` — explicit allowlist for Firebase, Gemini, Vercel, Pusher WebSockets
-- `script-src` includes `unsafe-inline` / `unsafe-eval` (required by React/Vite SPA)
-- `script-src` / `style-src` include `https://vercel.live` for Vercel toolbar compatibility
+**CSP directive breakdown:**
+
+| Directive | Allowed Sources | Rationale |
+|-----------|----------------|-----------|
+| `default-src` | `'self'` | Restrictive baseline |
+| `script-src` | `'self'`, `'unsafe-inline'`, `'unsafe-eval'`, Google APIs, Firebase, Vercel, esm.sh, Tailwind CDN | Required by React/Vite SPA runtime |
+| `style-src` | `'self'`, `'unsafe-inline'`, Google Fonts, Vercel | Inline styles + web fonts |
+| `font-src` | `'self'`, Google Fonts (gstatic) | Typography |
+| `img-src` | `'self'`, `data:`, `blob:`, `https:` | Broad image loading |
+| `connect-src` | Firebase (HTTPS + WSS), Gemini, Vercel, Pusher, Open-Meteo | API + real-time connections |
+| `worker-src` | `'self'`, `blob:`, esm.sh | Web workers |
+| `frame-src` | `https://vercel.live` | Vercel toolbar only |
+| `object-src` | `'none'` | Blocks Flash/Java plugins |
+| `base-uri` | `'self'` | Prevents base tag injection |
+
+### CSP Observations
+
+- `unsafe-inline` / `unsafe-eval` in `script-src`: **required** by Vite's dev/HMR and React runtime. Cannot be removed without breaking the SPA.
+- `img-src https:` is permissive — acceptable for a private hotel operations tool.
 
 ---
 
@@ -94,18 +114,36 @@ Defined in `database.rules.json`:
 | `presence/$sessionId` | ✅ | ✅ | — |
 | `heartbeat/$sid/$deviceId` | ❌ | ✅ Write-only | — |
 | `chat/$sid/$messageId` | ✅ | ✅ | `author`, `text`, `timestamp` required |
+| `typing/$sessionId` | ✅ | ✅ | — |
 | `$other` (catch-all) | ❌ | ❌ | Blocks all unknown paths |
 
-> **Note:** Open read/write on sessions/presence/chat is acceptable for this internal hotel operations tool. If external access is ever required, add Firebase Authentication.
+> **Note:** Open read/write on sessions/presence/chat/typing is acceptable for this internal hotel operations tool. If external access is ever required, add Firebase Authentication.
+
+### Recent Change (10 Feb 2026)
+Added `typing/` path rules to support the new real-time typing indicator feature. Follows the same access pattern as `presence/` (session-scoped, ephemeral data).
 
 ---
 
 ## 5. XSS & Injection Prevention
 
-- **React auto-escaping** — all user data rendered via JSX (never raw HTML)
-- **`dangerouslySetInnerHTML`** — used only for static CSS strings (no user input)
-- **`GuestRow.tsx`** — explicitly renders React elements instead of injecting HTML
-- **No `eval()` of user input** anywhere in the codebase
+| Vector | Status | Detail |
+|--------|--------|--------|
+| React auto-escaping | ✅ | All user data rendered via JSX |
+| `dangerouslySetInnerHTML` | ✅ | **Not used** anywhere in codebase |
+| `eval()` | ✅ | **Not used** in app source code |
+| `innerHTML` assignment | ✅ | **Not used** in app source code |
+| `document.cookie` | ✅ | **Not accessed** by app code |
+| `window.open` / `postMessage` | ✅ | **Not used** in app code (only in `node_modules` type defs) |
+
+### Source Code Verification (10 Feb 2026)
+
+Grep audit confirmed zero instances of:
+- `dangerouslySetInnerHTML`
+- `eval(` or `Function(`
+- `innerHTML =`
+- `document.cookie`
+
+in any `.ts` or `.tsx` source file.
 
 ---
 
@@ -126,34 +164,63 @@ This is an **internal hotel operations tool**. Users identify themselves by name
 |-----------|---------|------------|---------|
 | Guest names & details | Firebase RTDB | TLS encrypted | Firebase managed |
 | Chat messages | Firebase RTDB | TLS encrypted | Firebase managed |
+| Typing indicators | Firebase RTDB | TLS encrypted | Ephemeral (auto-cleared) |
+| Emoji reactions | Firebase RTDB | TLS encrypted | Firebase managed |
 | User preferences | `localStorage` | N/A (client-only) | Unencrypted |
 | Session cache | `localStorage` | N/A (client-only) | Unencrypted |
+| Theme preference | `localStorage` | N/A (client-only) | Unencrypted |
+| Notification prefs | `localStorage` | N/A (client-only) | Unencrypted |
 
-- **No passwords or payment data** are stored
-- Session deletion clears Firebase (`sessions/`, `presence/`, `chat/`) AND `localStorage`
-- `localStorage` contains only operational data, cleared on logout
+**localStorage audit (10 Feb 2026):** Used in 4 source files:
+- `firebaseService.ts` — session ID cache
+- `UserProvider.tsx` — user name/department
+- `ThemeProvider.tsx` — theme preference
+- `useNotifications.ts` — notification settings
+
+✅ **No passwords, tokens, or payment data** stored in `localStorage`  
+✅ Session deletion clears Firebase (`sessions/`, `presence/`, `chat/`, `typing/`) AND `localStorage`
 
 ---
 
 ## 8. Dependency Security
 
-Last `npm audit` (8 Feb 2026): **4 vulnerabilities** (1 moderate, 3 high)
+Last `npm audit` (10 Feb 2026): **4 vulnerabilities** (1 moderate, 3 high)
 
-| Package | Type | Severity | Exploitable? |
-|---------|------|----------|--------------|
-| `xlsx` (SheetJS) | Transitive | Moderate | ❌ Server-processed only |
-| `undici` (via `@vercel/node`) | Transitive | High ×3 | ❌ Server-side, behind Vercel |
+| Package | Source | Severity | Exploitable? |
+|---------|--------|----------|--------------|
+| `path-to-regexp` (via `@vercel/node`) | Transitive | High | ❌ Server-side route matching, no user-controlled patterns |
+| `undici` (via `@vercel/node`) | Transitive | Moderate | ❌ Server-side HTTP, behind Vercel's infrastructure |
+| `xlsx` (SheetJS) | Transitive | High | ❌ Server-processed only, no untrusted file uploads |
 
-Both are transitive dependencies with no direct fix available. Neither is exploitable in this application's context.
+All are transitive dependencies with no direct fix available. None are exploitable in this application's context.
 
 ---
 
 ## 9. Environment & Deployment
 
-- `.env` files excluded via `.gitignore` ✅
-- Vercel environment variables configured server-side ✅
-- Production builds via `vite build` with tree-shaking ✅
-- No source maps deployed to production ✅
+| Check | Status | Detail |
+|-------|--------|--------|
+| `.env` excluded from Git | ✅ | `.gitignore` includes `.env`, `.env.local`, `.env.*.local` |
+| Server-side env vars | ✅ | Configured in Vercel dashboard |
+| Production builds | ✅ | `vite build` with tree-shaking |
+| Source maps | ✅ | Not deployed to production |
+| HTTPS enforcement | ✅ | Vercel enforces HTTPS on all routes |
+| `X-Frame-Options: DENY` | ✅ | Prevents clickjacking |
+| `nosniff` header | ✅ | Prevents MIME type sniffing |
+| `Referrer-Policy` | ✅ | `strict-origin-when-cross-origin` |
+
+---
+
+## 10. Voice Assistant Security
+
+The Gemini Live voice assistant uses WebSocket connections that require HTTPS:
+
+| Concern | Mitigation |
+|---------|------------|
+| API key exposure | Fetched at runtime via `/api/live-token` (origin-guarded) |
+| Audio recording | Browser-level permission required (microphone) |
+| Data transmission | WSS (WebSocket Secure) to `generativelanguage.googleapis.com` |
+| User consent | Explicit "Start" action required — never auto-records |
 
 ---
 

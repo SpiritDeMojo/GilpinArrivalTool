@@ -19,11 +19,11 @@ import { Guest } from '../types';
 
 /* ── Framer Motion page-transition variants ── */
 const pageVariants = {
-    initial: { opacity: 0, y: 16, scale: 0.97, filter: 'blur(6px)' },
+    initial: { opacity: 0, y: 20, scale: 0.96, filter: 'blur(8px)' },
     animate: { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' },
-    exit: { opacity: 0, y: -10, scale: 0.98, filter: 'blur(4px)' },
+    exit: { opacity: 0, y: -12, scale: 0.97, filter: 'blur(6px)' },
 };
-const pageTransition = { duration: 0.35, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
+const pageTransition = { duration: 0.4, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
 
 /* ── Tab button spring ── */
 const tabSpring = { type: 'spring' as const, stiffness: 400, damping: 25 };
@@ -47,16 +47,21 @@ const ViewManager: React.FC = () => {
         handleFileUpload,
     } = useGuestContext();
 
+    /* Compute top offset: nav-height + optional alert banner */
+    const stickyTop = (isOldFile && guests.length > 0)
+        ? 'calc(var(--nav-height) + var(--alert-height))'
+        : 'var(--nav-height)';
+
     return (
         <>
             {/* ─── Docking Tabs ─── */}
             {guests.length > 0 && (
                 <div
                     className={`no-print dashboard-view-tabs transition-all duration-300 ${isSticky
-                        ? 'fixed left-0 right-0 z-[1005] shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md translate-y-0'
-                        : 'translate-y-2'
+                        ? 'fixed left-0 right-0 z-[1005] shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md dock-attached'
+                        : ''
                         }`}
-                    style={isSticky ? { top: (isOldFile && guests.length > 0) ? 'calc(var(--nav-height) + var(--alert-height))' : 'var(--nav-height)' } : {}}
+                    style={isSticky ? { top: stickyTop } : {}}
                 >
                     <div className="view-tabs-container">
                         {isRec && (
@@ -64,10 +69,10 @@ const ViewManager: React.FC = () => {
                                 initial={{ opacity: 0, y: 10, scale: 0.92 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 transition={{ delay: 0 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.05, y: -1 }}
+                                whileTap={{ scale: 0.93 }}
                                 className={`view-tab ${dashboardView === 'arrivals' ? 'active' : ''}`}
-                                onClick={() => setDashboardView('arrivals')}
+                                onClick={() => { setDashboardView('arrivals'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
                             >
                                 📋 Arrivals ({guests.length})
                             </motion.button>
@@ -77,10 +82,10 @@ const ViewManager: React.FC = () => {
                                 initial={{ opacity: 0, y: 10, scale: 0.92 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 transition={{ delay: 1 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.05, y: -1 }}
+                                whileTap={{ scale: 0.93 }}
                                 className={`view-tab ${dashboardView === 'housekeeping' ? 'active' : ''}`}
-                                onClick={() => { setDashboardView('housekeeping'); clearBadge('housekeeping'); }}
+                                onClick={() => { setDashboardView('housekeeping'); clearBadge('housekeeping'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
                             >
                                 🧹 Housekeeping
                                 {badges.housekeeping > 0 && dashboardView !== 'housekeeping' && (
@@ -93,10 +98,10 @@ const ViewManager: React.FC = () => {
                                 initial={{ opacity: 0, y: 10, scale: 0.92 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 transition={{ delay: 2 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.05, y: -1 }}
+                                whileTap={{ scale: 0.93 }}
                                 className={`view-tab ${dashboardView === 'maintenance' ? 'active' : ''}`}
-                                onClick={() => { setDashboardView('maintenance'); clearBadge('maintenance'); }}
+                                onClick={() => { setDashboardView('maintenance'); clearBadge('maintenance'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
                             >
                                 🔧 Maintenance
                                 {badges.maintenance > 0 && dashboardView !== 'maintenance' && (
@@ -109,10 +114,10 @@ const ViewManager: React.FC = () => {
                                 initial={{ opacity: 0, y: 10, scale: 0.92 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 transition={{ delay: 3 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.05, y: -1 }}
+                                whileTap={{ scale: 0.93 }}
                                 className={`view-tab ${dashboardView === 'reception' ? 'active' : ''}`}
-                                onClick={() => { setDashboardView('reception'); clearBadge('reception'); }}
+                                onClick={() => { setDashboardView('reception'); clearBadge('reception'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
                             >
                                 🛎️ Reception
                                 {badges.reception > 0 && dashboardView !== 'reception' && (
@@ -324,11 +329,36 @@ const ViewManager: React.FC = () => {
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
-        /* Sticky state — full width with shadow/blur */
+        /* Sticky state — full width with shadow/blur + dock animation */
         .dashboard-view-tabs.fixed {
           backdrop-filter: blur(24px);
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
           border-bottom: 2px solid var(--gilpin-gold);
+        }
+
+        /* Snap-attach animation when tabs dock to navbar */
+        .dashboard-view-tabs.dock-attached {
+          animation: dockSnap 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) both;
+        }
+
+        /* Gold glow underline on docked tabs */
+        .dashboard-view-tabs.dock-attached::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 10%;
+          right: 10%;
+          height: 2px;
+          background: linear-gradient(90deg,
+            transparent,
+            rgba(197, 160, 101, 0.6),
+            rgba(197, 160, 101, 1),
+            rgba(197, 160, 101, 0.6),
+            transparent
+          );
+          border-radius: 2px;
+          animation: goldShimmerSweep 3s linear infinite;
+          background-size: 200% 100%;
         }
 
         [data-theme="dark"] .dashboard-view-tabs.fixed {
@@ -341,10 +371,32 @@ const ViewManager: React.FC = () => {
           box-shadow: 0 4px 16px rgba(197, 160, 101, 0.35), inset 0 -2px 0 var(--gilpin-gold);
         }
 
-        /* Mobile gap — flush under mobile navbar */
+        /* Mobile: island stays rounded, just smaller */
         @media (max-width: 768px) {
-          .dashboard-view-tabs.fixed {
-            top: 60px !important;
+          .dashboard-view-tabs:not(.fixed) {
+            border-radius: 16px;
+            margin: 6px 8px;
+            max-width: none;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(197, 160, 101, 0.2);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+          }
+
+          [data-theme="dark"] .dashboard-view-tabs:not(.fixed) {
+            background: rgba(30, 30, 40, 0.6);
+            border-color: rgba(197, 160, 101, 0.15);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+          }
+
+          /* Stage 2: when docked, go seamless */
+          .dashboard-view-tabs.dock-attached {
+            border-radius: 0 !important;
+            margin: 0 !important;
+            max-width: none !important;
+            border: none;
+            background: var(--nav-bg);
           }
         }
       `}</style>

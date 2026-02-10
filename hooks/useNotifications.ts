@@ -5,7 +5,7 @@ import { Guest, DashboardView, HK_STATUS_INFO, MAINTENANCE_STATUS_INFO, GUEST_ST
 
 export interface AppNotification {
     id: string;
-    type: 'hk_status' | 'maint_status' | 'guest_status' | 'room_note' | 'room_ready';
+    type: 'hk_status' | 'maint_status' | 'guest_status' | 'room_note' | 'room_ready' | 'chat_message';
     department: 'housekeeping' | 'maintenance' | 'reception';
     room: string;
     guestName: string;
@@ -338,6 +338,7 @@ export const useNotifications = (guests: Guest[]) => {
         toggleMute,
         notifications: notifications.slice(0, MAX_VISIBLE_TOASTS),
         badges,
+        pushNotification,
         dismissNotification,
         clearAllNotifications,
         clearBadge,

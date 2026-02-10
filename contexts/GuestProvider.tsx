@@ -95,6 +95,7 @@ export interface GuestContextValue {
     toggleMute: () => void;
     notifications: any[];
     badges: { housekeeping: number; maintenance: number; reception: number };
+    pushNotification: (notif: Omit<import('../hooks/useNotifications').AppNotification, 'id' | 'timestamp'>) => void;
     dismissNotification: (id: string) => void;
     clearAllNotifications: () => void;
     clearBadge: (view: DashboardView) => void;
@@ -331,7 +332,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } = useLiveAssistant({ guests, onAddRoomNote: handleAddRoomNote, onUpdateGuest: handleAIUpdateGuest });
 
     // ── Notifications ───────────────────────────────────────────────────────
-    const { isMuted, toggleMute, notifications, badges, dismissNotification, clearAllNotifications, clearBadge } = useNotifications(guests);
+    const { isMuted, toggleMute, notifications, badges, pushNotification, dismissNotification, clearAllNotifications, clearBadge } = useNotifications(guests);
 
     // ── Context value (stable via useMemo) ──────────────────────────────────
     const value = useMemo<GuestContextValue>(() => ({
@@ -345,7 +346,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         handleUpdateHKStatus, handleUpdateMaintenanceStatus, handleUpdateGuestStatus, handleUpdateInRoomDelivery,
         handleAddRoomNote, handleResolveNote, handleAddCourtesyNote,
         auditLogGuest, setAuditLogGuest,
-        isMuted, toggleMute, notifications, badges, dismissNotification, clearAllNotifications, clearBadge,
+        isMuted, toggleMute, notifications, badges, pushNotification, dismissNotification, clearAllNotifications, clearBadge,
         isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput, errorMessage, hasMic,
         startLiveAssistant, toggleMic, sendTextMessage, disconnect, clearHistory,
         showSessionBrowser, isSticky, isSopOpen, setIsSopOpen, expandedRows, toggleExpand, mainPaddingTop,

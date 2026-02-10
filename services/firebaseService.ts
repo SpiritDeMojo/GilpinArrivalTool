@@ -882,6 +882,7 @@ export interface ChatMessage {
     department: string;
     text: string;
     timestamp: number;
+    reactions?: Record<string, string>; // userId -> emoji
 }
 
 /**
@@ -953,3 +954,63 @@ export async function clearChatMessages(sessionId: string): Promise<void> {
         console.error('Failed to clear chat:', error);
     }
 }
+
+/* ──────────────────────────────────────────────
+   Typing Indicators — ephemeral presence data
+   ────────────────────────────────────────────── */
+
+export function setTypingIndicator(
+    sessionId: string,
+    userName: string,
+    isTyping: boolean
+): void {
+    if (!db) return;
+    const typingRef = ref(db, `typing/${sessionId}/${userName.replace(/[.#$/[\]]/g, '_')}`);
+    if (isTyping) {
+        set(typingRef, { name: userName, ts: Date.now() });
+        // Auto-clear after 5s (stale protection)
+        onDisconnect(typingRef).remove();
+    } else {
+        remove(typingRef);
+    }
+}
+
+export function subscribeToTyping(
+    sessionId: string,
+    currentUser: string,
+    onUpdate: (typingUsers: string[]) => void
+): () => void {
+    if (!db) { onUpdate([]); return () => { }; }
+    const typingRef = ref(db, `typing/${sessionId}`);
+    const unsub = onValue(typingRef, (snap) => {
+        if (!snap.exists()) { onUpdate([]); return; }
+        const data = snap.val() as Record<string, { name: string; ts: number }>;
+        const now = Date.now();
+        const users = Object.values(data)
+            .filter(v => v.name !== currentUser && (now - v.ts) < 8000)
+            .map(v => v.name);
+        onUpdate(users);
+    });
+    return unsub;
+}
+
+/* ──────────────────────────────────────────────
+   Emoji Reactions — per-message user reactions
+   ────────────────────────────────────────────── */
+
+export async function addReaction(
+    sessionId: string,
+    messageId: string,
+    userName: string,
+    emoji: string | null
+): Promise<void> {
+    if (!db) return;
+    const key = userName.replace(/[.#$/[\]]/g, '_');
+    const reactRef = ref(db, `chat/${sessionId}/${messageId}/reactions/${key}`);
+    if (emoji) {
+        await set(reactRef, emoji);
+    } else {
+        await remove(reactRef);
+    }
+}
+

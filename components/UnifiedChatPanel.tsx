@@ -1,19 +1,20 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Transcription } from '../hooks/useLiveAssistant';
+import { AppNotification } from '../hooks/useNotifications';
 import TeamChatTab from './TeamChatTab';
 import AIAssistantTab from './AIAssistantTab';
 
-/* ──────────────────────────────────────────────
-   UnifiedChatPanel — Shell with FAB + Tabs
-   Upgraded with interactive floating animation
-   ────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   UnifiedChatPanel — Messenger Shell
+   ═══════════════════════════════════════════════════════════
+   FAB with hover tilt · Frosted-glass panel
+   Segmented control tab bar · Unread badge
+   ═══════════════════════════════════════════════════════════ */
 
 interface UnifiedChatPanelProps {
-    // Team chat
     sessionId: string;
     userName: string;
     department: string;
-    // AI assistant
     isLiveActive: boolean;
     isMicEnabled: boolean;
     transcriptions: Transcription[];
@@ -26,6 +27,7 @@ interface UnifiedChatPanelProps {
     onClearHistory: () => void;
     errorMessage?: string | null;
     hasMic: boolean;
+    onPushNotification?: (notif: Omit<AppNotification, 'id' | 'timestamp'>) => void;
 }
 
 type Tab = 'team' | 'assistant';
@@ -34,169 +36,219 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
     sessionId, userName, department,
     isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput,
     onToggleMic, onSendAIMessage, onStartAssistant, onDisconnect, onClearHistory,
-    errorMessage, hasMic,
+    errorMessage, hasMic, onPushNotification,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>('team');
     const [unread, setUnread] = useState(0);
-    const [isHovered, setIsHovered] = useState(false);
+    const [panelVisible, setPanelVisible] = useState(false);
     const fabRef = useRef<HTMLButtonElement>(null);
 
     const handleUnreadChange = useCallback((count: number) => {
         setUnread(prev => count === 0 ? 0 : prev + count);
     }, []);
 
-    // Interactive mouse-follow subtle tilt on FAB
+    /* ─── Open/Close with animation states ─── */
+    const handleToggle = useCallback(() => {
+        if (isOpen) {
+            // Close: trigger exit animation, then unmount
+            setPanelVisible(false);
+            setTimeout(() => setIsOpen(false), 400);
+        } else {
+            setIsOpen(true);
+            // Small delay for mount → animate
+            requestAnimationFrame(() => setPanelVisible(true));
+            if (activeTab === 'team') setUnread(0);
+        }
+    }, [isOpen, activeTab]);
+
+    /* ─── Interactive 3D tilt on FAB ─── */
     const handleFabMouseMove = useCallback((e: React.MouseEvent) => {
-        const isTouchDevice = 'ontouchstart' in window;
-        if (isTouchDevice || !fabRef.current) return;
+        if ('ontouchstart' in window || !fabRef.current) return;
         const rect = fabRef.current.getBoundingClientRect();
         const x = (e.clientX - rect.left - rect.width / 2) / rect.width;
         const y = (e.clientY - rect.top - rect.height / 2) / rect.height;
-        fabRef.current.style.transform = isOpen
-            ? `rotate(45deg) perspective(200px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg)`
-            : `perspective(200px) rotateY(${x * 12}deg) rotateX(${-y * 12}deg) scale(1.08)`;
-    }, [isOpen]);
+        fabRef.current.style.transform = `perspective(200px) rotateY(${x * 10}deg) rotateX(${-y * 10}deg) scale(1.06)`;
+    }, []);
 
     const handleFabMouseLeave = useCallback(() => {
-        if (!fabRef.current) return;
-        setIsHovered(false);
-        fabRef.current.style.transform = isOpen ? 'rotate(45deg)' : 'none';
-    }, [isOpen]);
+        if (fabRef.current) fabRef.current.style.transform = 'none';
+    }, []);
 
-    const fabSize = 58;
+    /* ─── Tab change ─── */
+    const handleTabChange = useCallback((tab: Tab) => {
+        setActiveTab(tab);
+        if (tab === 'team') setUnread(0);
+    }, []);
 
     return (
         <>
-            {/* ═══ FAB BUTTON — Interactive with 3D tilt + ripple ring ═══ */}
+            {/* ═══ FAB BUTTON ═══ */}
             <button
                 ref={fabRef}
-                className={`no-print chat-fab${unread > 0 && !isOpen ? ' chat-fab-pulse' : ''}`}
-                onClick={() => { setIsOpen(!isOpen); if (!isOpen && activeTab === 'team') setUnread(0); }}
+                className="no-print ios-chat-fab"
+                onClick={handleToggle}
                 onMouseMove={handleFabMouseMove}
-                onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={handleFabMouseLeave}
+                aria-label={isOpen ? 'Close chat' : 'Open chat'}
                 style={{
                     position: 'fixed',
                     bottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
                     right: '20px',
                     zIndex: 10001,
-                    width: `${fabSize}px`, height: `${fabSize}px`, borderRadius: '50%',
+                    width: '56px', height: '56px', borderRadius: '28px',
                     background: isOpen
-                        ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                        ? 'linear-gradient(135deg, #ff3b30, #ff2d55)'
                         : isLiveActive
-                            ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
+                            ? 'linear-gradient(135deg, #5856d6, #af52de)'
                             : 'linear-gradient(135deg, #c5a065, #a08050)',
                     border: 'none', cursor: 'pointer', color: 'white',
-                    boxShadow: isHovered
-                        ? '0 8px 32px rgba(197,160,101,0.45), 0 0 0 3px rgba(197,160,101,0.2)'
-                        : '0 6px 24px rgba(0,0,0,0.25)',
-                    fontSize: '24px',
+                    fontSize: '22px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'box-shadow 0.3s ease, background 0.3s ease',
-                    transform: isOpen ? 'rotate(45deg)' : 'none',
+                    boxShadow: isOpen
+                        ? '0 4px 16px rgba(255,59,48,0.4)'
+                        : '0 6px 24px rgba(0,0,0,0.2), 0 0 0 0.5px rgba(255,255,255,0.1) inset',
+                    transition: 'background 0.3s ease, box-shadow 0.3s ease',
                     willChange: 'transform',
                 }}
             >
-                {isOpen ? '+' : '💬'}
+                {isOpen ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ transition: 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)', transform: 'rotate(90deg)' }}>
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                ) : (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                    </svg>
+                )}
             </button>
 
-            {/* Animated ring pulse behind FAB when not open */}
+            {/* Breathing ring behind FAB */}
             {!isOpen && (
-                <div className="no-print chat-fab-ring" style={{
+                <div className="no-print ios-fab-ring" style={{
                     position: 'fixed',
                     bottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
                     right: '20px',
                     zIndex: 10000,
-                    width: `${fabSize}px`, height: `${fabSize}px`, borderRadius: '50%',
-                    border: `2px solid ${isLiveActive ? 'rgba(99,102,241,0.4)' : 'rgba(197,160,101,0.35)'}`,
+                    width: '56px', height: '56px', borderRadius: '28px',
+                    border: `2px solid ${isLiveActive ? 'rgba(88,86,214,0.35)' : 'rgba(197,160,101,0.3)'}`,
                     pointerEvents: 'none',
                 }} />
             )}
 
             {/* Unread badge */}
             {unread > 0 && !isOpen && (
-                <div className="no-print" style={{
+                <div className="no-print ios-badge-bounce" style={{
                     position: 'fixed',
-                    bottom: `max(${24 + fabSize - 10}px, calc(env(safe-area-inset-bottom, 0px) + ${16 + fabSize - 10}px))`,
-                    right: '20px',
+                    bottom: 'max(68px, calc(env(safe-area-inset-bottom, 0px) + 60px))',
+                    right: '18px',
                     zIndex: 10002,
                     minWidth: '20px', height: '20px', borderRadius: '10px',
-                    background: '#ef4444', color: 'white', fontSize: '10px', fontWeight: 900,
+                    background: '#ff3b30', color: 'white',
+                    fontSize: '11px', fontWeight: 700,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '0 5px', boxShadow: '0 2px 8px rgba(239,68,68,0.4)',
-                    animation: 'badgeBounce 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55)',
+                    padding: '0 6px',
+                    boxShadow: '0 2px 8px rgba(255,59,48,0.4)',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
                 }}>{unread}</div>
             )}
 
             {/* Live indicator dot */}
             {isLiveActive && !isOpen && (
-                <div className="no-print" style={{
+                <div className="no-print ios-live-dot" style={{
                     position: 'fixed',
-                    bottom: `max(${24 + fabSize - 6}px, calc(env(safe-area-inset-bottom, 0px) + ${16 + fabSize - 6}px))`,
-                    right: `${20 + fabSize - 6}px`,
+                    bottom: 'max(68px, calc(env(safe-area-inset-bottom, 0px) + 60px))',
+                    right: '70px',
                     zIndex: 10002,
-                    width: '12px', height: '12px', borderRadius: '50%',
-                    background: isMicEnabled ? '#ef4444' : '#22c55e',
+                    width: '10px', height: '10px', borderRadius: '50%',
+                    background: isMicEnabled ? '#ff3b30' : '#34c759',
                     border: '2px solid white',
-                    boxShadow: `0 0 8px ${isMicEnabled ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)'}`,
-                    animation: 'pulse 1.5s infinite',
+                    boxShadow: `0 0 8px ${isMicEnabled ? 'rgba(255,59,48,0.5)' : 'rgba(52,199,89,0.5)'}`,
                 }} />
             )}
 
-            {/* ═══ CHAT PANEL — with entrance animation ═══ */}
+            {/* ═══ CHAT PANEL ═══ */}
             {isOpen && (
-                <div className="no-print chat-panel-enter" style={{
-                    position: 'fixed',
-                    bottom: `max(90px, calc(env(safe-area-inset-bottom, 0px) + 82px))`,
-                    right: '20px', zIndex: 10000,
-                    width: 'min(380px, calc(100vw - 40px))',
-                    height: 'min(520px, calc(100vh - 140px))',
-                    background: 'var(--surface, rgba(255,255,255,0.95))',
-                    backdropFilter: 'blur(24px)',
-                    WebkitBackdropFilter: 'blur(24px)',
-                    borderRadius: '24px',
-                    boxShadow: '0 16px 64px rgba(0,0,0,0.18), 0 0 0 1px var(--border-ui, rgba(197,160,101,0.15))',
-                    display: 'flex', flexDirection: 'column',
-                    overflow: 'hidden',
-                }}>
-                    {/* ─── Tab bar ─── */}
+                <div
+                    className={`no-print ios-chat-panel ${panelVisible ? 'ios-chat-panel--open' : 'ios-chat-panel--closed'}`}
+                    style={{
+                        position: 'fixed',
+                        bottom: 'max(90px, calc(env(safe-area-inset-bottom, 0px) + 82px))',
+                        right: '20px',
+                        zIndex: 10000,
+                        width: 'min(380px, calc(100vw - 32px))',
+                        height: 'min(540px, calc(100vh - 140px))',
+                        borderRadius: '22px',
+                        overflow: 'hidden',
+                        display: 'flex', flexDirection: 'column',
+                        /* iOS frosted glass */
+                        background: 'var(--surface, rgba(255,255,255,0.92))',
+                        backdropFilter: 'blur(40px) saturate(180%)',
+                        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 0.5px rgba(197,160,101,0.15)',
+                    }}
+                >
+                    {/* ─── iOS Segmented Control Tab Bar ─── */}
                     <div style={{
-                        display: 'flex',
-                        borderBottom: '1px solid var(--border-ui, rgba(197,160,101,0.15))',
-                        background: 'rgba(197,160,101,0.04)',
-                        flexShrink: 0,
+                        padding: '12px 14px 8px',
+                        background: 'var(--surface, rgba(197,160,101,0.03))',
+                        borderBottom: '0.5px solid var(--border-ui, rgba(197,160,101,0.12))',
                     }}>
-                        {(['team', 'assistant'] as Tab[]).map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                style={{
-                                    flex: 1, padding: '14px 0', fontSize: '11px', fontWeight: 900,
-                                    textTransform: 'uppercase', letterSpacing: '0.08em',
-                                    background: 'transparent', border: 'none', cursor: 'pointer',
-                                    color: activeTab === tab ? (tab === 'assistant' ? '#6366f1' : '#c5a065') : 'var(--text-muted, #94a3b8)',
-                                    borderBottom: activeTab === tab ? `2px solid ${tab === 'assistant' ? '#6366f1' : '#c5a065'}` : '2px solid transparent',
-                                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                                }}
-                            >
-                                {tab === 'team' ? '💬 Team' : '🤖 Assistant'}
-                                {tab === 'team' && unread > 0 && activeTab !== 'team' && (
-                                    <span style={{
-                                        background: '#ef4444', color: 'white', fontSize: '9px', fontWeight: 900,
-                                        padding: '1px 5px', borderRadius: '8px', minWidth: '16px', textAlign: 'center',
-                                    }}>{unread}</span>
-                                )}
-                                {tab === 'assistant' && isLiveActive && (
-                                    <span style={{
-                                        width: '6px', height: '6px', borderRadius: '50%',
-                                        background: isMicEnabled ? '#ef4444' : '#22c55e',
-                                        boxShadow: `0 0 6px ${isMicEnabled ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)'}`,
-                                    }} />
-                                )}
-                            </button>
-                        ))}
+                        <div style={{
+                            display: 'flex',
+                            background: 'var(--surface, rgba(120,120,128,0.08))',
+                            borderRadius: '8px',
+                            padding: '2px',
+                            position: 'relative',
+                        }}>
+                            {(['team', 'assistant'] as Tab[]).map(tab => (
+                                <button
+                                    key={tab}
+                                    onClick={() => handleTabChange(tab)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '8px 0',
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        letterSpacing: '-0.01em',
+                                        background: activeTab === tab
+                                            ? 'var(--surface, rgba(255,255,255,0.95))'
+                                            : 'transparent',
+                                        border: 'none',
+                                        borderRadius: '7px',
+                                        cursor: 'pointer',
+                                        color: activeTab === tab
+                                            ? 'var(--text-main, #1c1c1e)'
+                                            : 'var(--text-muted, #8e8e93)',
+                                        boxShadow: activeTab === tab
+                                            ? '0 1px 3px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.04)'
+                                            : 'none',
+                                        transition: 'all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                                        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                                    }}
+                                >
+                                    {tab === 'team' ? '💬 Team Chat' : '🤖 Assistant'}
+                                    {tab === 'team' && unread > 0 && activeTab !== 'team' && (
+                                        <span style={{
+                                            background: '#ff3b30', color: 'white',
+                                            fontSize: '9px', fontWeight: 700,
+                                            padding: '1px 5px', borderRadius: '8px',
+                                            minWidth: '16px', textAlign: 'center',
+                                        }}>{unread}</span>
+                                    )}
+                                    {tab === 'assistant' && isLiveActive && (
+                                        <span style={{
+                                            width: '6px', height: '6px', borderRadius: '50%',
+                                            background: isMicEnabled ? '#ff3b30' : '#34c759',
+                                            boxShadow: `0 0 6px ${isMicEnabled ? 'rgba(255,59,48,0.5)' : 'rgba(52,199,89,0.5)'}`,
+                                            display: 'inline-block',
+                                        }} />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* ─── Content ─── */}
@@ -208,6 +260,7 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                                 department={department}
                                 isVisible={isOpen && activeTab === 'team'}
                                 onUnreadChange={handleUnreadChange}
+                                onPushNotification={onPushNotification}
                             />
                         ) : (
                             <AIAssistantTab
@@ -230,56 +283,72 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                 </div>
             )}
 
-            {/* ─── Premium Chat Animations ─── */}
+            {/* ─── iOS Chat Animations ─── */}
             <style>{`
-                /* FAB floating animation */
-                .chat-fab {
-                    animation: fabFloat 3s ease-in-out infinite;
+                /* FAB idle breathing — gentle, 6s cycle */
+                .ios-chat-fab {
+                    animation: iosFabIdle 6s ease-in-out infinite;
                 }
-                .chat-fab:hover {
-                    animation: none;
+                .ios-chat-fab:hover { animation-play-state: paused; }
+                .ios-chat-fab:active {
+                    transform: scale(0.92) !important;
+                    transition: transform 0.12s ease !important;
                 }
-                @keyframes fabFloat {
+                @keyframes iosFabIdle {
                     0%, 100% { transform: translateY(0); }
-                    50% { transform: translateY(-4px); }
+                    50% { transform: translateY(-2px); }
                 }
 
-                /* Ring pulse */
-                .chat-fab-ring {
-                    animation: ringPulse 2.5s ease-in-out infinite;
+                /* Ring pulse — slow, subtle */
+                .ios-fab-ring {
+                    animation: iosRingPulse 4s ease-in-out infinite;
                 }
-                @keyframes ringPulse {
+                @keyframes iosRingPulse {
                     0%, 100% { transform: scale(1); opacity: 0.6; }
-                    50% { transform: scale(1.35); opacity: 0; }
+                    50% { transform: scale(1.4); opacity: 0; }
                 }
 
-                /* Panel entrance */
-                .chat-panel-enter {
-                    animation: chatPanelIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+                /* Panel enter/exit — smooth spring */
+                .ios-chat-panel {
+                    transform-origin: bottom right;
+                    transition:
+                        transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+                        opacity 0.35s ease,
+                        filter 0.35s ease;
                 }
-                @keyframes chatPanelIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(24px) scale(0.92);
-                        filter: blur(4px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0) scale(1);
-                        filter: blur(0);
-                    }
+                .ios-chat-panel--open {
+                    transform: scale(1) translateY(0);
+                    opacity: 1;
+                    filter: blur(0);
+                }
+                .ios-chat-panel--closed {
+                    transform: scale(0.85) translateY(20px);
+                    opacity: 0;
+                    filter: blur(6px);
                 }
 
-                /* Badge bounce entrance */
-                @keyframes badgeBounce {
+                /* Badge bounce — slightly slower */
+                .ios-badge-bounce {
+                    animation: iosBadgeBounce 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+                }
+                @keyframes iosBadgeBounce {
                     0% { transform: scale(0); }
-                    50% { transform: scale(1.3); }
+                    60% { transform: scale(1.2); }
                     100% { transform: scale(1); }
                 }
 
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0.5; }
+                /* Live dot pulse — gentle */
+                .ios-live-dot {
+                    animation: iosDotPulse 2.5s ease-in-out infinite;
+                }
+                @keyframes iosDotPulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.75; transform: scale(1.1); }
+                }
+
+                /* Dark mode adjustments */
+                [data-theme="dark"] .ios-chat-panel {
+                    background: rgba(28, 28, 30, 0.92) !important;
                 }
             `}</style>
         </>
