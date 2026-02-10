@@ -1,6 +1,7 @@
 # 🔐 Security Policy
 
 **Last Audit:** 10 February 2026  
+**CSP Fix:** 10 February 2026 — Removed duplicate `<meta>` CSP tag; single source of truth in `vercel.json`  
 **Status:** ✅ Secure — Full audit, Firebase rules updated for typing indicators
 
 ---
@@ -49,31 +50,28 @@ Firebase API keys are **project identifiers**, not secrets. They identify which 
 
 ## 2. API Route Protection
 
-All 7 Vercel serverless functions in `/api/` implement consistent security via a **shared `withCors()` guard** from `_apiGuard.ts`:
+All 6 Vercel serverless functions in `/api/` implement consistent security via **inline origin guards** (each route is self-contained for Vercel's independent bundling):
 
 | Route | Guard | Method | Input Validation |
 |-------|-------|--------|------------------|
-| `gemini-refine.ts` | ✅ `withCors()` | POST | `guests` array required |
-| `gemini-analytics.ts` | ✅ `withCors()` | POST | `sessions` array required |
-| `gemini-sentiment.ts` | ✅ `withCors()` | POST | `guests` array required |
-| `gemini-cleaning-order.ts` | ✅ `withCors()` | POST | `guests` array required |
+| `gemini-refine.ts` | ✅ Inline guard | POST | `guests` array required |
+| `gemini-analytics.ts` | ✅ Inline guard | POST | `sessions` array required |
+| `gemini-sentiment.ts` | ✅ Inline guard | POST | `guests` array required |
+| `gemini-cleaning-order.ts` | ✅ Inline guard | POST | `guests` array required |
 | `live-token.ts` | ✅ Inline guard | GET | N/A |
-| `pms-proxy.ts` | ✅ `withCors()` | POST | `action` + `date` required |
-| `_apiGuard.ts` | Shared guard module | — | — |
+| `pms-proxy.ts` | ✅ Inline guard | POST | `action` + `date` required |
 
-**Every route enforces (via shared guard):**
-- **Origin validation** — only `.vercel.app`, `localhost`, and `127.0.0.1` accepted
+**Every route enforces (via inline guard):**
+- **Origin validation** — only `gilpinarrivaltool*.vercel.app`, `localhost`, and `127.0.0.1` accepted
 - **Method guards** — rejects unexpected HTTP methods with 405
 - **CORS preflight** — proper OPTIONS handling with 24h cache
 - **Error boundaries** — structured error responses (400/403/405/500/502)
-
-> **Note:** `live-token.ts` uses an inline origin guard duplicating `_apiGuard.ts` logic. This is intentional — Vercel bundles each API route independently, and the inline guard ensures the token endpoint is self-contained.
 
 ---
 
 ## 3. Content Security Policy
 
-Defined in `vercel.json` with these headers on all routes:
+Defined as a **single source of truth** in `vercel.json` HTTP headers (no `<meta>` tag — removed to prevent dual-policy conflicts):
 
 | Header | Value |
 |--------|-------|
@@ -87,19 +85,20 @@ Defined in `vercel.json` with these headers on all routes:
 | Directive | Allowed Sources | Rationale |
 |-----------|----------------|-----------|
 | `default-src` | `'self'` | Restrictive baseline |
-| `script-src` | `'self'`, `'unsafe-inline'`, `'unsafe-eval'`, Google APIs, Firebase, Vercel, esm.sh, Tailwind CDN | Required by React/Vite SPA runtime |
-| `style-src` | `'self'`, `'unsafe-inline'`, Google Fonts, Vercel | Inline styles + web fonts |
+| `script-src` | `'self'`, `'unsafe-inline'`, `'unsafe-eval'`, Firebase, esm.sh, Vercel Live | Required by React/Vite SPA runtime + import maps |
+| `style-src` | `'self'`, `'unsafe-inline'`, Google Fonts, Vercel Live | Inline styles + web fonts |
 | `font-src` | `'self'`, Google Fonts (gstatic) | Typography |
 | `img-src` | `'self'`, `data:`, `blob:`, `https:` | Broad image loading |
-| `connect-src` | Firebase (HTTPS + WSS), Gemini, Vercel, Pusher, Open-Meteo | API + real-time connections |
-| `worker-src` | `'self'`, `blob:`, esm.sh | Web workers |
+| `connect-src` | Firebase (HTTPS + WSS), Gemini (HTTPS + WSS), Vercel, Open-Meteo, esm.sh | API + real-time connections |
+| `worker-src` | `'self'`, `blob:`, esm.sh | PDF.js web worker |
 | `frame-src` | `https://vercel.live` | Vercel toolbar only |
 | `object-src` | `'none'` | Blocks Flash/Java plugins |
 | `base-uri` | `'self'` | Prevents base tag injection |
 
-### CSP Observations
+### CSP Design Decision
 
-- `unsafe-inline` / `unsafe-eval` in `script-src`: **required** by Vite's dev/HMR and React runtime. Cannot be removed without breaking the SPA.
+- **Single source**: `vercel.json` only. No `<meta>` tag — when both exist, the browser enforces the most restrictive intersection, which was causing all services to be blocked.
+- `unsafe-inline` / `unsafe-eval` in `script-src`: **required** by Vite's dev/HMR and React runtime.
 - `img-src https:` is permissive — acceptable for a private hotel operations tool.
 
 ---
