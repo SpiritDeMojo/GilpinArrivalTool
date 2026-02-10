@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { AnalyticsSchema, validateAIResponse } from '../lib/aiSchemas';
+import { GoogleGenAI, Type } from '@google/genai';
 
 // ── Inline origin guard (Vercel bundles each API route independently) ──
 function isOriginAllowed(origin: string): boolean {
@@ -40,7 +40,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'Missing sessions array in request body' });
         }
 
-        const { GoogleGenAI, Type } = await import('@google/genai');
         const ai = new GoogleGenAI({ apiKey });
         const modelName = 'gemini-2.0-flash';
 
@@ -117,10 +116,15 @@ ${s.guests.map((g: any) => `- ${g.name} | Rm: ${g.room} | LL: ${g.ll} | Nts: ${g
                 });
 
                 const text = response.text || "";
-                const data = validateAIResponse(AnalyticsSchema, text);
+                const clean = text
+                    .replace(/^```json\s*/, '')
+                    .replace(/\s*```$/, '')
+                    .trim();
+                const data = JSON.parse(clean || '{}');
                 return res.status(200).json({ ...data, lastUpdated: Date.now() });
             } catch (error: any) {
-                const isTransient = error.status === 503 || error.status === 429 || error.message?.toLowerCase().includes('overloaded');
+                const msg = error.message?.toLowerCase() || '';
+                const isTransient = error.status === 503 || error.status === 429 || msg.includes('overloaded') || msg.includes('resource_exhausted');
                 if (retries > 1 && isTransient) {
                     await new Promise(r => setTimeout(r, delay));
                     retries--;

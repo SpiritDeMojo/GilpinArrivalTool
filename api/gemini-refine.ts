@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { RefineGuestSchema, validateAIResponse } from '../lib/aiSchemas';
+import { GoogleGenAI, Type } from '@google/genai';
 
 // ── Inline origin guard (Vercel bundles each API route independently) ──
 function isOriginAllowed(origin: string): boolean {
@@ -40,8 +40,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'Missing guests array in request body' });
         }
 
-        // Dynamic import to keep bundle separate
-        const { GoogleGenAI, Type } = await import('@google/genai');
         const ai = new GoogleGenAI({ apiKey });
         const modelName = 'gemini-2.0-flash';
 
@@ -116,8 +114,10 @@ Each guest may include pre-parsed structured fields alongside rawHtml. USE THESE
     * MINI / MINIMOON / MINI_MOON -> "🌙 Mini Moon"
     * MAGESC / MAG_ESC -> "✨ Magical Escape"
     * CEL / CELEB -> "🎉 Celebration"
+    * COMP -> "🎁 Complimentary"
     * BB_1_WIN / BB_2_WIN / BB_3_WIN / BB1_WIN / BB2_WIN / BB3_WIN -> "❄️ Winter Offer"
     * POB_STAFF / POB / STAFF -> "Pride of Britain Staff"
+    * LHMAG -> "✨ Magical Escape (Lake House)"
     * APR / ADV / ADVANCE / LHAPR -> "💳 Advanced Purchase"
 * **IMPORTANT:** "BB_2" is NOT "Winter Offer". Only codes containing "WIN" in the name are Winter Offers.
 * **DEFAULT:** Use Rate Description if no code matches.
@@ -136,7 +136,6 @@ Return a raw JSON array of objects. No markdown.
 
         const guestDataPayload = guests.map((g: any, i: number) => {
             let structured = `--- GUEST ${i + 1} ---\nNAME: ${g.name} | RATE: ${g.rateCode || 'Standard'}`;
-            // Append structured fields when available
             if (g.adults !== undefined) structured += ` | ADULTS: ${g.adults}`;
             if (g.children) structured += ` | CHILDREN: ${g.children}`;
             if (g.infants) structured += ` | INFANTS: ${g.infants}`;
@@ -181,10 +180,18 @@ Return a raw JSON array of objects. No markdown.
                 });
 
                 const text = response.text || "";
-                const data = validateAIResponse(RefineGuestSchema, text);
+                const clean = text
+                    .replace(/^```json\s*/, '')
+                    .replace(/\s*```$/, '')
+                    .trim();
+                const data = JSON.parse(clean || '[]');
+                if (!Array.isArray(data)) {
+                    throw new Error('AI response is not an array');
+                }
                 return res.status(200).json(data);
             } catch (error: any) {
-                const isTransient = error.status === 503 || error.status === 429 || error.message?.toLowerCase().includes('overloaded');
+                const msg = error.message?.toLowerCase() || '';
+                const isTransient = error.status === 503 || error.status === 429 || msg.includes('overloaded') || msg.includes('resource_exhausted');
                 if (retries > 1 && isTransient) {
                     await new Promise(r => setTimeout(r, delay));
                     retries--;
