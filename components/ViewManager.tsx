@@ -74,7 +74,7 @@ const ViewManager: React.FC = () => {
                                 className={`view-tab ${dashboardView === 'arrivals' ? 'active' : ''}`}
                                 onClick={() => { setDashboardView('arrivals'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
                             >
-                                📋 Arrivals ({guests.length})
+                                <span className="tab-emoji">📋 </span>Arrivals ({guests.length})
                             </motion.button>
                         )}
                         {(department === 'HK' || isRec) && (
@@ -87,7 +87,9 @@ const ViewManager: React.FC = () => {
                                 className={`view-tab ${dashboardView === 'housekeeping' ? 'active' : ''}`}
                                 onClick={() => { setDashboardView('housekeeping'); clearBadge('housekeeping'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
                             >
-                                🧹 Housekeeping
+                                <span className="tab-emoji">🧹 </span>
+                                <span className="tab-label-full">Housekeeping</span>
+                                <span className="tab-label-short">HK</span>
                                 {badges.housekeeping > 0 && dashboardView !== 'housekeeping' && (
                                     <span className="tab-badge-dot bg-green-500">{badges.housekeeping}</span>
                                 )}
@@ -103,7 +105,9 @@ const ViewManager: React.FC = () => {
                                 className={`view-tab ${dashboardView === 'maintenance' ? 'active' : ''}`}
                                 onClick={() => { setDashboardView('maintenance'); clearBadge('maintenance'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
                             >
-                                🔧 Maintenance
+                                <span className="tab-emoji">🔧 </span>
+                                <span className="tab-label-full">Maintenance</span>
+                                <span className="tab-label-short">Maint</span>
                                 {badges.maintenance > 0 && dashboardView !== 'maintenance' && (
                                     <span className="tab-badge-dot bg-amber-500">{badges.maintenance}</span>
                                 )}
@@ -119,7 +123,9 @@ const ViewManager: React.FC = () => {
                                 className={`view-tab ${dashboardView === 'reception' ? 'active' : ''}`}
                                 onClick={() => { setDashboardView('reception'); clearBadge('reception'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
                             >
-                                🛎️ Reception
+                                <span className="tab-emoji">🛎️ </span>
+                                <span className="tab-label-full">Reception</span>
+                                <span className="tab-label-short">Recep</span>
                                 {badges.reception > 0 && dashboardView !== 'reception' && (
                                     <span className="tab-badge-dot bg-blue-500">{badges.reception}</span>
                                 )}

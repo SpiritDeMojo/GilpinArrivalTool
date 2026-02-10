@@ -145,9 +145,6 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     const saved = localStorage.getItem('gilpin_data_source');
     return (saved === 'pms' && isPMSConfigured()) ? 'pms' : 'pdf';
   });
-  const [pmsRefreshEnabled, setPMSRefreshEnabled] = useState(false);
-  const pmsRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   // 2. Computed
   const activeSession = useMemo(() =>
     sessions.find(s => s.id === activeSessionId) || (sessions.length > 0 ? sessions[0] : null)

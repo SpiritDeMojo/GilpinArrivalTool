@@ -1,0 +1,67 @@
+/* ==============================================
+   GILPIN DIAMOND DESIGN SYSTEM — Base Styles
+   Body, typography, scrollbar, focus, transitions
+   ============================================== */
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-base);
+    background-image: radial-gradient(var(--bg-dots) 1px, transparent 1px);
+    background-size: 40px 40px;
+    color: var(--text-main);
+    margin: 0;
+    transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-x: hidden;
+    line-height: 1.5;
+}
+
+.heading-font {
+    font-family: var(--font-serif);
+}
+
+/* --- Smooth Focus Glow on Inputs --- */
+input:focus,
+textarea:focus,
+select:focus {
+    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    box-shadow: 0 0 0 3px rgba(197, 160, 101, 0.15);
+    border-color: var(--gilpin-gold) !important;
+    outline: none;
+}
+
+/* --- Premium Scrollbar --- */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(197, 160, 101, 0.25);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(197, 160, 101, 0.45);
+    background-clip: content-box;
+}
+
+/* --- Smooth page color transition on theme switch --- */
+*,
+*::before,
+*::after {
+    transition-property: background-color, border-color, color;
+    transition-duration: 0s;
+}
+
+[data-theme] *,
+[data-theme] *::before,
+[data-theme] *::after {
+    transition-duration: 0.3s;
+    transition-timing-function: ease;
+}

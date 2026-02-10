@@ -73,7 +73,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
   // Inline styles for mobile div-buttons (bypasses global CSS)
   const mobBtn: React.CSSProperties = { cursor: 'pointer', minHeight: 'auto', padding: 0 };
-  const mobIcon: React.CSSProperties = { width: 38, height: 38, ...mobBtn };
+  const mobIcon: React.CSSProperties = { width: 34, height: 34, ...mobBtn };
 
   return (
     <nav className="navbar no-print flex justify-between items-center">
@@ -247,7 +247,7 @@ const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* ===== MOBILE ACTIONS BAR ===== */}
-      <div className="flex xl:hidden items-center gap-1.5 flex-shrink-0 relative z-[1015]">
+      <div className="flex xl:hidden items-center gap-1 flex-shrink-0 relative z-[1015]">
         {/* Sync dot (mobile: compact) */}
         {connectionStatus && (
           <div
@@ -309,7 +309,7 @@ const Navbar: React.FC<NavbarProps> = ({
         {/* Hamburger */}
         <div role="button"
           onClick={() => { setIsMenuOpen(!isMenuOpen); setIsPrintOpen(false); }}
-          style={{ width: 42, height: 42, ...mobBtn, WebkitTapHighlightColor: 'transparent' }}
+          style={{ width: 38, height: 38, ...mobBtn, WebkitTapHighlightColor: 'transparent' }}
           className={`rounded-xl text-white flex items-center justify-center shadow-lg active:scale-90 flex-shrink-0 select-none transition-all ${isMenuOpen ? 'bg-slate-700 ring-2 ring-[#c5a065]' : 'bg-[#c5a065]'}`}
         >
           <span className="text-xl font-bold leading-none">{isMenuOpen ? '✕' : '☰'}</span>

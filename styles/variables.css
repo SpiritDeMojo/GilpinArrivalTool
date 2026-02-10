@@ -1,0 +1,106 @@
+/* ==============================================
+   GILPIN DIAMOND DESIGN SYSTEM — Variables
+   Custom properties for theming, colors, spacing
+   ============================================== */
+
+/* --- Core Design Tokens --- */
+:root {
+    --bg-base: #fdfaf3;
+    --bg-dots: #e8e1d4;
+    --surface: rgba(255, 255, 255, 0.7);
+    --nav-bg: rgba(253, 250, 243, 0.85);
+    --nav-text: #0f172a;
+    --border-ui: #c5a065;
+
+    --text-main: #0f172a;
+    --text-muted: #475569;
+
+    --gilpin-gold: #c5a065;
+    --shadow-lux: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+    --font-serif: 'Playfair Display', serif;
+    --font-sans: 'Inter', sans-serif;
+    --nav-height: 70px;
+    --alert-height: 28px;
+}
+
+[data-theme="dark"] {
+    --bg-base: #070707;
+    --bg-dots: #1a1a1a;
+    --surface: rgba(15, 15, 15, 0.8);
+    --nav-bg: rgba(7, 7, 7, 0.85);
+    --nav-text: #f8fafc;
+    --border-ui: rgba(197, 160, 101, 0.4);
+
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --shadow-lux: 0 30px 60px -15px rgba(0, 0, 0, 0.9);
+}
+
+/* --- CRITICAL IVORY THEME FIX --- */
+[data-theme="light"] textarea,
+[data-theme="light"] input,
+[data-theme="light"] .guest-row textarea {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+/* --- CRITICAL DARK THEME FIX --- */
+[data-theme="dark"] textarea,
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] .guest-row textarea {
+    color: var(--text-main);
+    -webkit-text-fill-color: var(--text-main);
+}
+
+/* ==============================================
+   BOOKING STREAM STRUCTURED DISPLAY
+   Dual-theme: light (default) + dark
+   ============================================== */
+:root {
+    --bs-bg-card: rgba(243, 242, 240, 0.9);
+    --bs-bg-card-header: rgba(230, 225, 218, 0.95);
+    --bs-border: rgba(197, 160, 101, 0.25);
+    --bs-text-primary: #1e293b;
+    --bs-text-secondary: #475569;
+    --bs-text-muted: #64748b;
+    --bs-text-label: #78716c;
+    --bs-blue: #2563eb;
+    --bs-red: #dc2626;
+    --bs-green: #16a34a;
+    --bs-yellow: #ca8a04;
+    --bs-orange: #ea580c;
+    --bs-purple: #7c3aed;
+    --bs-tag-green-bg: rgba(22, 163, 74, 0.08);
+    --bs-tag-green-border: rgba(22, 163, 74, 0.2);
+    --bs-tag-green-text: #15803d;
+    --bs-list-border-blue: rgba(37, 99, 235, 0.25);
+    --bs-list-border-yellow: rgba(202, 138, 4, 0.25);
+    --bs-list-border-orange: rgba(234, 88, 12, 0.25);
+    --bs-allergy-text: #b91c1c;
+    --bs-checks-text: #64748b;
+}
+
+[data-theme="dark"] {
+    --bs-bg-card: rgba(30, 30, 30, 0.7);
+    --bs-bg-card-header: rgba(40, 40, 40, 0.85);
+    --bs-border: rgba(197, 160, 101, 0.2);
+    --bs-text-primary: #f1f5f9;
+    --bs-text-secondary: #cbd5e1;
+    --bs-text-muted: #94a3b8;
+    --bs-text-label: #a8864d;
+    --bs-blue: #6bb5e0;
+    --bs-red: #f87171;
+    --bs-green: #4ade80;
+    --bs-yellow: #facc15;
+    --bs-orange: #fb923c;
+    --bs-purple: #a78bfa;
+    --bs-tag-green-bg: rgba(74, 222, 128, 0.1);
+    --bs-tag-green-border: rgba(74, 222, 128, 0.2);
+    --bs-tag-green-text: #86efac;
+    --bs-list-border-blue: rgba(107, 181, 224, 0.3);
+    --bs-list-border-yellow: rgba(250, 204, 21, 0.3);
+    --bs-list-border-orange: rgba(251, 146, 60, 0.3);
+    --bs-allergy-text: #fca5a5;
+    --bs-checks-text: #94a3b8;
+}

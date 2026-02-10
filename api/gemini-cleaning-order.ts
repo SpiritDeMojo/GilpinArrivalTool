@@ -2,10 +2,11 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, Type } from '@google/genai';
 
 // ── Inline origin guard (Vercel bundles each API route independently) ──
+const ALLOWED_PROJECT = 'gilpinarrivaltool';
 function isOriginAllowed(origin: string): boolean {
     if (!origin) return true;
-    if (origin.endsWith('.vercel.app')) return true;
     if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+    if (origin.endsWith('.vercel.app') && origin.includes(ALLOWED_PROJECT)) return true;
     const vercelUrl = process.env.VERCEL_URL;
     if (vercelUrl && origin.includes(vercelUrl)) return true;
     return false;
@@ -78,9 +79,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     .trim();
                 const data = JSON.parse(clean || '{}');
                 return res.status(200).json(data);
-            } catch (error: any) {
-                const msg = error.message?.toLowerCase() || '';
-                const isTransient = error.status === 503 || error.status === 429 || msg.includes('overloaded') || msg.includes('resource_exhausted');
+            } catch (error: unknown) {
+                const err = error as Record<string, any>;
+                const msg = err?.message?.toLowerCase?.() || '';
+                const isTransient = err?.status === 503 || err?.status === 429 || msg.includes('overloaded') || msg.includes('resource_exhausted');
                 if (retries > 1 && isTransient) {
                     await new Promise(r => setTimeout(r, delay));
                     retries--;
@@ -88,12 +90,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     continue;
                 }
                 console.error("[API Cleaning Order] Error:", error);
-                return res.status(502).json({ error: 'AI service error', details: error.message });
+                return res.status(502).json({ error: 'AI service error', details: err?.message || 'Unknown error' });
             }
         }
         return res.status(502).json({ error: 'AI service exhausted retries' });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("API Route Error:", error);
-        return res.status(500).json({ error: 'Server error', details: error.message });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return res.status(500).json({ error: 'Server error', details: message });
     }
 }

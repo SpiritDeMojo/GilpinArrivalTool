@@ -1,0 +1,350 @@
+/* ==============================================
+   GILPIN DIAMOND DESIGN SYSTEM — Navbar & Globe
+   Navigation bar, action buttons, logo orb
+   ============================================== */
+
+/* --- GLASSMORPHISM NAVIGATION --- */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 70px;
+    background: var(--nav-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border-ui);
+    z-index: 1010;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    box-sizing: border-box;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    color: var(--nav-text);
+    overflow: visible;
+}
+
+[data-theme="dark"] .navbar {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* --- Unified Navbar Action Buttons --- */
+.nav-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 1.5px solid rgba(197, 160, 101, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--nav-text);
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.nav-action-btn:hover {
+    background: rgba(197, 160, 101, 0.15);
+    border-color: var(--gilpin-gold);
+    transform: scale(1.04);
+    box-shadow: 0 4px 16px rgba(197, 160, 101, 0.2);
+}
+
+.nav-action-btn:active {
+    transform: scale(0.95);
+}
+
+/* Active / toggle ON state */
+.nav-action-btn--active {
+    background: var(--gilpin-gold) !important;
+    color: white !important;
+    border-color: var(--gilpin-gold) !important;
+    box-shadow: 0 4px 16px rgba(197, 160, 101, 0.4);
+}
+
+/* Icon-only variant */
+.nav-action-btn--icon {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+[data-theme="dark"] .nav-action-btn {
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .nav-action-btn:hover {
+    background: rgba(197, 160, 101, 0.2);
+    box-shadow: 0 4px 16px rgba(197, 160, 101, 0.25);
+}
+
+/* ═══════════════════════════════════════════
+   GLOBE  —  The Gilpin logo orb
+   States: idle → hover → active → spin/bounce
+   ═══════════════════════════════════════════ */
+
+/* Logo wrapper — controls bubble sizing responsively */
+.nav-logo-wrapper {
+    width: 84px;
+    height: 84px;
+}
+
+@media (max-width: 768px) {
+    .nav-logo-wrapper {
+        width: 52px;
+        height: 52px;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-logo-wrapper {
+        width: 44px;
+        height: 44px;
+    }
+}
+
+.nav-logo-bubble {
+    background: white;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12), 0 0 0 2px rgba(197, 160, 101, 0.15);
+    border: 3px solid var(--gilpin-gold);
+    position: absolute;
+    z-index: 1012;
+    overflow: hidden;
+    padding: 0;
+    flex-shrink: 0;
+    transform: perspective(200px) rotateY(-12deg) rotateX(5deg);
+    /* Smooth transition for hover/active — GPU-composited properties */
+    transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+        box-shadow 0.5s ease,
+        filter 0.4s ease;
+    /* Entrance + idle breathing: breath starts after entrance */
+    animation: logoEntrance 1.2s cubic-bezier(0.16, 1, 0.3, 1) both,
+        globeBreath 8s ease-in-out 2s infinite;
+}
+
+/* Glass highlight overlay */
+.nav-logo-bubble::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(ellipse 70% 50% at 40% 28%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 65%);
+    pointer-events: none;
+    z-index: 2;
+    transition: opacity 0.4s ease;
+}
+
+/* Hover: gentle 3D tilt + golden glow — breath paused, not killed */
+.nav-logo-bubble:hover {
+    overflow: visible;
+    transform: perspective(200px) rotateY(12deg) rotateX(-4deg) scale(1.06);
+    box-shadow: 0 8px 32px rgba(197, 160, 101, 0.25),
+        0 0 0 3px rgba(197, 160, 101, 0.25),
+        0 0 20px rgba(197, 160, 101, 0.08);
+    animation-play-state: paused;
+}
+
+/* Active / Tap: springy squish + slight counter-tilt */
+.nav-logo-bubble:active,
+.nav-logo-bubble.globe-bounce {
+    overflow: visible;
+    transform: perspective(200px) rotateY(-6deg) rotateX(2deg) scale(0.93);
+}
+
+/* Hide glass overlay during interactions */
+.nav-logo-bubble:hover::after,
+.nav-logo-bubble:active::after,
+.nav-logo-bubble.globe-bounce::after {
+    opacity: 0;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .nav-logo-bubble {
+    background: #1a1a1a;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(197, 160, 101, 0.2);
+}
+
+[data-theme="dark"] .nav-logo-bubble:hover,
+[data-theme="dark"] .nav-logo-bubble:active,
+[data-theme="dark"] .nav-logo-bubble.globe-bounce {
+    box-shadow: 0 8px 32px rgba(197, 160, 101, 0.35),
+        0 0 0 3px rgba(197, 160, 101, 0.2),
+        0 0 20px rgba(197, 160, 101, 0.1);
+}
+
+/* Inner logo image — matches parent transition timing */
+.nav-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    border-radius: 50%;
+    transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+        box-shadow 0.5s ease;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+    box-shadow: inset 0 -8px 16px rgba(0, 0, 0, 0.12), inset 0 4px 8px rgba(255, 255, 255, 0.3);
+}
+
+/* Hover/tap: image scales up so letters pop outside the circle */
+.nav-logo-bubble:hover .nav-logo-img,
+.nav-logo-bubble:active .nav-logo-img,
+.nav-logo-bubble.touched .nav-logo-img {
+    transform: scale(1.6);
+    mix-blend-mode: multiply;
+    box-shadow: inset 0 -12px 24px rgba(0, 0, 0, 0.15), inset 0 6px 12px rgba(255, 255, 255, 0.35), 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] .nav-logo-img {
+    filter: invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+[data-theme="dark"] .nav-logo-bubble:hover .nav-logo-img {
+    mix-blend-mode: screen;
+}
+
+/* --- Globe Keyframes --- */
+
+@keyframes logoEntrance {
+    0% {
+        opacity: 0;
+        transform: translateY(-40px) scale(0.3) perspective(400px) rotateY(-45deg) rotateX(20deg);
+        filter: blur(10px) brightness(0.6);
+    }
+
+    30% {
+        opacity: 0.7;
+        transform: translateY(-5px) scale(0.75) perspective(300px) rotateY(-25deg) rotateX(10deg);
+        filter: blur(3px) brightness(0.85);
+    }
+
+    55% {
+        opacity: 1;
+        transform: translateY(14px) scale(1.08) perspective(250px) rotateY(5deg) rotateX(-2deg);
+        filter: blur(0px) brightness(1.05);
+    }
+
+    72% {
+        transform: translateY(11px) scale(0.97) perspective(220px) rotateY(-10deg) rotateX(4deg);
+        filter: blur(0px) brightness(1);
+    }
+
+    88% {
+        transform: translateY(13px) scale(1.02) perspective(210px) rotateY(-11deg) rotateX(4.5deg);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(12px) scale(1) perspective(200px) rotateY(-12deg) rotateX(5deg);
+        filter: blur(0px) brightness(1);
+    }
+}
+
+/* Subtle idle breath — gold border gently pulses */
+@keyframes globeBreath {
+
+    0%,
+    100% {
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12), 0 0 0 2px rgba(197, 160, 101, 0.15);
+    }
+
+    50% {
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12), 0 0 0 3px rgba(197, 160, 101, 0.4),
+            0 0 12px rgba(197, 160, 101, 0.08);
+    }
+}
+
+/* 3D globe spin — triggered on page change (slower, polished) */
+@keyframes globeSpin {
+    0% {
+        transform: perspective(200px) rotateY(-12deg) rotateX(5deg);
+    }
+
+    40% {
+        transform: perspective(200px) rotateY(160deg) rotateX(5deg) scale(1.06);
+    }
+
+    70% {
+        transform: perspective(200px) rotateY(320deg) rotateX(5deg) scale(1.02);
+    }
+
+    100% {
+        transform: perspective(200px) rotateY(348deg) rotateX(5deg);
+    }
+}
+
+/* Bounce — triggered on mobile tap (more elastic, with wobble) */
+@keyframes globeBounce {
+    0% {
+        transform: perspective(200px) rotateY(-12deg) rotateX(5deg) scale(1);
+    }
+
+    20% {
+        transform: perspective(200px) rotateY(-18deg) rotateX(5deg) scale(0.88);
+    }
+
+    50% {
+        transform: perspective(200px) rotateY(-6deg) rotateX(5deg) scale(1.1);
+    }
+
+    70% {
+        transform: perspective(200px) rotateY(-14deg) rotateX(5deg) scale(0.97);
+    }
+
+    100% {
+        transform: perspective(200px) rotateY(-12deg) rotateX(5deg) scale(1);
+    }
+}
+
+/* Globe spin class — toggled via JS on page change */
+.nav-logo-bubble.globe-spin {
+    animation: globeSpin 1.4s cubic-bezier(0.23, 1, 0.32, 1) forwards !important;
+}
+
+/* Globe bounce class — toggled via JS on tap (mobile) */
+.nav-logo-bubble.globe-bounce {
+    animation: globeBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+}
+
+/* --- Reactive Spring Animations --- */
+
+/* Nav buttons: spring-feel press */
+.nav-action-btn {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.nav-action-btn:active {
+    transform: scale(0.92);
+}
+
+/* Desktop table row hover lift */
+@media (min-width: 769px) {
+    tr[class*="border-b"] {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    tr[class*="border-b"]:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+}

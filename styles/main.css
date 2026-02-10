@@ -1,0 +1,12 @@
+/* ==============================================
+   GILPIN DIAMOND DESIGN SYSTEM — Main Entry
+   Imports all partials in correct cascade order
+   ============================================== */
+
+@import './variables.css';
+@import './base.css';
+@import './animations.css';
+@import './navbar.css';
+@import './components.css';
+@import './print.css';
+@import './responsive.css';

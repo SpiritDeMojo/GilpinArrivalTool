@@ -1,0 +1,122 @@
+/* ==============================================
+   GILPIN DIAMOND DESIGN SYSTEM — Print Styles
+   Print protocol: visibility, layout, page sizing
+   ============================================== */
+
+/* Kill all animations during print */
+@media print {
+
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* --- PRINT PROTOCOL V5.0 --- */
+@media screen {
+    .print-only {
+        display: none !important;
+    }
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .print-only {
+        display: block !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+        background-image: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        font-size: 8pt;
+    }
+
+    .hl-badge {
+        background: transparent !important;
+        border: 1px solid #000 !important;
+        color: black !important;
+        text-decoration: none !important;
+        font-weight: 900 !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: fixed !important;
+    }
+
+    th,
+    td {
+        border-bottom: 0.5pt solid #ddd !important;
+        padding: 1px 3px !important;
+        vertical-align: top !important;
+        word-wrap: break-word !important;
+        overflow: hidden !important;
+        line-height: 1.15 !important;
+    }
+
+    thead th {
+        background: #f1f1f1 !important;
+        color: black !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        padding: 2px 3px !important;
+    }
+
+    @page {
+        size: landscape;
+        margin: 0.2cm 0.3cm;
+    }
+
+    /* Column Visibility Logic */
+    .col-inroom,
+    .col-allergies {
+        display: none;
+    }
+
+    .print-mode-greeter .col-nts,
+    .print-mode-greeter .col-facilities,
+    .print-mode-greeter .col-intel {
+        display: none !important;
+    }
+
+    .print-mode-delivery .col-identity,
+    .print-mode-delivery .col-vehicle,
+    .print-mode-delivery .col-ll,
+    .print-mode-delivery .col-facilities,
+    .print-mode-delivery .col-strategy {
+        display: none !important;
+    }
+
+    .print-mode-delivery .col-inroom,
+    .print-mode-delivery .col-allergies {
+        display: table-cell !important;
+    }
+
+    /* Greeter: larger text but efficient row height */
+    .print-mode-greeter td {
+        font-size: 11pt !important;
+        padding: 4px 6px !important;
+    }
+
+    .print-mode-greeter td.font-black {
+        font-size: 18pt !important;
+    }
+
+    /* Page break optimisation */
+    tr {
+        page-break-inside: avoid !important;
+    }
+
+    thead {
+        display: table-header-group !important;
+    }
+}

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from './contexts/ThemeProvider';
 import { useView } from './contexts/ViewProvider';
@@ -11,7 +11,7 @@ import Navbar from './components/Navbar';
 import UnifiedChatPanel from './components/UnifiedChatPanel';
 import LoadingHub from './components/LoadingHub';
 import { PrintLayout } from './components/PrintLayout';
-import SOPModal from './components/SOPModal';
+const SOPModal = React.lazy(() => import('./components/SOPModal'));
 import SessionBrowser from './components/SessionBrowser';
 import NotificationToast from './components/NotificationToast';
 import ActivityLogPanel from './components/ActivityLogPanel';
@@ -52,7 +52,7 @@ const App: React.FC = () => {
     if (urlTab && validTabs.includes(urlTab as DashboardView) && urlTab !== dashboardView) {
       setDashboardView(urlTab as DashboardView);
     }
-  }, [urlTab]); // Only sync when URL changes
+  }, [urlTab, dashboardView, setDashboardView]); // Sync URL tab → view state
 
   // ── Route sync: dashboardView → URL ───────────────────────────────────
   useEffect(() => {
@@ -148,7 +148,9 @@ const App: React.FC = () => {
         guestNames={auditGuestNames}
       />
 
-      <SOPModal isOpen={isSopOpen} onClose={() => setIsSopOpen(false)} />
+      <Suspense fallback={null}>
+        <SOPModal isOpen={isSopOpen} onClose={() => setIsSopOpen(false)} />
+      </Suspense>
 
       {/* Activity Log Panel */}
       {auditLogGuest && (

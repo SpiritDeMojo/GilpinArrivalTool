@@ -26,10 +26,10 @@ async function fetchWithRetry(
         continue;
       }
       return response; // Last attempt — return whatever we got
-    } catch (error: any) {
-      lastError = error;
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error : new Error(String(error));
       if (attempt < maxRetries) {
-        console.warn(`[AI] Network error for ${url}, retrying in ${delay}ms (attempt ${attempt}/${maxRetries}):`, error.message);
+        console.warn(`[AI] Network error for ${url}, retrying in ${delay}ms (attempt ${attempt}/${maxRetries}):`, lastError.message);
         await new Promise(r => setTimeout(r, delay));
         delay *= 2;
         continue;
@@ -81,10 +81,11 @@ export class GeminiService {
       const result = await response.json();
       console.log('[AI Audit] Successfully received', result.length, 'refined guests');
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Audit AI Error:", error);
       // Network error — likely running locally without Vercel
-      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('Failed to fetch') || error instanceof TypeError) {
         alert('AI features are unavailable locally. Deploy to Vercel to use AI Audit.');
       }
       return null;

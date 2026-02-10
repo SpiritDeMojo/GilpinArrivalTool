@@ -35,12 +35,14 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 - 🔌 **Connection Recovery** — Auto-reconnect on background return (visibilitychange + focus), stale watchdog (30s), and nuclear reconnect (full Firebase SDK teardown/rebuild) for permanently broken mobile WebSockets
 - 🔀 **Dashboard Sorting** — Sort any dashboard by ETA (earliest first) or Room Number (ascending). Sort preferences persist per dashboard within the session
 - 🧠 **AI Note Placement** — AI notes route to the correct column: Intelligence (preferences), Notes (prefillNotes), HK (tagged [HK]), or Maintenance (tagged [MAINT])
+- 📱 **Responsive Mobile UI** — Progressive breakpoints (1024 → 768 → 480 → 400px) with adaptive tab labels (full names on desktop, abbreviations on mobile), scroll-snap horizontal tabs, emoji hiding, and tighter density for ultra-narrow screens
 - 📱 **Mobile Debug Overlay** — Add `?debug=1` to URL for an on-screen console showing all logs, connection state, and errors without DevTools
 - 🎨 **Production-Grade Theming** — Dark mode-aware inputs across all dashboards, GPU-composited animations with `will-change`, reduced `backdrop-filter` on mobile, simplified mobile entrance animations
 - 🛡️ **Defense-in-Depth Sanitisation** — All Firebase write paths (`syncSession` + `updateGuestFields`) sanitise `undefined → null` before writing. Prevents Firebase RTDB crashes from any source
 - ⚡ **React.memo Optimisation** — 10 core components (GuestRow, GuestMobileCard, ETATimeline, SearchFilter, BookingStream, all 3 dashboards, NotificationToast, LoadingHub) wrapped with `React.memo` to prevent cascading re-renders
 - 🔄 **37 Rate Code Variants** — Parser recognises MINIMOON, DBB, BB_2, WIN codes, underscore variants, Lake House prefixes — ordered longest-first for accurate matching
 - 📦 **13 Package Mappings** — AI audit maps rate codes to human-readable names: Winter Offer, B&B, Room Only, DBB, Mini Moon, Magical Escape, Celebration, Complimentary, Advanced Purchase, and Lake House variants
+- 🧩 **Modular CSS Architecture** — Styles organised into 8 specialised files (variables, base, animations, navbar, components, responsive, print, main barrel) for maintainability
 
 ---
 
@@ -88,7 +90,7 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 
 ### Tech Stack
 
-- **Frontend:** React 19 + TypeScript 5.7 + Vanilla CSS (custom design system with CSS variables)
+- **Frontend:** React 19 + TypeScript 5.7 + Modular Vanilla CSS (8 files: variables, base, animations, navbar, components, responsive, print — imported via barrel `main.css`)
 - **Build:** Vite 6
 - **Animations:** Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes (FAB breathing, ring pulse, panel transitions)
 - **Backend:** Vercel Serverless Functions (API routes for AI calls)
@@ -115,6 +117,7 @@ The interface features a handcrafted animation engine designed for a premium, re
 | **Theme Transitions** | All colours transition smoothly (0.3s) on light/dark toggle, logo adapts with dark background + golden shadow, weather widget inherits theme colours |
 | **Navbar** | 3D logo globe with perspective tilt (rotateY -12°, rotateX 5°), glass radial gradient overlay, hover pop-out (1.6× scale, mix-blend-mode: multiply for transparent background), spin-in entrance animation, live weather display |
 | **Premium Scrollbar** | Custom golden-tinted scrollbar thumb with rounded corners |
+| **Responsive Labels** | Dashboard tabs adapt per breakpoint — full names (Housekeeping, Maintenance, Reception) on tablet/desktop, abbreviated (HK, Maint, Recep) on mobile, emoji hidden on ≤768px, scroll-snap on overflow |
 | **Print Safety** | All animations disabled via `@media print` — clean, static print layouts |
 
 ---

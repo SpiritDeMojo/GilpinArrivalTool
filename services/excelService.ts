@@ -1,7 +1,6 @@
 import { Guest } from '../types';
 import { ROOM_MAP, getRoomNumber } from '../constants';
-
-declare const XLSX: any;
+import * as XLSX from 'xlsx';
 
 export class ExcelService {
 

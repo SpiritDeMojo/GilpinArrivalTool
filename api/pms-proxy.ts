@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // ── Inline origin guard (Vercel bundles each API route independently) ──
+const ALLOWED_PROJECT = 'gilpinarrivaltool';
 function isOriginAllowed(origin: string): boolean {
     if (!origin) return true;
-    if (origin.endsWith('.vercel.app')) return true;
     if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+    if (origin.endsWith('.vercel.app') && origin.includes(ALLOWED_PROJECT)) return true;
     const vercelUrl = process.env.VERCEL_URL;
     if (vercelUrl && origin.includes(vercelUrl)) return true;
     return false;
@@ -85,8 +86,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } else {
             return res.status(400).json({ error: `Unknown action: ${action}` });
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[PMS Proxy] Error:', error);
-        return res.status(502).json({ error: 'PMS proxy error', details: error.message });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return res.status(502).json({ error: 'PMS proxy error', details: message });
     }
 }

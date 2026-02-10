@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // ── Inline origin guard (Vercel bundles each API route independently) ──
+const ALLOWED_PROJECT = 'gilpinarrivaltool';
 function isOriginAllowed(origin: string): boolean {
     if (!origin) return true;
-    if (origin.endsWith('.vercel.app')) return true;
     if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+    if (origin.endsWith('.vercel.app') && origin.includes(ALLOWED_PROJECT)) return true;
     const vercelUrl = process.env.VERCEL_URL;
     if (vercelUrl && origin.includes(vercelUrl)) return true;
     return false;
