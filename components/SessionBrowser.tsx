@@ -1,6 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { subscribeToSessionList, SessionSummary, isFirebaseEnabled, initializeFirebase, fetchSession, deleteSessionFromFirebase, subscribeToPresence } from '../services/firebaseService';
 import { ArrivalSession } from '../types';
+
+/* ── Stagger animation variants ── */
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.2 } },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 30, scale: 0.95, filter: 'blur(6px)' },
+  visible: {
+    opacity: 1, y: 0, scale: 1, filter: 'blur(0px)',
+    transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
+  },
+  exit: {
+    opacity: 0, scale: 0.9, filter: 'blur(4px)',
+    transition: { duration: 0.25 },
+  },
+};
+
+const headerVariants = {
+  hidden: { opacity: 0, y: -20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+};
+
+const actionVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { delay: 0.5, duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+};
 
 interface SessionBrowserProps {
   onJoinSession: (session: ArrivalSession) => void;
@@ -89,13 +118,23 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
   return (
     <div className="session-browser">
       {/* Header */}
-      <div className="session-browser__header">
+      <motion.div
+        className="session-browser__header"
+        variants={headerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         <h1 className="session-browser__title heading-font">Gilpin Intelligence Hub</h1>
         <p className="session-browser__subtitle">Select a session or create a new one</p>
-      </div>
+      </motion.div>
 
       {/* Session List */}
-      <div className="session-browser__list">
+      <motion.div
+        className="session-browser__list"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {loading ? (
           <div className="session-browser__empty">
             <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🔄</div>
@@ -110,69 +149,99 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
             </p>
           </div>
         ) : (
-          sessions.map(s => {
-            const activeViewers = presenceMap[s.id] || 0;
-            const isDeleting = deleting === s.id;
+          <AnimatePresence>
+            {sessions.map(s => {
+              const activeViewers = presenceMap[s.id] || 0;
+              const isDeleting = deleting === s.id;
 
-            return (
-              <div
-                key={s.id}
-                className={`session-card ${joining === s.id ? 'session-card--joining' : ''} ${isDeleting ? 'session-card--deleting' : ''}`}
-                style={{ opacity: (joining && joining !== s.id) || isDeleting ? 0.5 : 1 }}
-              >
-                {/* Clickable area */}
-                <button
-                  onClick={() => handleJoin(s.id)}
-                  disabled={joining !== null || isDeleting}
-                  className="session-card__main"
+              return (
+                <motion.div
+                  key={s.id}
+                  variants={cardVariants}
+                  exit="exit"
+                  layout
+                  className={`session-card ${joining === s.id ? 'session-card--joining' : ''} ${isDeleting ? 'session-card--deleting' : ''}`}
+                  style={{ opacity: (joining && joining !== s.id) || isDeleting ? 0.5 : 1 }}
+                  whileHover={{ scale: 1.02, y: -2, boxShadow: '0 12px 32px rgba(197, 160, 101, 0.15)' }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  {/* Icon */}
-                  <div className="session-card__icon">
-                    {s.guestCount > 0 ? '📋' : '📝'}
-                  </div>
+                  {/* Clickable area */}
+                  <button
+                    onClick={() => handleJoin(s.id)}
+                    disabled={joining !== null || isDeleting}
+                    className="session-card__main"
+                  >
+                    {/* Icon */}
+                    <motion.div
+                      className="session-card__icon"
+                      animate={joining === s.id ? {
+                        scale: [1, 1.15, 1],
+                        transition: { duration: 0.8, repeat: Infinity },
+                      } : {}}
+                    >
+                      {s.guestCount > 0 ? '📋' : '📝'}
+                    </motion.div>
 
-                  {/* Info */}
-                  <div className="session-card__info">
-                    <div className="session-card__label">{s.label}</div>
-                    <div className="session-card__meta">
-                      {s.dateObj && <span>📅 {formatDate(s.dateObj)}</span>}
-                      <span>👥 {s.guestCount}</span>
-                      <span>🕐 {formatTime(s.lastModified)}</span>
+                    {/* Info */}
+                    <div className="session-card__info">
+                      <div className="session-card__label">{s.label}</div>
+                      <div className="session-card__meta">
+                        {s.dateObj && <span>📅 {formatDate(s.dateObj)}</span>}
+                        <span>👥 {s.guestCount}</span>
+                        <span>🕐 {formatTime(s.lastModified)}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Active viewers badge */}
-                  {activeViewers > 0 && (
-                    <div className="session-card__presence">
-                      <span className="session-card__presence-dot"></span>
-                      {activeViewers}
+                    {/* Active viewers badge */}
+                    {activeViewers > 0 && (
+                      <motion.div
+                        className="session-card__presence"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                      >
+                        <span className="session-card__presence-dot"></span>
+                        {activeViewers}
+                      </motion.div>
+                    )}
+
+                    {/* Arrow */}
+                    <div className="session-card__arrow">
+                      {joining === s.id ? '⏳' : '→'}
                     </div>
-                  )}
+                  </button>
 
-                  {/* Arrow */}
-                  <div className="session-card__arrow">
-                    {joining === s.id ? '⏳' : '→'}
-                  </div>
-                </button>
-
-                {/* Delete button */}
-                <button
-                  onClick={(e) => handleDelete(e, s.id, s.label)}
-                  disabled={joining !== null || isDeleting}
-                  className="session-card__delete"
-                  title="Delete session"
-                >
-                  {isDeleting ? '⏳' : '🗑️'}
-                </button>
-              </div>
-            );
-          })
+                  {/* Delete button */}
+                  <motion.button
+                    onClick={(e) => handleDelete(e, s.id, s.label)}
+                    disabled={joining !== null || isDeleting}
+                    className="session-card__delete"
+                    title="Delete session"
+                    whileHover={{ scale: 1.1, backgroundColor: 'rgba(239, 68, 68, 0.15)' }}
+                    whileTap={{ scale: 0.85 }}
+                  >
+                    {isDeleting ? '⏳' : '🗑️'}
+                  </motion.button>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         )}
-      </div>
+      </motion.div>
 
       {/* Action Buttons */}
-      <div className="session-browser__actions">
-        <label htmlFor="session-pdf-upload" className="session-browser__btn session-browser__btn--primary">
+      <motion.div
+        className="session-browser__actions"
+        variants={actionVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.label
+          htmlFor="session-pdf-upload"
+          className="session-browser__btn session-browser__btn--primary"
+          whileHover={{ scale: 1.03, boxShadow: '0 8px 24px rgba(197,160,101,0.35)' }}
+          whileTap={{ scale: 0.97 }}
+        >
           📄 Upload PDF
           <input
             id="session-pdf-upload"
@@ -182,20 +251,35 @@ const SessionBrowser: React.FC<SessionBrowserProps> = ({ onJoinSession, onCreate
             onChange={onUploadPDF}
             style={{ display: 'none' }}
           />
-        </label>
+        </motion.label>
 
-        <button onClick={onCreateNew} className="session-browser__btn session-browser__btn--secondary">
+        <motion.button
+          onClick={onCreateNew}
+          className="session-browser__btn session-browser__btn--secondary"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+        >
           ✏️ New Session
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* Footer */}
-      <div className="session-browser__footer">
+      <motion.div
+        className="session-browser__footer"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.8, duration: 0.5 }}
+      >
         <div className="session-browser__status">
-          <span className="session-browser__status-dot" style={{ background: !loading ? '#22c55e' : '#ef4444' }}></span>
+          <motion.span
+            className="session-browser__status-dot"
+            style={{ background: !loading ? '#22c55e' : '#ef4444' }}
+            animate={!loading ? { scale: [1, 1.3, 1] } : {}}
+            transition={{ duration: 0.4 }}
+          />
           {loading ? 'Connecting...' : `Connected • ${sessions.length} sessions`}
         </div>
-      </div>
+      </motion.div>
 
       <style>{`
         .session-browser {

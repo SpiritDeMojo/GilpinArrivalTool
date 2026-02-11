@@ -157,13 +157,12 @@
         width: 100% !important;
     }
 
-    /* Modal full-screen on mobile */
+    /* Modal bottom-sheet on mobile */
     .modal-content {
         width: 100% !important;
         max-width: 100% !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
-        border-radius: 0 !important;
+        max-height: 85vh !important;
+        border-radius: 24px 24px 0 0 !important;
         margin: 0 !important;
     }
 

@@ -1,4 +1,5 @@
 import React, { useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AppNotification } from '../hooks/useNotifications';
 import { DashboardView } from '../types';
 
@@ -23,6 +24,25 @@ const DEPT_CONFIG: Record<AppNotification['department'], { label: string; iconCo
     housekeeping: { label: 'Housekeeping', iconColor: '#22c55e' },
     maintenance: { label: 'Maintenance', iconColor: '#f59e0b' },
     reception: { label: 'Reception', iconColor: '#3b82f6' },
+};
+
+/* ── Toast animation variants ── */
+const toastVariants = {
+    initial: { opacity: 0, x: 80, scale: 0.85, filter: 'blur(6px)' },
+    animate: {
+        opacity: 1, x: 0, scale: 1, filter: 'blur(0px)',
+        transition: { type: 'spring' as const, stiffness: 350, damping: 25 },
+    },
+    exit: {
+        opacity: 0, x: 120, scale: 0.9, filter: 'blur(4px)',
+        transition: { duration: 0.25, ease: [0.4, 0, 1, 1] },
+    },
+};
+
+const clearAllVariants = {
+    initial: { opacity: 0, y: -10 },
+    animate: { opacity: 1, y: 0, transition: { delay: 0.1 } },
+    exit: { opacity: 0, y: -10, transition: { duration: 0.15 } },
 };
 
 /* ── Swipe-to-dismiss hook ── */
@@ -98,7 +118,7 @@ const ToastItem: React.FC<{
     );
 
     return (
-        <div
+        <motion.div
             ref={elRef}
             className="notification-toast"
             onClick={handleClick}
@@ -107,6 +127,11 @@ const ToastItem: React.FC<{
             onTouchEnd={onTouchEnd}
             role="alert"
             style={{ '--notif-color': notif.color } as React.CSSProperties}
+            variants={toastVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            layout
         >
             {/* Left accent bar */}
             <div className="notification-toast-accent" style={{ background: notif.color }} />
@@ -127,17 +152,19 @@ const ToastItem: React.FC<{
             </div>
 
             {/* Dismiss button */}
-            <button
+            <motion.button
                 className="notification-toast-dismiss"
                 onClick={(e) => { e.stopPropagation(); onDismiss(notif.id); }}
                 aria-label="Dismiss notification"
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.8 }}
             >
                 ✕
-            </button>
+            </motion.button>
 
             {/* Auto-dismiss progress bar */}
             <div className="notification-toast-progress" style={{ animationDuration: '8s' }} />
-        </div>
+        </motion.div>
     );
 };
 
@@ -147,29 +174,34 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
     onClearAll,
     onNavigate,
 }) => {
-    if (notifications.length === 0) return null;
-
     return (
         <div className="notification-toast-container">
-            {/* Clear all button when 2+ notifications */}
-            {notifications.length >= 2 && (
-                <button
-                    className="notification-clear-all"
-                    onClick={onClearAll}
-                    title="Clear all notifications"
-                >
-                    Clear All
-                </button>
-            )}
+            <AnimatePresence mode="popLayout">
+                {/* Clear all button when 2+ notifications */}
+                {notifications.length >= 2 && (
+                    <motion.button
+                        key="clear-all"
+                        className="notification-clear-all"
+                        onClick={onClearAll}
+                        title="Clear all notifications"
+                        variants={clearAllVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    />
+                )}
 
-            {notifications.map((notif) => (
-                <ToastItem
-                    key={notif.id}
-                    notif={notif}
-                    onDismiss={onDismiss}
-                    onNavigate={onNavigate}
-                />
-            ))}
+                {notifications.map((notif) => (
+                    <ToastItem
+                        key={notif.id}
+                        notif={notif}
+                        onDismiss={onDismiss}
+                        onNavigate={onNavigate}
+                    />
+                ))}
+            </AnimatePresence>
         </div>
     );
 };

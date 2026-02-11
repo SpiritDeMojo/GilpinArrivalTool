@@ -1,5 +1,5 @@
-import React from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import React, { useRef, useMemo } from 'react';
+import { AnimatePresence, motion, LayoutGroup } from 'framer-motion';
 import { useView } from '../contexts/ViewProvider';
 import { useUser } from '../contexts/UserProvider';
 import { useGuestContext } from '../contexts/GuestProvider';
@@ -15,23 +15,42 @@ import ErrorBoundary from './ErrorBoundary';
 import HousekeepingDashboard from './HousekeepingDashboard';
 import MaintenanceDashboard from './MaintenanceDashboard';
 import ReceptionDashboard from './ReceptionDashboard';
-import { Guest } from '../types';
+import { Guest, DashboardView } from '../types';
 
-/* ── Framer Motion page-transition variants ── */
-const pageVariants = {
-    initial: { opacity: 0, y: 20, scale: 0.96, filter: 'blur(8px)' },
-    animate: { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' },
-    exit: { opacity: 0, y: -12, scale: 0.97, filter: 'blur(6px)' },
-};
-const pageTransition = { duration: 0.4, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
+/* ── Tab order for directional transitions ── */
+const TAB_ORDER: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'reception'];
 
-/* ── Tab button spring ── */
-const tabSpring = { type: 'spring' as const, stiffness: 400, damping: 25 };
+/* ── Directional page-transition variants ── */
+const getPageVariants = (direction: number) => ({
+    initial: { opacity: 0, x: direction * 60, scale: 0.96, filter: 'blur(6px)' },
+    animate: { opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' },
+    exit: { opacity: 0, x: direction * -40, scale: 0.97, filter: 'blur(4px)' },
+});
+
+const pageTransition = { type: 'spring' as const, stiffness: 400, damping: 35, mass: 0.8 };
+
+/* ── Tab button config ── */
+interface TabConfig {
+    key: DashboardView;
+    emoji: string;
+    labelFull: string;
+    labelShort: string;
+    badgeColor: string;
+    departments: string[];
+}
+
+const TABS: TabConfig[] = [
+    { key: 'arrivals', emoji: '📋', labelFull: 'Arrivals', labelShort: 'Arr', badgeColor: '', departments: ['REC'] },
+    { key: 'housekeeping', emoji: '🧹', labelFull: 'Housekeeping', labelShort: 'HK', badgeColor: 'bg-green-500', departments: ['HK', 'REC'] },
+    { key: 'maintenance', emoji: '🔧', labelFull: 'Maintenance', labelShort: 'Maint', badgeColor: 'bg-amber-500', departments: ['MAIN', 'REC'] },
+    { key: 'reception', emoji: '🛎️', labelFull: 'Reception', labelShort: 'Recep', badgeColor: 'bg-blue-500', departments: ['REC'] },
+];
 
 const ViewManager: React.FC = () => {
     const { dashboardView, setDashboardView, showAnalytics, showTimeline } = useView();
     const { department } = useUser();
     const isRec = department === 'REC';
+    const prevViewRef = useRef<DashboardView>(dashboardView);
 
     const {
         guests, filteredGuests, propertyFilteredGuests,
@@ -47,14 +66,37 @@ const ViewManager: React.FC = () => {
         handleFileUpload,
     } = useGuestContext();
 
+    /* Compute transition direction based on tab order */
+    const direction = useMemo(() => {
+        const prevIdx = TAB_ORDER.indexOf(prevViewRef.current);
+        const currIdx = TAB_ORDER.indexOf(dashboardView);
+        const dir = currIdx > prevIdx ? 1 : -1;
+        prevViewRef.current = dashboardView;
+        return dir;
+    }, [dashboardView]);
+
+    const pageVariants = useMemo(() => getPageVariants(direction), [direction]);
+
+    /* Visible tabs based on department */
+    const visibleTabs = useMemo(() =>
+        TABS.filter(t => t.departments.includes(department)),
+        [department]
+    );
+
     /* Compute top offset: nav-height + optional alert banner */
     const stickyTop = (isOldFile && guests.length > 0)
         ? 'calc(var(--nav-height) + var(--alert-height))'
         : 'var(--nav-height)';
 
+    const handleTabClick = (tab: DashboardView) => {
+        setDashboardView(tab);
+        if (tab !== 'arrivals') clearBadge(tab as any);
+        document.dispatchEvent(new CustomEvent('gilpin:viewchange'));
+    };
+
     return (
         <>
-            {/* ─── Docking Tabs ─── */}
+            {/* ─── Docking Tabs with Sliding Pill ─── */}
             {guests.length > 0 && (
                 <div
                     className={`no-print dashboard-view-tabs transition-all duration-300 ${isSticky
@@ -63,75 +105,66 @@ const ViewManager: React.FC = () => {
                         }`}
                     style={isSticky ? { top: stickyTop } : {}}
                 >
-                    <div className="view-tabs-container">
-                        {isRec && (
-                            <motion.button
-                                initial={{ opacity: 0, y: 10, scale: 0.92 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                transition={{ delay: 0 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
-                                whileHover={{ scale: 1.05, y: -1 }}
-                                whileTap={{ scale: 0.93 }}
-                                className={`view-tab ${dashboardView === 'arrivals' ? 'active' : ''}`}
-                                onClick={() => { setDashboardView('arrivals'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
-                            >
-                                <span className="tab-emoji">📋 </span>Arrivals ({guests.length})
-                            </motion.button>
-                        )}
-                        {(department === 'HK' || isRec) && (
-                            <motion.button
-                                initial={{ opacity: 0, y: 10, scale: 0.92 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                transition={{ delay: 1 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
-                                whileHover={{ scale: 1.05, y: -1 }}
-                                whileTap={{ scale: 0.93 }}
-                                className={`view-tab ${dashboardView === 'housekeeping' ? 'active' : ''}`}
-                                onClick={() => { setDashboardView('housekeeping'); clearBadge('housekeeping'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
-                            >
-                                <span className="tab-emoji">🧹 </span>
-                                <span className="tab-label-full">Housekeeping</span>
-                                <span className="tab-label-short">HK</span>
-                                {badges.housekeeping > 0 && dashboardView !== 'housekeeping' && (
-                                    <span className="tab-badge-dot bg-green-500">{badges.housekeeping}</span>
-                                )}
-                            </motion.button>
-                        )}
-                        {(department === 'MAIN' || isRec) && (
-                            <motion.button
-                                initial={{ opacity: 0, y: 10, scale: 0.92 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                transition={{ delay: 2 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
-                                whileHover={{ scale: 1.05, y: -1 }}
-                                whileTap={{ scale: 0.93 }}
-                                className={`view-tab ${dashboardView === 'maintenance' ? 'active' : ''}`}
-                                onClick={() => { setDashboardView('maintenance'); clearBadge('maintenance'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
-                            >
-                                <span className="tab-emoji">🔧 </span>
-                                <span className="tab-label-full">Maintenance</span>
-                                <span className="tab-label-short">Maint</span>
-                                {badges.maintenance > 0 && dashboardView !== 'maintenance' && (
-                                    <span className="tab-badge-dot bg-amber-500">{badges.maintenance}</span>
-                                )}
-                            </motion.button>
-                        )}
-                        {isRec && (
-                            <motion.button
-                                initial={{ opacity: 0, y: 10, scale: 0.92 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                transition={{ delay: 3 * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
-                                whileHover={{ scale: 1.05, y: -1 }}
-                                whileTap={{ scale: 0.93 }}
-                                className={`view-tab ${dashboardView === 'reception' ? 'active' : ''}`}
-                                onClick={() => { setDashboardView('reception'); clearBadge('reception'); document.dispatchEvent(new CustomEvent('gilpin:viewchange')); }}
-                            >
-                                <span className="tab-emoji">🛎️ </span>
-                                <span className="tab-label-full">Reception</span>
-                                <span className="tab-label-short">Recep</span>
-                                {badges.reception > 0 && dashboardView !== 'reception' && (
-                                    <span className="tab-badge-dot bg-blue-500">{badges.reception}</span>
-                                )}
-                            </motion.button>
-                        )}
-                    </div>
+                    <LayoutGroup>
+                        <div className="view-tabs-container">
+                            {visibleTabs.map((tab, i) => (
+                                <motion.button
+                                    key={tab.key}
+                                    initial={{ opacity: 0, y: 10, scale: 0.92 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ delay: i * 0.06, type: 'spring', stiffness: 350, damping: 22 }}
+                                    whileHover={{ scale: 1.05, y: -1 }}
+                                    whileTap={{ scale: 0.93 }}
+                                    className={`view-tab ${dashboardView === tab.key ? 'active' : ''}`}
+                                    onClick={() => handleTabClick(tab.key)}
+                                    style={{ position: 'relative' }}
+                                >
+                                    {/* Sliding pill — shared layout animation */}
+                                    {dashboardView === tab.key && (
+                                        <motion.div
+                                            layoutId="activeTabPill"
+                                            className="active-tab-pill"
+                                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                                            style={{
+                                                position: 'absolute',
+                                                inset: 0,
+                                                borderRadius: 'inherit',
+                                                background: 'var(--gilpin-gold)',
+                                                zIndex: 0,
+                                            }}
+                                        />
+                                    )}
+
+                                    {/* Tab content — above the pill */}
+                                    <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span className="tab-emoji">{tab.emoji} </span>
+                                        {tab.key === 'arrivals' ? (
+                                            <>{tab.labelFull} ({guests.length})</>
+                                        ) : (
+                                            <>
+                                                <span className="tab-label-full">{tab.labelFull}</span>
+                                                <span className="tab-label-short">{tab.labelShort}</span>
+                                            </>
+                                        )}
+                                    </span>
+
+                                    {/* Animated badge */}
+                                    {tab.key !== 'arrivals' && (badges as any)[tab.key] > 0 && dashboardView !== tab.key && (
+                                        <motion.span
+                                            className={`tab-badge-dot ${tab.badgeColor}`}
+                                            initial={{ scale: 0, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            exit={{ scale: 0, opacity: 0 }}
+                                            transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                                            style={{ position: 'relative', zIndex: 1 }}
+                                        >
+                                            {(badges as any)[tab.key]}
+                                        </motion.span>
+                                    )}
+                                </motion.button>
+                            ))}
+                        </div>
+                    </LayoutGroup>
                 </div>
             )}
 
@@ -179,18 +212,29 @@ const ViewManager: React.FC = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.5 }}
                     >
-                        <div className="w-full max-w-md p-10 md:p-24 border-2 border-dashed border-[#c5a065]/40 rounded-[2.5rem] md:rounded-[3rem] bg-white/50 dark:bg-white/5 backdrop-blur flex flex-col items-center gap-6 md:gap-8 cursor-pointer hover:border-[#c5a065] transition-all" onClick={() => document.getElementById('file-upload-nav')?.click()}>
-                            <span className="text-4xl md:text-6xl animate-bounce">📁</span>
+                        <motion.div
+                            className="w-full max-w-md p-10 md:p-24 border-2 border-dashed border-[#c5a065]/40 rounded-[2.5rem] md:rounded-[3rem] bg-white/50 dark:bg-white/5 backdrop-blur flex flex-col items-center gap-6 md:gap-8 cursor-pointer hover:border-[#c5a065] transition-all"
+                            onClick={() => document.getElementById('file-upload-nav')?.click()}
+                            whileHover={{ scale: 1.02, borderColor: '#c5a065' }}
+                            whileTap={{ scale: 0.98 }}
+                        >
+                            <motion.span
+                                className="text-4xl md:text-6xl"
+                                animate={{ y: [0, -8, 0] }}
+                                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                            >
+                                📁
+                            </motion.span>
                             <div className="text-center">
                                 <h2 className="heading-font text-3xl md:text-5xl font-black uppercase tracking-tighter mb-2">Arrivals Hub</h2>
                                 <p className="text-[#c5a065] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-[10px] md:text-sm">Deploy Arrivals Stream</p>
                             </div>
-                        </div>
+                        </motion.div>
                     </motion.div>
                 ) : (
                     <ErrorBoundary>
-                        {/* ─── AnimatePresence: smooth view switching ─── */}
-                        <AnimatePresence mode="wait">
+                        {/* ─── AnimatePresence: directional view switching ─── */}
+                        <AnimatePresence mode="wait" custom={direction}>
                             {dashboardView === 'arrivals' && (
                                 <motion.div
                                     key="arrivals"
@@ -371,10 +415,23 @@ const ViewManager: React.FC = () => {
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
         }
 
-        /* Active tab shimmer */
+        /* Active tab — text color override (pill handles background) */
         .view-tab.active {
-          border-bottom: 2px solid var(--gilpin-gold);
-          box-shadow: 0 4px 16px rgba(197, 160, 101, 0.35), inset 0 -2px 0 var(--gilpin-gold);
+          background: transparent !important;
+          color: white;
+          border-color: transparent;
+          box-shadow: none;
+          font-weight: 800;
+        }
+
+        /* Pill has the shadow + gold bg */
+        .active-tab-pill {
+          box-shadow: 0 4px 16px rgba(197, 160, 101, 0.35);
+        }
+
+        /* Non-active tab should show border on hover */
+        .view-tab:not(.active):hover {
+          border-color: var(--gilpin-gold);
         }
 
         /* Mobile: island stays rounded, just smaller */

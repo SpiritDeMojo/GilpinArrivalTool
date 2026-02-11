@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import ReactDOM from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Guest,
   HKStatus,
@@ -117,8 +119,13 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
 
   return (
     <div className="hk-dashboard">
-      {/* Header */}
-      <header className="hk-header">
+      {/* Header — animated entrance */}
+      <motion.header
+        className="hk-header"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      >
         <div className="header-content">
           <div className="header-icon">🧹</div>
           <div>
@@ -140,7 +147,7 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
             <span className="stat-label">Complete</span>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       {/* Filter Bar */}
       <div className="filter-bar">
@@ -207,14 +214,28 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
         </div>
       )}
 
-      {/* Room Grid */}
-      <div className="room-grid">
+      {/* Room Grid — staggered entrance */}
+      <motion.div
+        className="room-grid"
+        initial="hidden"
+        animate="show"
+        key={statusFilter + sortMode + String(showMainHotel) + String(showLakeHouse)}
+        variants={{
+          hidden: { opacity: 0 },
+          show: { opacity: 1, transition: { staggerChildren: 0.04 } },
+        }}
+      >
         {filteredGuests.length === 0 ? (
-          <div className="empty-state">
+          <motion.div
+            className="empty-state"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          >
             <span className="empty-icon">✨</span>
             <h3>All Clear!</h3>
             <p>No rooms match your current filter</p>
-          </div>
+          </motion.div>
         ) : (
           filteredGuests.map(guest => {
             const hkStatus = guest.hkStatus || 'pending';
@@ -227,10 +248,18 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
             const aiPriorityIndex = aiPriorityRooms.findIndex(r => r.toLowerCase() === guest.room.toLowerCase());
 
             return (
-              <div
+              <motion.div
                 key={guest.id}
                 className={`room-card ${aiPriorityIndex >= 0 ? 'ai-highlighted' : ''}`}
-                style={{ '--card-accent': hkInfo.color } as React.CSSProperties}
+                variants={{
+                  hidden: { opacity: 0, y: 30, scale: 0.92, filter: 'blur(6px)', rotateX: 8 },
+                  show: {
+                    opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', rotateX: 0,
+                    transition: { type: 'spring', stiffness: 300, damping: 24 },
+                  },
+                }}
+                whileHover={{ y: -4, boxShadow: '0 12px 32px rgba(197, 160, 101, 0.2), 0 0 0 1px rgba(197, 160, 101, 0.1)' }}
+                style={{ perspective: 800, ...{ '--card-accent': hkInfo.color } as React.CSSProperties }}
               >
                 {/* AI Priority Badge */}
                 {aiPriorityIndex >= 0 && (
@@ -325,19 +354,25 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
                 {/* Actions */}
                 <div className="card-actions">
                   {nextStatus && (
-                    <button
+                    <motion.button
                       className="action-btn primary"
                       onClick={() => onUpdateHKStatus(guest.id, nextStatus)}
+                      whileTap={{ scale: 0.92 }}
+                      whileHover={{ scale: 1.03 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 20 }}
                     >
                       {HK_STATUS_INFO[nextStatus].emoji} {HK_STATUS_INFO[nextStatus].label}
-                    </button>
+                    </motion.button>
                   )}
-                  <button
+                  <motion.button
                     className="action-btn secondary"
                     onClick={() => setNoteModal({ guestId: guest.id, room: guest.room })}
+                    whileTap={{ scale: 0.92 }}
+                    whileHover={{ scale: 1.03 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
                   >
                     📝 Add Note
-                  </button>
+                  </motion.button>
                 </div>
 
                 {/* Status Dropdown */}
@@ -353,91 +388,110 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
                     <option key={key} value={key}>{info.emoji} {info.label}</option>
                   ))}
                 </select>
-              </div>
+              </motion.div>
             );
           })
         )}
-      </div>
+      </motion.div>
 
-      {/* Add Note Modal */}
-      {noteModal && (
-        <div className="modal-overlay" onClick={() => setNoteModal(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>📝 Add Room Note - {noteModal.room}</h3>
-            <p className="modal-subtitle">This note will be visible to all departments</p>
-
-            <div className="form-group">
-              <label htmlFor="hk-note-author">Your Name</label>
-              <input
-                id="hk-note-author"
-                name="authorName"
-                autoComplete="name"
-                type="text"
-                value={authorName}
-                onChange={(e) => setAuthorName(e.target.value)}
-                placeholder="Enter your name"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Priority</label>
-              <div className="priority-buttons">
-                {(['low', 'medium', 'high', 'urgent'] as const).map(p => (
-                  <button
-                    key={p}
-                    className={`priority-btn ${notePriority === p ? 'active' : ''}`}
-                    onClick={() => setNotePriority(p)}
-                    style={{ '--btn-color': NOTE_PRIORITY_INFO[p].color } as React.CSSProperties}
-                  >
-                    {NOTE_PRIORITY_INFO[p].emoji} {NOTE_PRIORITY_INFO[p].label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Category</label>
-              <div className="category-buttons">
-                <button
-                  className={`cat-btn ${noteCategory === 'issue' ? 'active' : ''}`}
-                  onClick={() => setNoteCategory('issue')}
-                >⚠️ Issue</button>
-                <button
-                  className={`cat-btn ${noteCategory === 'request' ? 'active' : ''}`}
-                  onClick={() => setNoteCategory('request')}
-                >📋 Request</button>
-                <button
-                  className={`cat-btn ${noteCategory === 'info' ? 'active' : ''}`}
-                  onClick={() => setNoteCategory('info')}
-                >ℹ️ Info</button>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="hk-note-msg">Note</label>
-              <textarea
-                id="hk-note-msg"
-                name="noteMessage"
-                autoComplete="off"
-                value={noteMessage}
-                onChange={(e) => setNoteMessage(e.target.value)}
-                placeholder="Describe the issue or note (e.g., 'Broken lamp in bathroom needs replacement')"
-                rows={4}
-              />
-            </div>
-
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setNoteModal(null)}>Cancel</button>
-              <button
-                className="btn-submit"
-                onClick={handleNoteSubmit}
-                disabled={!noteMessage.trim()}
+      {/* Add Note Modal — rendered via Portal to escape transform containment */}
+      {ReactDOM.createPortal(
+        <AnimatePresence>
+          {noteModal && (
+            <motion.div
+              className="modal-overlay"
+              onClick={() => setNoteModal(null)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <motion.div
+                className="modal-content"
+                onClick={e => e.stopPropagation()}
+                initial={{ opacity: 0, y: '100%' }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: '100%' }}
+                transition={{ type: 'spring', damping: 30, stiffness: 350 }}
               >
-                Add Note
-              </button>
-            </div>
-          </div>
-        </div>
+                <h3>📝 Add Room Note - {noteModal.room}</h3>
+                <p className="modal-subtitle">This note will be visible to all departments</p>
+
+                <div className="form-group">
+                  <label htmlFor="hk-note-author">Your Name</label>
+                  <input
+                    id="hk-note-author"
+                    name="authorName"
+                    autoComplete="name"
+                    type="text"
+                    value={authorName}
+                    onChange={(e) => setAuthorName(e.target.value)}
+                    placeholder="Enter your name"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Priority</label>
+                  <div className="priority-buttons">
+                    {(['low', 'medium', 'high', 'urgent'] as const).map(p => (
+                      <button
+                        key={p}
+                        className={`priority-btn ${notePriority === p ? 'active' : ''}`}
+                        onClick={() => setNotePriority(p)}
+                        style={{ '--btn-color': NOTE_PRIORITY_INFO[p].color } as React.CSSProperties}
+                      >
+                        {NOTE_PRIORITY_INFO[p].emoji} {NOTE_PRIORITY_INFO[p].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Category</label>
+                  <div className="category-buttons">
+                    <button
+                      className={`cat-btn ${noteCategory === 'issue' ? 'active' : ''}`}
+                      onClick={() => setNoteCategory('issue')}
+                    >⚠️ Issue</button>
+                    <button
+                      className={`cat-btn ${noteCategory === 'request' ? 'active' : ''}`}
+                      onClick={() => setNoteCategory('request')}
+                    >📋 Request</button>
+                    <button
+                      className={`cat-btn ${noteCategory === 'info' ? 'active' : ''}`}
+                      onClick={() => setNoteCategory('info')}
+                    >ℹ️ Info</button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="hk-note-msg">Note</label>
+                  <textarea
+                    id="hk-note-msg"
+                    name="noteMessage"
+                    autoComplete="off"
+                    value={noteMessage}
+                    onChange={(e) => setNoteMessage(e.target.value)}
+                    placeholder="Describe the issue or note (e.g., 'Broken lamp in bathroom needs replacement')"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="modal-actions">
+                  <button className="btn-cancel" onClick={() => setNoteModal(null)}>Cancel</button>
+                  <button
+                    className="btn-submit"
+                    onClick={handleNoteSubmit}
+                    disabled={!noteMessage.trim()}
+                  >
+                    Add Note
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
 
       <style>{`
@@ -827,6 +881,53 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           color: white;
         }
 
+        /* ── Dark mode fixes for notes & badges ── */
+        [data-theme="dark"] .note-item {
+          background: rgba(255, 255, 255, 0.06) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="dark"] .note-text {
+          color: #e2e8f0 !important;
+        }
+
+        [data-theme="dark"] .resolve-btn {
+          background: rgba(34, 197, 94, 0.15);
+          color: #4ade80;
+          border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        [data-theme="dark"] .resolve-btn:hover {
+          background: rgba(34, 197, 94, 0.3);
+          color: #fff;
+        }
+
+        [data-theme="dark"] .readiness-complete {
+          color: #4ade80;
+        }
+
+        [data-theme="dark"] .guest-presence-badge.on-site {
+          background: rgba(34, 197, 94, 0.12);
+          color: #4ade80;
+        }
+
+        [data-theme="dark"] .guest-presence-badge.off-site {
+          background: rgba(100, 116, 139, 0.12);
+          color: #94a3b8;
+        }
+
+        [data-theme="dark"] .room-number {
+          color: #c5a065;
+        }
+
+        [data-theme="dark"] .guest-name {
+          color: #e2e8f0;
+        }
+
+        [data-theme="dark"] .eta-badge {
+          color: #94a3b8;
+        }
+
         /* Card Actions */
         .card-actions {
           display: flex;
@@ -881,23 +982,23 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           bottom: 0;
           background: rgba(0,0,0,0.85);
           display: flex;
-          align-items: center;
+          align-items: flex-end;
           justify-content: center;
           z-index: 10000;
           backdrop-filter: blur(8px);
-          padding: 20px;
+          padding: 0;
         }
 
         .modal-content {
           background: #ffffff;
-          border-radius: 24px;
-          padding: 32px;
-          width: 90%;
-          max-width: 480px;
+          border-radius: 24px 24px 0 0;
+          padding: 28px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+          width: 100%;
+          max-width: 520px;
           max-height: 85vh;
           overflow-y: auto;
-          box-shadow: 0 25px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(197, 160, 101, 0.3);
-          border: 2px solid #c5a065;
+          box-shadow: 0 -10px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(197, 160, 101, 0.3);
+          border-top: 2px solid #c5a065;
         }
 
         [data-theme="dark"] .modal-content {
@@ -1184,6 +1285,19 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
 
           .room-grid {
             grid-template-columns: 1fr;
+          }
+
+          .priority-btn,
+          .cat-btn {
+            min-height: 44px;
+            padding: 12px 8px;
+            font-size: 13px;
+          }
+
+          .btn-submit,
+          .btn-cancel {
+            min-height: 44px;
+            font-size: 14px;
           }
         }
       `}</style>

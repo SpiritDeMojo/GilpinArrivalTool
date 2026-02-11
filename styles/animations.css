@@ -141,6 +141,7 @@ button {
 
 button:active:not(:disabled) {
     transform: scale(0.96);
+    box-shadow: 0 0 0 3px rgba(197, 160, 101, 0.2);
 }
 
 /* --- Dashboard Pill Entrance --- */
@@ -529,4 +530,158 @@ tbody tr:nth-child(n+11) {
 
 .sync-dot-connected {
     animation: syncPulse 3s ease-in-out infinite;
+}
+
+/* ========= INDUSTRY-LEADING PREMIUM ANIMATIONS ========= */
+
+/* --- Status Change Pop (satisfying overshoot bounce) --- */
+@keyframes statusChangePop {
+    0% { transform: scale(1); }
+    20% { transform: scale(1.28); }
+    40% { transform: scale(0.92); }
+    60% { transform: scale(1.08); }
+    80% { transform: scale(0.98); }
+    100% { transform: scale(1); }
+}
+
+.status-pop {
+    animation: statusChangePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* --- Success Ripple (gold burst on completion) --- */
+@keyframes successRipple {
+    0% {
+        box-shadow: 0 0 0 0 rgba(197, 160, 101, 0.5);
+    }
+    70% {
+        box-shadow: 0 0 0 14px rgba(197, 160, 101, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(197, 160, 101, 0);
+    }
+}
+
+.success-ripple {
+    animation: successRipple 0.6s ease-out;
+}
+
+/* --- Floating Glow (ambient radiance for priority cards) --- */
+@keyframes floatingGlow {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(197, 160, 101, 0.1),
+                    0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(197, 160, 101, 0.25),
+                    0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+}
+
+.ai-highlighted {
+    animation: floatingGlow 3s ease-in-out infinite;
+}
+
+/* --- Breathing Attention Pulse (for urgent badges) --- */
+@keyframes breathe {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.06);
+        opacity: 0.85;
+    }
+}
+
+.badge-urgent {
+    animation: breathe 2s ease-in-out infinite;
+}
+
+/* --- Card Entrance with 3D Perspective --- */
+@keyframes card3DEntrance {
+    from {
+        opacity: 0;
+        transform: perspective(800px) rotateX(8deg) translateY(30px) scale(0.92);
+        filter: blur(6px);
+    }
+    to {
+        opacity: 1;
+        transform: perspective(800px) rotateX(0deg) translateY(0) scale(1);
+        filter: blur(0px);
+    }
+}
+
+.card-3d-enter {
+    animation: card3DEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* --- Slide In Right (for expandable note content) --- */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.slide-in-right {
+    animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* --- Gold Ring Flash (premium button press) --- */
+@keyframes goldRingFlash {
+    0% {
+        box-shadow: 0 0 0 0 rgba(197, 160, 101, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(197, 160, 101, 0.15);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(197, 160, 101, 0);
+    }
+}
+
+/* --- Elastic Scale (premium toggle feedback) --- */
+@keyframes elasticScale {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.2); }
+    50% { transform: scale(0.9); }
+    70% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.elastic-pop {
+    animation: elasticScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* --- Focus-visible gold glow for accessibility + beauty --- */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(197, 160, 101, 0.4),
+                0 0 12px rgba(197, 160, 101, 0.15) !important;
+    transition: box-shadow 0.2s ease;
+}
+
+/* --- Premium Select / Dropdown entrance --- */
+select {
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.2s ease,
+                border-color 0.2s ease;
+}
+
+select:hover {
+    border-color: rgba(197, 160, 101, 0.5);
+}
+
+/* --- Scroll-linked progressive header shadow --- */
+.dashboard-view-tabs.is-stuck {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15),
+                0 1px 0 rgba(197, 160, 101, 0.2);
+    transition: box-shadow 0.3s ease;
 }

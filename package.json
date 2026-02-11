@@ -1,8 +1,8 @@
 {
   "name": "gilpin-arrivals-ultimate",
-  "description": "Real-time multi-department arrival management system for Gilpin Hotel & Lake House — PDF parsing, Gemini AI audit, Firebase Fleet Sync, department dashboards, responsive mobile UI, modular CSS architecture, and live voice assistant.",
+  "description": "Enterprise-grade arrival intelligence platform for luxury hospitality. Real-time multi-department orchestration with AI-powered PDF parsing (Gemini 2.5 Flash), Firebase Fleet Sync, four department dashboards, premium animation engine, dual-theme design system, live voice assistant, and cross-device messenger.",
   "private": true,
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

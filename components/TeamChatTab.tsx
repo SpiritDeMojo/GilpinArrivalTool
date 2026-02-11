@@ -30,6 +30,7 @@ interface TeamChatTabProps {
     isVisible: boolean;
     onUnreadChange: (count: number) => void;
     onPushNotification?: (notif: Omit<AppNotification, 'id' | 'timestamp'>) => void;
+    externalMessages?: ChatMessage[];
 }
 
 /* ─── Constants ─── */
@@ -186,6 +187,7 @@ const TypingBubble = ({ names }: { names: string[] }) => {
 
 const TeamChatTab: React.FC<TeamChatTabProps> = ({
     sessionId, userName, department, isVisible, onUnreadChange, onPushNotification,
+    externalMessages,
 }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
@@ -220,8 +222,20 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
         };
     }, []);
 
-    /* ─── Subscribe to messages ─── */
+    /* ─── Subscribe to messages (use external if provided, else internal sub) ─── */
     useEffect(() => {
+        if (externalMessages) {
+            // Parent provides messages — no internal subscription needed
+            setMessages(externalMessages);
+            // Track unread count changes
+            if (!isVisibleRef.current && externalMessages.length > lastCountRef.current) {
+                const newCount = externalMessages.length - lastCountRef.current;
+                onUnreadChange(newCount);
+            }
+            lastCountRef.current = externalMessages.length;
+            return;
+        }
+        // Fallback: internal Firebase subscription
         if (!sessionId) return;
         const unsub = subscribeToChatMessages(sessionId, (msgs) => {
             setMessages(msgs);
@@ -249,7 +263,7 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
             lastCountRef.current = msgs.length;
         });
         return unsub;
-    }, [sessionId, onUnreadChange, userName]);
+    }, [externalMessages, sessionId, onUnreadChange, userName]);
 
     /* ─── Subscribe to typing indicators ─── */
     useEffect(() => {

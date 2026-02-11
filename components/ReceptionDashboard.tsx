@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Guest,
   GuestStatus,
@@ -117,8 +118,13 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
 
   return (
     <div className="rx-dashboard">
-      {/* Header */}
-      <header className="rx-header">
+      {/* Header — animated entrance */}
+      <motion.header
+        className="rx-header"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      >
         <div className="header-content">
           <div className="header-icon">🛎️</div>
           <div>
@@ -150,7 +156,7 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
             </div>
           )}
         </div>
-      </header>
+      </motion.header>
 
       {/* Filter Tabs */}
       <div className="filter-tabs">
@@ -203,14 +209,28 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
         </div>
       </div>
 
-      {/* Guest Cards */}
-      <div className="guest-list">
+      {/* Guest Cards — staggered entrance */}
+      <motion.div
+        className="guest-list"
+        initial="hidden"
+        animate="show"
+        key={viewFilter + sortMode + String(showMainHotel) + String(showLakeHouse)}
+        variants={{
+          hidden: { opacity: 0 },
+          show: { opacity: 1, transition: { staggerChildren: 0.04 } },
+        }}
+      >
         {filteredGuests.length === 0 ? (
-          <div className="empty-state">
+          <motion.div
+            className="empty-state"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          >
             <span className="empty-icon">👋</span>
             <h3>No guests in this category</h3>
             <p>Select a different filter or wait for arrivals</p>
-          </div>
+          </motion.div>
         ) : (
           filteredGuests.map(guest => {
             const guestStatus = guest.guestStatus || 'pre_arrival';
@@ -219,7 +239,18 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
             const nextAction = getNextAction(guestStatus);
 
             return (
-              <div key={guest.id} className="guest-card">
+              <motion.div
+                key={guest.id}
+                className="guest-card"
+                variants={{
+                  hidden: { opacity: 0, y: 20, scale: 0.96, filter: 'blur(4px)' },
+                  show: {
+                    opacity: 1, y: 0, scale: 1, filter: 'blur(0px)',
+                    transition: { type: 'spring', stiffness: 300, damping: 24 },
+                  },
+                }}
+                whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(197, 160, 101, 0.15)' }}
+              >
                 {/* Header Row */}
                 <div className="card-header">
                   <div className="guest-identity">
@@ -386,82 +417,98 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
                     </button>
                   )}
                 </div>
-              </div>
+              </motion.div>
             );
           })
         )}
-      </div>
+      </motion.div>
 
-      {/* Courtesy Call Modal */}
-      {courtesyModal && (
-        <div className="modal-overlay" onClick={() => setCourtesyModal(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>📞 Courtesy Call</h3>
-            <p className="modal-room">{courtesyModal.room} - {courtesyModal.guestName}</p>
+      {/* Courtesy Call Modal — animated */}
+      <AnimatePresence>
+        {courtesyModal && (
+          <motion.div
+            className="modal-overlay"
+            onClick={() => setCourtesyModal(null)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div
+              className="modal-content"
+              onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <h3>📞 Courtesy Call</h3>
+              <p className="modal-room">{courtesyModal.room} - {courtesyModal.guestName}</p>
 
-            <div className="form-group">
-              <label htmlFor="rx-courtesy-author">Your Name</label>
-              <input
-                id="rx-courtesy-author"
-                name="authorName"
-                autoComplete="name"
-                type="text"
-                value={authorName}
-                onChange={(e) => setAuthorName(e.target.value)}
-                placeholder="Enter your name"
-              />
-            </div>
+              <div className="form-group">
+                <label htmlFor="rx-courtesy-author">Your Name</label>
+                <input
+                  id="rx-courtesy-author"
+                  name="authorName"
+                  autoComplete="name"
+                  type="text"
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  placeholder="Enter your name"
+                />
+              </div>
 
-            <div className="form-group">
-              <label>How was the call?</label>
-              <div className="type-buttons">
+              <div className="form-group">
+                <label>How was the call?</label>
+                <div className="type-buttons">
+                  <button
+                    className={`type-btn happy ${courtesyType === 'happy' ? 'active' : ''}`}
+                    onClick={() => setCourtesyType('happy')}
+                  >
+                    😊 Happy
+                  </button>
+                  <button
+                    className={`type-btn neutral ${courtesyType === 'neutral' ? 'active' : ''}`}
+                    onClick={() => setCourtesyType('neutral')}
+                  >
+                    😐 Neutral
+                  </button>
+                  <button
+                    className={`type-btn issue ${courtesyType === 'issue' ? 'active' : ''}`}
+                    onClick={() => setCourtesyType('issue')}
+                  >
+                    ⚠️ Issue
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="rx-courtesy-note">Notes</label>
+                <textarea
+                  id="rx-courtesy-note"
+                  name="courtesyNote"
+                  autoComplete="off"
+                  value={courtesyNote}
+                  onChange={(e) => setCourtesyNote(e.target.value)}
+                  placeholder="Enter notes from the call..."
+                  rows={4}
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button className="btn-cancel" onClick={() => setCourtesyModal(null)}>Cancel</button>
                 <button
-                  className={`type-btn happy ${courtesyType === 'happy' ? 'active' : ''}`}
-                  onClick={() => setCourtesyType('happy')}
+                  className="btn-submit"
+                  onClick={handleCourtesySubmit}
+                  disabled={!courtesyNote.trim()}
                 >
-                  😊 Happy
-                </button>
-                <button
-                  className={`type-btn neutral ${courtesyType === 'neutral' ? 'active' : ''}`}
-                  onClick={() => setCourtesyType('neutral')}
-                >
-                  😐 Neutral
-                </button>
-                <button
-                  className={`type-btn issue ${courtesyType === 'issue' ? 'active' : ''}`}
-                  onClick={() => setCourtesyType('issue')}
-                >
-                  ⚠️ Issue
+                  Save & Complete Call
                 </button>
               </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="rx-courtesy-note">Notes</label>
-              <textarea
-                id="rx-courtesy-note"
-                name="courtesyNote"
-                autoComplete="off"
-                value={courtesyNote}
-                onChange={(e) => setCourtesyNote(e.target.value)}
-                placeholder="Enter notes from the call..."
-                rows={4}
-              />
-            </div>
-
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setCourtesyModal(null)}>Cancel</button>
-              <button
-                className="btn-submit"
-                onClick={handleCourtesySubmit}
-                disabled={!courtesyNote.trim()}
-              >
-                Save & Complete Call
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         .rx-dashboard {
@@ -847,23 +894,23 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
           top: 0; left: 0; right: 0; bottom: 0;
           background: rgba(0,0,0,0.85);
           display: flex;
-          align-items: center;
+          align-items: flex-end;
           justify-content: center;
           z-index: 10000;
           backdrop-filter: blur(8px);
-          padding: 20px;
+          padding: 0;
         }
 
         .modal-content {
           background: #ffffff;
-          border-radius: 24px;
-          padding: 32px;
-          width: 90%;
-          max-width: 480px;
+          border-radius: 24px 24px 0 0;
+          padding: 28px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+          width: 100%;
+          max-width: 520px;
           max-height: 85vh;
           overflow-y: auto;
-          box-shadow: 0 25px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(197, 160, 101, 0.3);
-          border: 2px solid #c5a065;
+          box-shadow: 0 -10px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(197, 160, 101, 0.3);
+          border-top: 2px solid #c5a065;
         }
 
         [data-theme="dark"] .modal-content {

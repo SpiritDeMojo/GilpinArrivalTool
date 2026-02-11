@@ -1,15 +1,17 @@
 <div align="center">
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 
-# 🏨 Gilpin Hotel Arrival Tool
+# 🏨 Gilpin Hotel — Arrival Intelligence Platform
 
-**A real-time, multi-department arrival management system for luxury hospitality.**
+**Enterprise-grade, real-time arrival orchestration for luxury hospitality.  
+Purpose-built for multi-department coordination, AI-assisted guest preparation, and seamless cross-device synchronisation.**
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-Realtime_DB-FFCA28?logo=firebase)](https://firebase.google.com/)
 [![Gemini AI](https://img.shields.io/badge/Gemini_AI-2.5_Flash-4285F4?logo=google)](https://ai.google.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite)](https://vitejs.dev/)
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-000?logo=vercel)](https://vercel.com/)
 
 </div>
 
@@ -17,43 +19,61 @@
 
 ## Overview
 
-The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Management System (PMS) into a live, interactive dashboard. It enables **Reception**, **Housekeeping**, **Maintenance**, and **Management** to coordinate guest arrivals in real-time across multiple devices.
+The Gilpin Arrival Tool transforms unstructured PMS arrival PDFs into a live, interactive intelligence platform. It enables **Reception**, **Housekeeping**, **Maintenance**, and **Management** to coordinate guest arrivals, room readiness, and operational workflows in real-time — across every device, every department, every arrival day.
 
-### Key Capabilities
-
-- 📄 **Smart PDF Parser** — Extracts guest data, room assignments, ETAs, car registrations, facilities, allergies, occasions, and in-room items from PMS arrival PDFs with high accuracy
-- 🤖 **AI-Powered Audit** — Gemini 2.0 Flash refines parsed data: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, and generates actionable greeting strategies
-- 📡 **Fleet Sync (Firebase)** — Real-time multi-device synchronisation via Firebase Realtime Database. Upload multiple arrival PDFs on one device, all connected devices update instantly with every day visible as tabs
-- 📅 **Multi-Day Sessions** — Upload Monday, Tuesday, Wednesday PDFs and all appear as tabs in the Session Bar. All connected devices see every day. Deletions propagate across all devices instantly
-- 🖨️ **Smart Print Layouts** — Three print modes (Master, Greeter, Delivery) with auto-sizing columns and dense formatting that maximises paper utilisation in landscape
-- 💬 **Messenger** — Tabbed chat panel with cross-department Team Chat and AI Live Assistant (voice & text). Messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime for new messages, and FAB pulse ring when unread
-- 🤖 **AI Live Assistant** — Conversational AI colleague powered by Gemini 2.5 Flash native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands
-- 📊 **Department Dashboards** — Purpose-built views for Reception, Housekeeping, and Maintenance with independent status tracking
-- 🧠 **AI Smart Notes (hkNotes)** — Gemini routes allergies, dietary restrictions, pet requirements, and room prep instructions to a dedicated `hkNotes` field for housekeeping-specific intelligence
-- 🌦️ **Live Weather Widget** — Real-time Windermere weather (temperature + emoji icon) in the navbar via Open-Meteo API. Auto-refreshes every 15 minutes. Falls back to static title if offline
-- 🌐 **3D Logo Globe** — 76px spherical logo with perspective tilt, glass overlay, hover pop-out effect (1.6× scale with transparent background), and spin-in entrance animation
-- 🔌 **Connection Recovery** — Auto-reconnect on background return (visibilitychange + focus), stale watchdog (30s), and nuclear reconnect (full Firebase SDK teardown/rebuild) for permanently broken mobile WebSockets
-- 🔀 **Dashboard Sorting** — Sort any dashboard by ETA (earliest first) or Room Number (ascending). Sort preferences persist per dashboard within the session
-- 🧠 **AI Note Placement** — AI notes route to the correct column: Intelligence (preferences), Notes (prefillNotes), HK (tagged [HK]), or Maintenance (tagged [MAINT])
-- 📱 **Responsive Mobile UI** — Progressive breakpoints (1024 → 768 → 480 → 400px) with adaptive tab labels (full names on desktop, abbreviations on mobile), scroll-snap horizontal tabs, emoji hiding, and tighter density for ultra-narrow screens
-- 📱 **Mobile Debug Overlay** — Add `?debug=1` to URL for an on-screen console showing all logs, connection state, and errors without DevTools
-- 🎨 **Production-Grade Theming** — Dark mode-aware inputs across all dashboards, GPU-composited animations with `will-change`, reduced `backdrop-filter` on mobile, simplified mobile entrance animations
-- 🛡️ **Defense-in-Depth Sanitisation** — All Firebase write paths (`syncSession` + `updateGuestFields`) sanitise `undefined → null` before writing. Prevents Firebase RTDB crashes from any source
-- ⚡ **React.memo Optimisation** — 10 core components (GuestRow, GuestMobileCard, ETATimeline, SearchFilter, BookingStream, all 3 dashboards, NotificationToast, LoadingHub) wrapped with `React.memo` to prevent cascading re-renders
-- 🔄 **37 Rate Code Variants** — Parser recognises MINIMOON, DBB, BB_2, WIN codes, underscore variants, Lake House prefixes — ordered longest-first for accurate matching
-- 📦 **13 Package Mappings** — AI audit maps rate codes to human-readable names: Winter Offer, B&B, Room Only, DBB, Mini Moon, Magical Escape, Celebration, Complimentary, Advanced Purchase, and Lake House variants
-- 🧩 **Modular CSS Architecture** — Styles organised into 8 specialised files (variables, base, animations, navbar, components, responsive, print, main barrel) for maintainability
+> **Production deployed at [Gilpin Hotel & Lake House](https://www.thegilpin.co.uk/)** — serving daily operations across multiple teams and devices.
 
 ---
 
-## Department Dashboards
+## Core Capabilities
+
+### 📄 Intelligent PDF Extraction
+Parses PMS arrival PDFs with high-fidelity extraction of guest data: room assignments, ETA windows, car registrations (multi-pattern UK plate matching with AI fallback), facilities & dining, allergies & dietary requirements, occasions, in-room items (28 keywords), loyalty history, and multi-section notes.
+
+### 🤖 Gemini AI Integration
+- **AI Audit** — Gemini 2.5 Flash refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes
+- **AI Live Assistant** — Conversational AI colleague powered by Gemini native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands in real-time
+- **AI Cleaning Priority** — Intelligent room preparation ordering based on ETA, guest type, and operational constraints
+- **AI Analytics** — Operational intelligence dashboards with arrival patterns, property breakdown, and guest profile analysis
+
+### 📡 Fleet Sync Engine
+Real-time multi-device synchronisation via Firebase Realtime Database. Upload multiple arrival PDFs on one device — all connected devices update instantly with every day visible as session tabs. Status changes, notes, and deletions propagate across the fleet in milliseconds.
+
+### 📊 Department Dashboards
 
 | Dashboard | Purpose | Key Features |
 |-----------|---------|--------------|
 | **Reception** | Guest arrival workflow | ETA timeline, check-in flow, guest status management, courtesy call tracking |
-| **Housekeeping** | Room preparation | Room readiness status, in-room delivery tracking, AI cleaning priority |
-| **Maintenance** | Room inspection | Independent maintenance status, cross-department room notes |
+| **Housekeeping** | Room preparation & readiness | Room readiness status, in-room delivery tracking, AI cleaning priority, cross-department notes |
+| **Maintenance** | Room inspection & handoff | Independent maintenance status, cross-department room notes, priority tagging |
 | **Analytics** | Operational overview | Arrival counts, property breakdown (Main Hotel / Lake House), allergy & VIP tracking |
+
+### 💬 Real-Time Messenger
+Tabbed chat panel with cross-department Team Chat and AI Live Assistant. Features messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime, and FAB pulse ring for unread messages.
+
+### 🖨️ Smart Print Layouts
+Three optimised print modes — **Master**, **Greeter**, and **Delivery** — with auto-sizing columns and dense formatting that maximises paper utilisation in landscape orientation.
+
+### 🔌 Connection Resilience
+Production-hardened reconnection engine with auto-reconnect on background return (`visibilitychange` + `focus`), stale watchdog (30s timeout), and nuclear reconnect (full Firebase SDK teardown/rebuild) for permanently broken mobile WebSockets.
+
+---
+
+## Premium Animation Engine
+
+The interface features a handcrafted animation system designed for a polished, premium feel across both **light** and **dark** themes.
+
+| Category | Implementation |
+|----------|---------------|
+| **Card Entrances** | 3D perspective tilt with blur-to-focus (Framer Motion spring physics: stiffness 400, damping 35, mass 0.8) |
+| **Page Transitions** | AnimatePresence mode="wait" with spring-physics tab switching, sliding gold indicator pill |
+| **Micro-Interactions** | `whileTap` scale-down with spring feedback on all action buttons, hover lift + gold shadow depth |
+| **Stat Cards** | 3D tilt on hover (`rotateX`, `rotateY`) with enhanced gold shadow for premium depth |
+| **Navbar** | 3D logo globe with perspective tilt, glass overlay, hover pop-out (1.6×), overshoot cubic-bezier transitions, gold glow ring on hover |
+| **Theme Transitions** | Smooth 0.3s colour transitions on light/dark toggle, GPU-composited with `will-change` |
+| **Dark Mode** | Full dual-theme support — dark-adapted note backgrounds, badge colours, form inputs, and text contrast throughout |
+| **Print Safety** | All animations disabled via `@media print` for clean, static print layouts |
+| **Performance** | `React.memo` on 10 core components, `will-change` compositing, reduced `backdrop-filter` on mobile |
 
 ---
 
@@ -90,54 +110,36 @@ The Gilpin Arrival Tool transforms the daily arrival PDF from the Property Manag
 
 ### Tech Stack
 
-- **Frontend:** React 19 + TypeScript 5.7 + Modular Vanilla CSS (8 files: variables, base, animations, navbar, components, responsive, print — imported via barrel `main.css`)
-- **Build:** Vite 6
-- **Animations:** Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes (FAB breathing, ring pulse, panel transitions)
-- **Backend:** Vercel Serverless Functions (API routes for AI calls)
-- **PDF Parsing:** pdfjs-dist (Mozilla PDF.js)
-- **AI:** Google Gemini 2.5 Flash (via @google/genai) + Gemini Live API for native audio
-- **Audio Capture:** AudioWorklet API (with ScriptProcessorNode fallback)
-- **Real-time Sync:** Firebase Realtime Database (with defense-in-depth sanitisation)
-- **Weather:** Open-Meteo API (Windermere, no API key required)
-- **Testing:** Vitest
-- **Export:** XLSX (SheetJS)
-- **Performance:** React.memo on 10 core components, debounced reconnect handlers, stable useCallback references
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 19 · TypeScript 5.7 · Modular Vanilla CSS (8 files) |
+| **Build** | Vite 6 |
+| **Animations** | Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes |
+| **Backend** | Vercel Serverless Functions (`/api/gemini-*`) |
+| **PDF Parsing** | pdfjs-dist (Mozilla PDF.js) |
+| **AI** | Google Gemini 2.5 Flash via `@google/genai` + Gemini Live API (native audio) |
+| **Audio** | AudioWorklet API (ScriptProcessorNode fallback) |
+| **Real-Time Sync** | Firebase Realtime Database (defense-in-depth sanitisation) |
+| **Weather** | Open-Meteo API (Windermere, no API key required) |
+| **Testing** | Vitest |
+| **Export** | XLSX (SheetJS) |
 
 ---
 
-## UI/UX Design
+## Additional Features
 
-The interface features a handcrafted animation engine designed for a premium, responsive feel across both **light** and **dark** themes.
-
-| Category | Effects |
-|----------|---------|
-| **Entrance Animations** | Content fade-slide-up on load, staggered dashboard pill cascade (50ms), session tab slide-in (60ms), table row stagger (20ms), Framer Motion AnimatePresence collapse/expand on guest cards |
-| **Micro-Interactions** | Button press scale (0.96×), table row hover-lift with shadow, dashboard pill hover-lift, status badge scale (1.05×), input focus golden glow, mobile card touch press-down, chat message spring entrance (slide + scale), long-press emoji reaction picker, typing indicator dots |
-| **View Transitions** | Framer Motion AnimatePresence mode="wait" — tab switch scale-up + fade-in + de-blur, whileHover/whileTap spring feedback, active tab golden shimmer sweep, non-active tab ambient golden glow |
-| **Theme Transitions** | All colours transition smoothly (0.3s) on light/dark toggle, logo adapts with dark background + golden shadow, weather widget inherits theme colours |
-| **Navbar** | 3D logo globe with perspective tilt (rotateY -12°, rotateX 5°), glass radial gradient overlay, hover pop-out (1.6× scale, mix-blend-mode: multiply for transparent background), spin-in entrance animation, live weather display |
-| **Premium Scrollbar** | Custom golden-tinted scrollbar thumb with rounded corners |
-| **Responsive Labels** | Dashboard tabs adapt per breakpoint — full names (Housekeeping, Maintenance, Reception) on tablet/desktop, abbreviated (HK, Maint, Recep) on mobile, emoji hidden on ≤768px, scroll-snap on overflow |
-| **Print Safety** | All animations disabled via `@media print` — clean, static print layouts |
-
----
-
-## PDF Parser Features
-
-The parser extracts structured guest data from PMS arrival PDFs:
-
-| Field | Extraction Method |
-|-------|-------------------|
-| Room & Room Type | Pattern matching against `ROOM_MAP` (Main Hotel 1-30, Lake House 51-58) |
-| Guest Name | Position-based extraction from header row, title stripping |
-| Car Registration | Multi-pattern UK plate matching (new format, prefix, numeric prefix, short), `*` prefix stripping, adjacent item merging. AI fallback via Gemini |
-| ETA | Booking notes `ETA:` label (primary), first-line time (fallback). Handles dot-formats (`2.30pm`), ranges (`2-3pm`), 24h |
-| Facilities | Slash-delimited scan (`/Spice:`, `/Source:`) + standalone dinner/spa/champagne line capture |
-| Allergies | Dedicated `Allergies:` section extraction, filters NDR/None, keyword scan for dietary requirements |
-| Occasion | `Occasion:` + `Special Occasion:` extraction with emoji highlighting |
-| In-Room Items | 28-keyword scan (Champagne, Spa Hamper, Dog Bowl, Rose Petals, etc.) |
-| Loyalty / History | `Been Before:` extraction with visit count |
-| Notes | Multi-section consolidation (HK Notes, Guest Notes, Booking Notes, Traces) with noise filtering |
+- 🔀 **Dashboard Sorting** — Sort any dashboard by ETA (earliest first) or Room Number (ascending). Preferences persist per dashboard.
+- 🧠 **AI Note Placement** — Notes auto-route to the correct column: Intelligence, Prefill Notes, HK (`[HK]`), or Maintenance (`[MAINT]`)
+- 📱 **Responsive Mobile UI** — Progressive breakpoints (1024 → 768 → 480 → 400px) with adaptive tab labels, scroll-snap horizontal tabs, and tighter density
+- 📱 **Mobile Debug Overlay** — Append `?debug=1` for on-screen console showing logs, connection state, and errors
+- 🌦️ **Live Weather Widget** — Real-time Windermere weather (temperature + icon) in the navbar. Auto-refreshes every 15 minutes
+- 🟢 **Guest Presence** — On-site / Off-site tracking per room, visible across all dashboards
+- 🔄 **Room Move Tracking** — Full audit trail when guests are moved between rooms
+- 📜 **Guest Activity Audit Log** — Timestamped record of all status changes and actions per guest
+- 🛡️ **Defense-in-Depth Sanitisation** — All Firebase write paths sanitise `undefined → null` to prevent RTDB crashes
+- 🔄 **37 Rate Code Variants** — Parser recognises MINIMOON, DBB, BB_2, WIN codes, underscore variants, Lake House prefixes
+- 📦 **13 Package Mappings** — AI audit maps rate codes to human-readable names (Winter Offer, B&B, Room Only, etc.)
+- 🧩 **Modular CSS Architecture** — 8 specialised files (variables, base, animations, navbar, components, responsive, print, barrel) for maintainability
 
 ---
 
@@ -145,30 +147,22 @@ The parser extracts structured guest data from PMS arrival PDFs:
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18+)
+- [Node.js](https://nodejs.org/) v18+
 - A Firebase project (for multi-device sync)
 - A Gemini API key (for AI features — optional)
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/SpiritDeMojo/GilpinArrivalTool.git
 cd GilpinArrivalTool
-
-# Install dependencies
 npm install
-
-# Copy environment template
 cp .env.example .env
-
-# Edit .env with your credentials
-# See .env.example for all available options
 ```
 
 ### Configuration
 
-#### Local `.env` file (Firebase only — client-side)
+#### Local `.env` (Firebase — client-side)
 
 ```env
 VITE_FIREBASE_API_KEY=your-api-key
@@ -180,7 +174,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
 VITE_FIREBASE_APP_ID=1:123456789:web:abc123
 ```
 
-#### Vercel Environment Variables (AI features — server-side)
+#### Vercel Environment Variables (AI — server-side)
 
 Set in **Vercel → Settings → Environment Variables**:
 
@@ -191,22 +185,12 @@ Set in **Vercel → Settings → Environment Variables**:
 
 > **Note:** AI features (Audit, Analytics, Live Assistant) require Vercel deployment. They are unavailable when running locally.
 
-### Run Locally
+### Development
 
 ```bash
-npm run dev
-```
-
-### Run Tests
-
-```bash
-npx vitest run
-```
-
-### Build for Production
-
-```bash
-npm run build
+npm run dev        # Start dev server
+npx vitest run     # Run tests
+npm run build      # Production build
 ```
 
 ---
@@ -224,13 +208,15 @@ npm run build
 
 ## Security
 
-- 🔒 **Gemini API key is server-side only** — stored in Vercel env vars, never exposed in the client JS bundle
-- 🔒 **Vercel Serverless Functions** proxy all AI calls (`/api/gemini-*`), keeping credentials off the client
-- 🔒 Firebase API keys stored in `.env` (never committed to git)
-- 🔒 Firebase security rules control database access
-- 🔒 PDF data stays in-browser and Firebase (no third-party storage)
-- 🔒 Content Security Policy (CSP) headers restrict resource loading to approved domains
-- 🔒 Brand assets (logo) served locally — no external image hosting dependencies
+| Measure | Implementation |
+|---------|---------------|
+| **API Key Isolation** | Gemini API key stored in Vercel env vars — never exposed in the client bundle |
+| **Server-Side Proxy** | All AI calls proxied through Vercel Serverless Functions (`/api/gemini-*`) |
+| **Firebase Auth** | API keys stored in `.env` (gitignored), security rules control database access |
+| **Data Residency** | PDF data stays in-browser and Firebase — no third-party storage |
+| **CSP Headers** | Content Security Policy restricts resource loading to approved domains only |
+| **HTTP Security** | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` |
+| **Asset Security** | Brand assets served locally — zero external image hosting dependencies |
 
 ---
 

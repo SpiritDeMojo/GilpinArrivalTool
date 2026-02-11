@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense } from 'react';
+import React, { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from './contexts/ThemeProvider';
 import { useView } from './contexts/ViewProvider';
@@ -6,6 +6,7 @@ import { useHotkeys } from './contexts/HotkeysProvider';
 import { useUser } from './contexts/UserProvider';
 import { useGuestContext } from './contexts/GuestProvider';
 import { NavPrintMode, PrintMode, DashboardView } from './types';
+import { subscribeToChatMessages, ChatMessage } from './services/firebaseService';
 
 import Navbar from './components/Navbar';
 import UnifiedChatPanel from './components/UnifiedChatPanel';
@@ -45,6 +46,76 @@ const App: React.FC = () => {
     auditLogGuest, setAuditLogGuest,
     mainPaddingTop,
   } = useGuestContext();
+
+  // ── Persistent chat subscription (survives panel close) ────────────────
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
+  const chatLastCountRef = useRef(0);
+  const chatInitializedRef = useRef(false);
+  const deptMapped = department === 'HK' ? 'housekeeping' : department === 'MAIN' ? 'maintenance' : 'reception';
+
+  useEffect(() => {
+    if (!activeSessionId) return;
+    const unsub = subscribeToChatMessages(activeSessionId, (msgs) => {
+      setChatMessages(msgs);
+      // On first load, just record the count — don't fire notifications
+      if (!chatInitializedRef.current) {
+        chatLastCountRef.current = msgs.length;
+        chatInitializedRef.current = true;
+        return;
+      }
+      // Only notify if new messages arrived AND chat panel is closed
+      if (msgs.length > chatLastCountRef.current && !isChatPanelOpen) {
+        const latest = msgs[msgs.length - 1];
+        if (latest && latest.author !== userName) {
+          // Play chime
+          try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            if (ctx.state === 'suspended') ctx.resume();
+            const osc1 = ctx.createOscillator(); const g1 = ctx.createGain();
+            osc1.type = 'sine'; osc1.frequency.setValueAtTime(660, ctx.currentTime);
+            g1.gain.setValueAtTime(0.10, ctx.currentTime);
+            g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+            osc1.connect(g1).connect(ctx.destination); osc1.start(ctx.currentTime); osc1.stop(ctx.currentTime + 0.18);
+            const osc2 = ctx.createOscillator(); const g2 = ctx.createGain();
+            osc2.type = 'sine'; osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
+            g2.gain.setValueAtTime(0, ctx.currentTime); g2.gain.setValueAtTime(0.10, ctx.currentTime + 0.1);
+            g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.30);
+            osc2.connect(g2).connect(ctx.destination); osc2.start(ctx.currentTime + 0.1); osc2.stop(ctx.currentTime + 0.30);
+            setTimeout(() => ctx.close(), 400);
+          } catch { /* Audio API not available */ }
+          // Browser notification
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try {
+              new Notification(`💬 ${latest.author}`, {
+                body: latest.text.length > 80 ? latest.text.substring(0, 80) + '…' : latest.text,
+                icon: '/gilpin-logo.png', tag: 'team-chat', silent: true,
+              });
+            } catch { /* noop */ }
+          }
+          // In-app toast
+          pushNotification({
+            type: 'chat_message', department: 'reception', room: '',
+            guestName: latest.author,
+            message: latest.text.length > 60 ? latest.text.substring(0, 60) + '…' : latest.text,
+            emoji: '💬', color: '#c5a065', badgeTabs: [],
+          });
+        }
+      }
+      chatLastCountRef.current = msgs.length;
+    });
+    return unsub;
+  }, [activeSessionId, userName, isChatPanelOpen, pushNotification]);
+
+  // Reset chat state when session changes
+  useEffect(() => {
+    chatInitializedRef.current = false;
+    chatLastCountRef.current = 0;
+  }, [activeSessionId]);
+
+  const handleChatPanelToggle = useCallback((open: boolean) => {
+    setIsChatPanelOpen(open);
+  }, []);
 
   // ── Route sync: URL tab → dashboardView ───────────────────────────────
   // Only sync when URL actually changes (e.g. back/forward navigation).
@@ -170,7 +241,7 @@ const App: React.FC = () => {
         <UnifiedChatPanel
           sessionId={activeSessionId}
           userName={userName || 'Unknown'}
-          department={department === 'HK' ? 'housekeeping' : department === 'MAIN' ? 'maintenance' : 'reception'}
+          department={deptMapped}
           isLiveActive={isLiveActive}
           isMicEnabled={isMicEnabled}
           transcriptions={transcriptions}
@@ -184,6 +255,8 @@ const App: React.FC = () => {
           errorMessage={errorMessage}
           hasMic={hasMic}
           onPushNotification={pushNotification}
+          externalChatMessages={chatMessages}
+          onPanelToggle={handleChatPanelToggle}
         />
       )}
 

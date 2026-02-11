@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Transcription } from '../hooks/useLiveAssistant';
 import { AppNotification } from '../hooks/useNotifications';
+import { ChatMessage } from '../services/firebaseService';
 import TeamChatTab from './TeamChatTab';
 import AIAssistantTab from './AIAssistantTab';
 
@@ -28,6 +29,8 @@ interface UnifiedChatPanelProps {
     errorMessage?: string | null;
     hasMic: boolean;
     onPushNotification?: (notif: Omit<AppNotification, 'id' | 'timestamp'>) => void;
+    externalChatMessages?: ChatMessage[];
+    onPanelToggle?: (isOpen: boolean) => void;
 }
 
 type Tab = 'team' | 'assistant';
@@ -37,6 +40,7 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
     isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput,
     onToggleMic, onSendAIMessage, onStartAssistant, onDisconnect, onClearHistory,
     errorMessage, hasMic, onPushNotification,
+    externalChatMessages, onPanelToggle,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<Tab>('team');
@@ -54,13 +58,15 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
             // Close: trigger exit animation, then unmount
             setPanelVisible(false);
             setTimeout(() => setIsOpen(false), 400);
+            onPanelToggle?.(false);
         } else {
             setIsOpen(true);
             // Small delay for mount → animate
             requestAnimationFrame(() => setPanelVisible(true));
             if (activeTab === 'team') setUnread(0);
+            onPanelToggle?.(true);
         }
-    }, [isOpen, activeTab]);
+    }, [isOpen, activeTab, onPanelToggle]);
 
     /* ─── Interactive 3D tilt on FAB ─── */
     const handleFabMouseMove = useCallback((e: React.MouseEvent) => {
@@ -171,15 +177,16 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
             {/* ═══ CHAT PANEL ═══ */}
             {isOpen && (
                 <div
-                    className={`no-print ios-chat-panel ${panelVisible ? 'ios-chat-panel--open' : 'ios-chat-panel--closed'}`}
+                    className={`no-print ios-chat-panel ios-chat-panel-responsive ${panelVisible ? 'ios-chat-panel--open' : 'ios-chat-panel--closed'}`}
                     style={{
                         position: 'fixed',
-                        bottom: 'max(90px, calc(env(safe-area-inset-bottom, 0px) + 82px))',
-                        right: '20px',
+                        bottom: 'var(--chat-panel-bottom, max(90px, calc(env(safe-area-inset-bottom, 0px) + 82px)))',
+                        right: 'var(--chat-panel-right, 20px)',
+                        left: 'var(--chat-panel-left, auto)',
                         zIndex: 10000,
-                        width: 'min(380px, calc(100vw - 32px))',
-                        height: 'min(540px, calc(100vh - 140px))',
-                        borderRadius: '22px',
+                        width: 'var(--chat-panel-width, min(380px, calc(100vw - 32px)))',
+                        height: 'var(--chat-panel-height, min(540px, calc(100vh - 140px)))',
+                        borderRadius: 'var(--chat-panel-radius, 22px)',
                         overflow: 'hidden',
                         display: 'flex', flexDirection: 'column',
                         /* iOS frosted glass */
@@ -261,6 +268,7 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                                 isVisible={isOpen && activeTab === 'team'}
                                 onUnreadChange={handleUnreadChange}
                                 onPushNotification={onPushNotification}
+                                externalMessages={externalChatMessages}
                             />
                         ) : (
                             <AIAssistantTab
@@ -349,6 +357,25 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                 /* Dark mode adjustments */
                 [data-theme="dark"] .ios-chat-panel {
                     background: rgba(28, 28, 30, 0.92) !important;
+                }
+
+                /* ─── Mobile full-screen chat ─── */
+                @media (max-width: 480px) {
+                    .ios-chat-panel-responsive {
+                        --chat-panel-bottom: 0px !important;
+                        --chat-panel-right: 0px !important;
+                        --chat-panel-left: 0px !important;
+                        --chat-panel-width: 100vw !important;
+                        --chat-panel-height: calc(100vh - 70px) !important;
+                        --chat-panel-radius: 16px 16px 0 0 !important;
+                    }
+
+                    .ios-chat-fab {
+                        width: 48px !important;
+                        height: 48px !important;
+                        bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 10px)) !important;
+                        right: 14px !important;
+                    }
                 }
             `}</style>
         </>
