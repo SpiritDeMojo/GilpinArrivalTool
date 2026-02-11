@@ -307,12 +307,7 @@
   50% { opacity: 0.6; }
 }
 
-/* === Navbar Action Button Active State === */
-.nav-action-btn--active {
-  background: rgba(197, 160, 101, 0.15) !important;
-  color: var(--gilpin-gold) !important;
-  border-color: rgba(197, 160, 101, 0.4) !important;
-}
+/* Active button state is defined in navbar.css */
 
 /* === Mobile Reconnect Dot Press Animation === */
 .reconnect-dot-mobile {
