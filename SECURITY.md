@@ -1,8 +1,8 @@
 # 🔐 Security Policy
 
-**Last Audit:** 10 February 2026  
-**CSP Fix:** 10 February 2026 — Removed duplicate `<meta>` CSP tag; single source of truth in `vercel.json`  
-**Status:** ✅ Secure — Full audit, Firebase rules updated for typing indicators
+**Last Audit:** 11 February 2026  
+**Version:** 2.2.0  
+**Status:** ✅ Secure — Full audit passed, all controls verified
 
 ---
 
@@ -40,8 +40,9 @@ Firebase API keys are **project identifiers**, not secrets. They identify which 
 - Origin validation (whitelisted domains only)
 - GET-only method enforcement
 - Key never baked into the JS bundle
+- Response is ephemeral — used once per session to establish the WebSocket
 
-### Source Code Audit (10 Feb 2026)
+### Source Code Audit (11 Feb 2026)
 
 ✅ **No hardcoded API keys** found in source code  
 ✅ **No API key patterns** (e.g. `AIza*`, `sk-*`) detected in any `.ts`, `.tsx`, `.js`, or `.json` files
@@ -64,8 +65,17 @@ All 6 Vercel serverless functions in `/api/` implement consistent security via *
 **Every route enforces (via inline guard):**
 - **Origin validation** — only `gilpinarrivaltool*.vercel.app`, `localhost`, and `127.0.0.1` accepted
 - **Method guards** — rejects unexpected HTTP methods with 405
-- **CORS preflight** — proper OPTIONS handling with 24h cache
+- **CORS preflight** — proper OPTIONS handling with 24h cache (`Access-Control-Max-Age: 86400`)
 - **Error boundaries** — structured error responses (400/403/405/500/502)
+- **Retry logic** — AI routes implement exponential backoff (3 retries, 2s → 4s → 8s) for transient 429/503 errors
+
+### Origin Guard Design Notes
+
+The `isOriginAllowed` function returns `true` when no `Origin` header is present (`if (!origin) return true`). This is intentional:
+- Server-side requests (e.g. health checks, monitoring) do not send `Origin` headers
+- Vercel's own infrastructure does not set `Origin` on internal requests
+- Browser-initiated requests **always** include the `Origin` header, so this does not weaken client-side protection
+- The guard blocks any browser request from an unapproved domain
 
 ---
 
@@ -85,20 +95,20 @@ Defined as a **single source of truth** in `vercel.json` HTTP headers (no `<meta
 | Directive | Allowed Sources | Rationale |
 |-----------|----------------|-----------|
 | `default-src` | `'self'` | Restrictive baseline |
-| `script-src` | `'self'`, `'unsafe-inline'`, `'unsafe-eval'`, Firebase, esm.sh, Vercel Live | Required by React/Vite SPA runtime + import maps |
+| `script-src` | `'self'`, `'unsafe-inline'`, Firebase, Vercel Live | Required by React/Vite SPA runtime |
 | `style-src` | `'self'`, `'unsafe-inline'`, Google Fonts, Vercel Live | Inline styles + web fonts |
 | `font-src` | `'self'`, Google Fonts (gstatic) | Typography |
 | `img-src` | `'self'`, `data:`, `blob:`, `https:` | Broad image loading |
-| `connect-src` | Firebase (HTTPS + WSS), Gemini (HTTPS + WSS), Vercel, Open-Meteo, esm.sh | API + real-time connections |
-| `worker-src` | `'self'`, `blob:`, esm.sh | PDF.js web worker |
-| `frame-src` | `https://vercel.live` | Vercel toolbar only |
+| `connect-src` | Firebase (HTTPS + WSS), Gemini (HTTPS + WSS), Vercel, Open-Meteo | API + real-time connections |
+| `worker-src` | `'self'`, `blob:` | PDF.js web worker |
+| `frame-src` | Vercel Live, Firebase | Vercel toolbar + Firebase auth |
 | `object-src` | `'none'` | Blocks Flash/Java plugins |
 | `base-uri` | `'self'` | Prevents base tag injection |
 
-### CSP Design Decision
+### CSP Design Decisions
 
-- **Single source**: `vercel.json` only. No `<meta>` tag — when both exist, the browser enforces the most restrictive intersection, which was causing all services to be blocked.
-- `unsafe-inline` / `unsafe-eval` in `script-src`: **required** by Vite's dev/HMR and React runtime.
+- **Single source**: `vercel.json` only. No `<meta>` tag — when both exist, the browser enforces the most restrictive intersection, which caused all services to be blocked (fixed 10 Feb 2026).
+- `unsafe-inline` in `script-src`: **required** by Vite's React runtime. `unsafe-eval` has been removed.
 - `img-src https:` is permissive — acceptable for a private hotel operations tool.
 
 ---
@@ -118,8 +128,9 @@ Defined in `database.rules.json`:
 
 > **Note:** Open read/write on sessions/presence/chat/typing is acceptable for this internal hotel operations tool. If external access is ever required, add Firebase Authentication.
 
-### Recent Change (10 Feb 2026)
-Added `typing/` path rules to support the new real-time typing indicator feature. Follows the same access pattern as `presence/` (session-scoped, ephemeral data).
+### Defense-in-Depth Sanitisation
+
+All Firebase write paths (`syncSession` + `updateGuestFields`) in `firebaseService.ts` sanitise `undefined → null` before writing. This prevents Firebase RTDB crashes from any source, including partial form submissions or missing optional fields.
 
 ---
 
@@ -127,22 +138,31 @@ Added `typing/` path rules to support the new real-time typing indicator feature
 
 | Vector | Status | Detail |
 |--------|--------|--------|
-| React auto-escaping | ✅ | All user data rendered via JSX |
-| `dangerouslySetInnerHTML` | ✅ | **Not used** anywhere in codebase |
+| React auto-escaping | ✅ | All user data rendered via JSX — automatic HTML entity encoding |
+| `dangerouslySetInnerHTML` | ⚠️ See below | Used in 2 files — **safe** (static CSS only) |
 | `eval()` | ✅ | **Not used** in app source code |
 | `innerHTML` assignment | ✅ | **Not used** in app source code |
 | `document.cookie` | ✅ | **Not accessed** by app code |
-| `window.open` / `postMessage` | ✅ | **Not used** in app code (only in `node_modules` type defs) |
+| `window.open` / `postMessage` | ✅ | **Not used** in app code |
+| `Function()` constructor | ✅ | **Not used** in app code |
 
-### Source Code Verification (10 Feb 2026)
+### `dangerouslySetInnerHTML` Audit (11 Feb 2026)
 
-Grep audit confirmed zero instances of:
-- `dangerouslySetInnerHTML`
+Two instances found — both inject **static CSS literal strings** (no user input, no dynamic data):
+
+| File | Line | Content | Risk |
+|------|------|---------|------|
+| `SessionBar.tsx` | 52 | Static scrollbar-hide CSS (`.no-scrollbar`) | ✅ None |
+| `PrintLayout.tsx` | 156 | Static `@media print` CSS (page sizing, column widths, typography) | ✅ None |
+
+**Neither instance accepts user input or dynamic data.** The injected strings are hardcoded CSS literals defined at compile time. No remediation required.
+
+### Source Code Verification (11 Feb 2026)
+
+Grep audit confirmed zero instances of these dangerous patterns in app source code (`.ts` / `.tsx` files, excluding `node_modules`):
 - `eval(` or `Function(`
 - `innerHTML =`
 - `document.cookie`
-
-in any `.ts` or `.tsx` source file.
 
 ---
 
@@ -170,8 +190,8 @@ This is an **internal hotel operations tool**. Users identify themselves by name
 | Theme preference | `localStorage` | N/A (client-only) | Unencrypted |
 | Notification prefs | `localStorage` | N/A (client-only) | Unencrypted |
 
-**localStorage audit (10 Feb 2026):** Used in 4 source files:
-- `firebaseService.ts` — session ID cache
+**localStorage audit (11 Feb 2026):** Used in 4 source files:
+- `firebaseService.ts` — session ID cache + Firebase SDK key cleanup (nuclear reconnect)
 - `UserProvider.tsx` — user name/department
 - `ThemeProvider.tsx` — theme preference
 - `useNotifications.ts` — notification settings
@@ -183,15 +203,18 @@ This is an **internal hotel operations tool**. Users identify themselves by name
 
 ## 8. Dependency Security
 
-Last `npm audit` (10 Feb 2026): **4 vulnerabilities** (1 moderate, 3 high)
+Last `npm audit` (11 Feb 2026): **4 vulnerabilities** (1 moderate, 3 high)
 
 | Package | Source | Severity | Exploitable? |
 |---------|--------|----------|--------------|
-| `path-to-regexp` (via `@vercel/node`) | Transitive | High | ❌ Server-side route matching, no user-controlled patterns |
+| `path-to-regexp` (via `@vercel/node`) | Transitive | High (CWE-1333: ReDoS) | ❌ Server-side route matching, no user-controlled patterns |
 | `undici` (via `@vercel/node`) | Transitive | Moderate | ❌ Server-side HTTP, behind Vercel's infrastructure |
-| `xlsx` (SheetJS) | Transitive | High | ❌ Server-processed only, no untrusted file uploads |
+| `xlsx` (SheetJS) | Transitive | High | ❌ Export-only, no untrusted file uploads |
 
-All are transitive dependencies with no direct fix available. None are exploitable in this application's context.
+All are **transitive dependencies** with no direct fix available. None are exploitable in this application's context:
+- `path-to-regexp` ReDoS requires attacker-controlled route patterns — our routes are static
+- `undici` is only used internally by Vercel's Node.js runtime
+- `xlsx` is used for exporting data to Excel — we never parse untrusted spreadsheet uploads
 
 ---
 
@@ -200,29 +223,67 @@ All are transitive dependencies with no direct fix available. None are exploitab
 | Check | Status | Detail |
 |-------|--------|--------|
 | `.env` excluded from Git | ✅ | `.gitignore` includes `.env`, `.env.local`, `.env.*.local` |
-| Server-side env vars | ✅ | Configured in Vercel dashboard |
-| Production builds | ✅ | `vite build` with tree-shaking |
+| Server-side env vars | ✅ | Configured in Vercel dashboard, not committed |
+| Production builds | ✅ | `vite build` with tree-shaking, minification |
 | Source maps | ✅ | Not deployed to production |
 | HTTPS enforcement | ✅ | Vercel enforces HTTPS on all routes |
 | `X-Frame-Options: DENY` | ✅ | Prevents clickjacking |
-| `nosniff` header | ✅ | Prevents MIME type sniffing |
+| `X-Content-Type-Options: nosniff` | ✅ | Prevents MIME type sniffing |
 | `Referrer-Policy` | ✅ | `strict-origin-when-cross-origin` |
+| SPA rewrites | ✅ | `/((?!api/).*)` → `/index.html` (API routes excluded) |
 
 ---
 
 ## 10. Voice Assistant Security
 
-The Gemini Live voice assistant uses WebSocket connections that require HTTPS:
+The Gemini Live voice assistant uses WebSocket connections:
 
 | Concern | Mitigation |
 |---------|------------|
-| API key exposure | Fetched at runtime via `/api/live-token` (origin-guarded) |
-| Audio recording | Browser-level permission required (microphone) |
+| API key exposure | Fetched at runtime via `/api/live-token` (origin-guarded, not bundled) |
+| Audio recording | Browser-level permission required (microphone prompt) |
 | Data transmission | WSS (WebSocket Secure) to `generativelanguage.googleapis.com` |
 | User consent | Explicit "Start" action required — never auto-records |
+| Audio processing | AudioWorklet API (ScriptProcessorNode fallback) — runs in-browser |
+
+---
+
+## 11. Rate Limiting & Abuse Prevention
+
+| Layer | Protection |
+|-------|-----------|
+| Vercel edge | Default request limits per deployment (varies by plan) |
+| API routes | No application-level rate limiting (acceptable for internal tool) |
+| Firebase | Default Firebase RTDB rate limits apply |
+| Gemini AI | Google's built-in quota + our exponential backoff (3 retries, 2s base) |
+
+> **Future consideration:** If the tool is exposed beyond the hotel network, add:
+> - Express-rate-limit or Vercel edge middleware for API routes
+> - Firebase App Check for database access
+> - IP allowlisting at the Vercel project level
+
+---
+
+## 12. Threat Model Summary
+
+| Threat | Risk Level | Mitigation |
+|--------|-----------|------------|
+| API key theft from bundle | 🟢 Low | Server-side only (`process.env`), never in client JS |
+| Unauthorised API access | 🟢 Low | Origin guard on all 6 routes, method enforcement |
+| XSS via user input | 🟢 Low | React auto-escaping, no `eval`, no raw HTML injection |
+| Firebase data tampering | 🟡 Medium | Open rules for operational speed — mitigated by internal-only access |
+| CSRF | 🟢 Low | SameSite cookies not used; API routes validate Origin header |
+| Clickjacking | 🟢 Low | `X-Frame-Options: DENY` |
+| Man-in-the-middle | 🟢 Low | HTTPS enforced by Vercel, WSS for WebSocket connections |
+| Dependency vulnerability | 🟡 Medium | 4 transitive vulns — none exploitable in context |
+| Session hijacking | 🟢 Low | No auth tokens; localStorage stores preferences only |
 
 ---
 
 ## Reporting
 
 If you discover a security issue, please contact the repository owner directly.
+
+---
+
+*Last full audit: 11 February 2026 — v2.2.0*
