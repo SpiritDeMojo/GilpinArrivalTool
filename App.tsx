@@ -47,12 +47,15 @@ const App: React.FC = () => {
   } = useGuestContext();
 
   // ── Route sync: URL tab → dashboardView ───────────────────────────────
+  // Only sync when URL actually changes (e.g. back/forward navigation).
+  // dashboardView is NOT a dependency — prevents circular loop with Effect 2.
   const validTabs: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'reception'];
   useEffect(() => {
-    if (urlTab && validTabs.includes(urlTab as DashboardView) && urlTab !== dashboardView) {
+    if (urlTab && validTabs.includes(urlTab as DashboardView)) {
       setDashboardView(urlTab as DashboardView);
     }
-  }, [urlTab, dashboardView, setDashboardView]); // Sync URL tab → view state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlTab]); // ← Only URL changes trigger this, NOT state changes
 
   // ── Route sync: dashboardView → URL ───────────────────────────────────
   useEffect(() => {

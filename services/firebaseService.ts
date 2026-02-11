@@ -968,11 +968,13 @@ export function setTypingIndicator(
     if (!db) return;
     const typingRef = ref(db, `typing/${sessionId}/${userName.replace(/[.#$/[\]]/g, '_')}`);
     if (isTyping) {
-        set(typingRef, { name: userName, ts: Date.now() });
-        // Auto-clear after 5s (stale protection)
-        onDisconnect(typingRef).remove();
+        set(typingRef, { name: userName, ts: Date.now() }).catch(() => {
+            // Silent — Firebase rules may not permit typing writes
+        });
+        // Auto-clear after disconnect (stale protection)
+        onDisconnect(typingRef).remove().catch(() => { });
     } else {
-        remove(typingRef);
+        remove(typingRef).catch(() => { });
     }
 }
 
