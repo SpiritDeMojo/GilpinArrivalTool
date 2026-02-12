@@ -70,11 +70,42 @@ export interface PackageGeneratorProps {
   initialPreset?: string;
   /** Pre-fill start date (YYYY-MM-DD) */
   initialStartDate?: string;
+  /** Pre-fill facilities from AI audit (comma-separated) */
+  initialFacilities?: string;
+  /** Pre-fill dinner time from AI audit */
+  initialDinnerTime?: string;
+  /** Pre-fill dinner venue from AI audit */
+  initialDinnerVenue?: string;
+  /** Pre-fill guest preferences from AI audit */
+  initialPreferences?: string;
+  /** Pre-fill stay duration (e.g. '3 night(s)') */
+  initialDuration?: string;
   /** Callback when print is complete */
   onComplete?: () => void;
   /** Hide emojis in print output */
   stripEmojis?: boolean;
 }
+
+/* ────────────── Helpers: Parse AI audit data into events ────────────── */
+const parseFacilities = (facilities: string): EventItem[] => {
+  if (!facilities.trim()) return [];
+  const items = facilities.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+  return items.map(item => {
+    // Try to extract time from item (e.g. "Spa 2pm", "Pool 10:00am")
+    const timeMatch = item.match(/(\d{1,2}[:.:]?\d{0,2}\s*(?:am|pm|AM|PM)?)/);
+    if (timeMatch) {
+      const time = timeMatch[1].trim();
+      const activity = item.replace(timeMatch[0], '').trim() || item.trim();
+      return { time, activity: activity || 'Activity' };
+    }
+    return { time: 'TBC', activity: item };
+  });
+};
+
+const parseDuration = (dur: string): number => {
+  const m = (dur || '').match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+};
 
 /* ────────────── Component ────────────── */
 const PackageGenerator: React.FC<PackageGeneratorProps> = ({
@@ -82,6 +113,11 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
   initialRoomName,
   initialPreset,
   initialStartDate,
+  initialFacilities,
+  initialDinnerTime,
+  initialDinnerVenue,
+  initialPreferences,
+  initialDuration,
   onComplete,
   stripEmojis,
 }) => {
@@ -251,6 +287,66 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
         setLeftDays(prev => applyToArr(prev));
         idx = leftDays.length;
         setRightDays(prev => applyToArr(prev));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount
+
+  /* ── Auto-populate from AI audit data (facilities, dinner, activities) ── */
+  useEffect(() => {
+    const hasFacilities = initialFacilities?.trim();
+    const hasDinner = initialDinnerTime?.trim() || initialDinnerVenue?.trim();
+    if (!hasFacilities && !hasDinner) return;
+
+    // --- Inject dinner into Day 1 arrival events ---
+    if (hasDinner) {
+      setLeftDays(prev => {
+        if (prev.length === 0) return prev;
+        const day1 = { ...prev[0] };
+        const dinnerTime = initialDinnerTime?.trim() || '7:00pm';
+        const dinnerVenue = initialDinnerVenue?.trim() || 'Restaurant';
+        // Check if there's already a dinner event on Day 1
+        const dinnerIdx = day1.events.findIndex(e =>
+          e.activity.toLowerCase().includes('dinner')
+        );
+        if (dinnerIdx >= 0) {
+          // Update existing dinner event
+          const updated = [...day1.events];
+          updated[dinnerIdx] = { time: dinnerTime, activity: `Dinner at ${dinnerVenue}.` };
+          day1.events = updated;
+        } else {
+          // Add dinner event at end of Day 1
+          day1.events = [...day1.events, { time: dinnerTime, activity: `Dinner at ${dinnerVenue}.` }];
+        }
+        return [day1, ...prev.slice(1)];
+      });
+    }
+
+    // --- Inject facilities into Day 2 (or create one if needed) ---
+    if (hasFacilities) {
+      const facilityEvents = parseFacilities(initialFacilities!);
+      if (facilityEvents.length > 0) {
+        setLeftDays(prev => {
+          if (prev.length >= 2) {
+            // Inject into Day 2, replacing/augmenting spa/treatment events
+            const day2 = { ...prev[1] };
+            const existingNonSpa = day2.events.filter(e => {
+              const lower = e.activity.toLowerCase();
+              return !lower.includes('spa') && !lower.includes('treatment') && !lower.includes('pool');
+            });
+            day2.events = [...existingNonSpa, ...facilityEvents];
+            return [prev[0], day2, ...prev.slice(2)];
+          } else {
+            // Only 1 day, add a new day for facilities
+            const newDay: DayBlock = {
+              id: uid(),
+              title: 'Day 2',
+              subtitle: 'Relax & Explore',
+              events: [{ time: 'Morning', activity: 'Breakfast.' }, ...facilityEvents],
+            };
+            return [...prev, newDay];
+          }
+        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -616,19 +712,23 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
         }
         .pkg-toolbar {
           height: 52px;
-          background: rgba(255,255,255,0.85);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(0,0,0,0.06);
+          background: rgba(255,255,255,0.92);
+          backdrop-filter: blur(16px);
+          border-top: 1px solid rgba(0,0,0,0.08);
           display: flex;
           align-items: center;
           padding: 0 24px;
           gap: 12px;
           z-index: 5;
           flex-shrink: 0;
+          position: sticky;
+          bottom: 0;
+          box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
         }
         [data-theme="dark"] .pkg-toolbar {
-          background: rgba(30,30,50,0.85);
-          border-bottom-color: rgba(255,255,255,0.05);
+          background: rgba(20,20,40,0.92);
+          border-top-color: rgba(255,255,255,0.06);
+          box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
         }
         .pkg-tool-btn {
           background: transparent;
@@ -1073,7 +1173,7 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
           </div>
 
           {/* ── Structure ── */}
-          <div className="pkg-section" style={{ borderBottom: 'none' }}>
+          <div className="pkg-section">
             <div className="pkg-section-title">
               <span>Structure</span>
               <span className="icon">🧱</span>
@@ -1084,6 +1184,56 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
             </div>
             <button className="pkg-btn pkg-btn-danger" onClick={clearAll} style={{ marginTop: 5 }}>🗑️ Clear All</button>
           </div>
+
+          {/* ── Guest Preferences (from AI Audit) ── */}
+          {initialPreferences && (
+            <div className="pkg-section" style={{ borderBottom: 'none' }}>
+              <div className="pkg-section-title">
+                <span>Guest Preferences</span>
+                <span className="icon">📋</span>
+              </div>
+              <div style={{
+                background: 'rgba(99,102,241,0.08)',
+                border: '1px solid rgba(99,102,241,0.2)',
+                borderRadius: 8,
+                padding: '12px 14px',
+                fontSize: 12,
+                color: '#c4b5fd',
+                lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+              }}>
+                {initialPreferences}
+              </div>
+              <div style={{ fontSize: 10, color: '#5a6a7a', marginTop: 6, fontStyle: 'italic' }}>
+                ℹ️ Imported from AI audit — for staff reference only
+              </div>
+            </div>
+          )}
+
+          {/* ── Imported Data Summary ── */}
+          {(initialFacilities || initialDinnerVenue) && (
+            <div className="pkg-section" style={{ borderBottom: 'none' }}>
+              <div className="pkg-section-title">
+                <span>Auto-Imported</span>
+                <span className="icon">✨</span>
+              </div>
+              <div style={{
+                background: 'rgba(39,174,96,0.08)',
+                border: '1px solid rgba(39,174,96,0.2)',
+                borderRadius: 8,
+                padding: '10px 14px',
+                fontSize: 11,
+                color: '#a7f3d0',
+                lineHeight: 1.8,
+              }}>
+                {initialDinnerVenue && <div>🍽️ Dinner: {initialDinnerTime || '7:00pm'} at {initialDinnerVenue}</div>}
+                {initialFacilities && <div>🎯 Facilities: {initialFacilities}</div>}
+              </div>
+              <div style={{ fontSize: 10, color: '#5a6a7a', marginTop: 6, fontStyle: 'italic' }}>
+                ✅ Events auto-injected into itinerary — review and adjust as needed
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1092,63 +1242,6 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
         {!sidebarOpen && (
           <button className="pkg-toggle-sidebar" onClick={() => setSidebarOpen(true)} title="Open sidebar">☰</button>
         )}
-
-        <div className="pkg-toolbar">
-          <button onClick={goBack} className="pkg-tool-btn back" title="Back to Arrivals">
-            ← Back
-          </button>
-          <div style={{ width: 1, height: 24, background: 'rgba(128,128,128,0.2)', margin: '0 4px' }} />
-          <span className="pkg-editor-label" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.5, color: '#999', fontWeight: 700 }}>Itinerary Editor</span>
-          <div style={{ width: 1, height: 24, background: 'rgba(128,128,128,0.2)', margin: '0 8px' }} />
-
-          {/* ── Formatting controls ── */}
-          <button className="pkg-tool-btn pkg-fmt-btn" onMouseDown={e => e.preventDefault()} onClick={() => formatDoc('bold')} title="Bold">
-            <strong>B</strong>
-          </button>
-          <button className="pkg-tool-btn pkg-fmt-btn" onMouseDown={e => e.preventDefault()} onClick={() => formatDoc('italic')} title="Italic">
-            <em>I</em>
-          </button>
-          <button className="pkg-tool-btn pkg-fmt-btn" onMouseDown={e => e.preventDefault()} onClick={() => formatDoc('underline')} title="Underline">
-            <span style={{ textDecoration: 'underline' }}>U</span>
-          </button>
-          <div style={{ width: 1, height: 24, background: 'rgba(128,128,128,0.2)', margin: '0 4px' }} />
-          <select
-            className="pkg-tool-select"
-            value={fmtSize}
-            onMouseDown={saveSelection}
-            onChange={e => handleFontSize(e.target.value)}
-            title="Font Size"
-          >
-            <option value="1">XS</option>
-            <option value="2">S</option>
-            <option value="3">M</option>
-            <option value="4">L</option>
-            <option value="5">XL</option>
-            <option value="6">2XL</option>
-            <option value="7">3XL</option>
-          </select>
-          <div style={{ width: 1, height: 24, background: 'rgba(128,128,128,0.2)', margin: '0 4px' }} />
-          <button className="pkg-tool-btn pkg-fmt-btn" onMouseDown={e => e.preventDefault()} onClick={() => formatDoc('removeFormat')} title="Clear Formatting">
-            ✕
-          </button>
-
-          <div style={{ flex: 1 }} />
-
-          {/* ── Action buttons ── */}
-          <button className="pkg-tool-btn" onClick={handlePrint} title="Print">
-            🖨️ Print
-          </button>
-          <button className="pkg-tool-btn" onClick={saveToJSON} title="Save JSON">
-            💾 Save
-          </button>
-          <button className="pkg-tool-btn" onClick={() => fileLoaderRef.current?.click()} title="Load JSON">
-            📂 Load
-          </button>
-          <div style={{ width: 1, height: 24, background: 'rgba(128,128,128,0.2)', margin: '0 4px' }} />
-          <button className="pkg-tool-btn" onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle sidebar">
-            {sidebarOpen ? '◀' : '▶'}
-          </button>
-        </div>
 
         <div className="pkg-preview-area">
           <div ref={printRef}>
@@ -1220,6 +1313,64 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ── STICKY BOTTOM TOOLBAR ── */}
+        <div className="pkg-toolbar">
+          <button onClick={goBack} className="pkg-tool-btn back" title="Back to Arrivals">
+            ← Back
+          </button>
+          <div style={{ width: 1, height: 24, background: 'rgba(128,128,128,0.2)', margin: '0 4px' }} />
+          <span className="pkg-editor-label" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.5, color: '#999', fontWeight: 700 }}>Itinerary Editor</span>
+          <div style={{ width: 1, height: 24, background: 'rgba(128,128,128,0.2)', margin: '0 8px' }} />
+
+          {/* ── Formatting controls ── */}
+          <button className="pkg-tool-btn pkg-fmt-btn" onMouseDown={e => e.preventDefault()} onClick={() => formatDoc('bold')} title="Bold">
+            <strong>B</strong>
+          </button>
+          <button className="pkg-tool-btn pkg-fmt-btn" onMouseDown={e => e.preventDefault()} onClick={() => formatDoc('italic')} title="Italic">
+            <em>I</em>
+          </button>
+          <button className="pkg-tool-btn pkg-fmt-btn" onMouseDown={e => e.preventDefault()} onClick={() => formatDoc('underline')} title="Underline">
+            <span style={{ textDecoration: 'underline' }}>U</span>
+          </button>
+          <div style={{ width: 1, height: 24, background: 'rgba(128,128,128,0.2)', margin: '0 4px' }} />
+          <select
+            className="pkg-tool-select"
+            value={fmtSize}
+            onMouseDown={saveSelection}
+            onChange={e => handleFontSize(e.target.value)}
+            title="Font Size"
+          >
+            <option value="1">XS</option>
+            <option value="2">S</option>
+            <option value="3">M</option>
+            <option value="4">L</option>
+            <option value="5">XL</option>
+            <option value="6">2XL</option>
+            <option value="7">3XL</option>
+          </select>
+          <div style={{ width: 1, height: 24, background: 'rgba(128,128,128,0.2)', margin: '0 4px' }} />
+          <button className="pkg-tool-btn pkg-fmt-btn" onMouseDown={e => e.preventDefault()} onClick={() => formatDoc('removeFormat')} title="Clear Formatting">
+            ✕
+          </button>
+
+          <div style={{ flex: 1 }} />
+
+          {/* ── Action buttons ── */}
+          <button className="pkg-tool-btn" onClick={handlePrint} title="Print">
+            🖨️ Print
+          </button>
+          <button className="pkg-tool-btn" onClick={saveToJSON} title="Save JSON">
+            💾 Save
+          </button>
+          <button className="pkg-tool-btn" onClick={() => fileLoaderRef.current?.click()} title="Load JSON">
+            📂 Load
+          </button>
+          <div style={{ width: 1, height: 24, background: 'rgba(128,128,128,0.2)', margin: '0 4px' }} />
+          <button className="pkg-tool-btn" onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle sidebar">
+            {sidebarOpen ? '◀' : '▶'}
+          </button>
         </div>
       </div>
     </div>

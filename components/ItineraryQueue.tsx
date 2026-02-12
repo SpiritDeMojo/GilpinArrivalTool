@@ -10,6 +10,11 @@ interface ItineraryGuest {
     rateCode: string;
     presetKey: string; // 'moon' | 'magic'
     arrivalDate: string; // YYYY-MM-DD
+    facilities: string;    // from AI audit (e.g. "Spa 2pm, Pool")
+    dinnerTime: string;    // e.g. "7:30pm" or "19:30"
+    dinnerVenue: string;   // e.g. "Gilpin Spice"
+    preferences: string;   // e.g. "vegetarian, late checkout"
+    duration: string;      // e.g. "3 night(s)"
 }
 
 interface ItineraryQueueProps {
@@ -49,6 +54,11 @@ export const getItineraryGuests = (guests: Guest[], session: ArrivalSession | nu
             rateCode: g.rateCode || '',
             presetKey: rateCodeToPreset(g.rateCode || '') || 'magic',
             arrivalDate,
+            facilities: g.facilities || '',
+            dinnerTime: g.dinnerTime || '',
+            dinnerVenue: g.dinnerVenue || '',
+            preferences: g.preferences || '',
+            duration: g.duration || '',
         }));
 };
 
@@ -191,6 +201,11 @@ const ItineraryQueue: React.FC<ItineraryQueueProps> = ({ guests, session, onClos
                 <span style={{ color: 'rgba(199,210,254,0.4)', fontSize: 11 }}>
                     Rate: {activeGuest?.rateCode}
                 </span>
+                {activeGuest?.facilities && (
+                    <span style={{ color: 'rgba(167,243,208,0.8)', fontSize: 11 }}>
+                        🎯 {activeGuest.facilities.length > 30 ? activeGuest.facilities.substring(0, 30) + '...' : activeGuest.facilities}
+                    </span>
+                )}
             </div>
 
             {/* PackageGenerator — takes up remaining space */}
@@ -202,6 +217,11 @@ const ItineraryQueue: React.FC<ItineraryQueueProps> = ({ guests, session, onClos
                         initialRoomName={activeGuest.room}
                         initialPreset={activeGuest.presetKey}
                         initialStartDate={activeGuest.arrivalDate}
+                        initialFacilities={activeGuest.facilities}
+                        initialDinnerTime={activeGuest.dinnerTime}
+                        initialDinnerVenue={activeGuest.dinnerVenue}
+                        initialPreferences={activeGuest.preferences}
+                        initialDuration={activeGuest.duration}
                         onComplete={handleComplete}
                         stripEmojis
                     />
