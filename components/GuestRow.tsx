@@ -36,7 +36,7 @@ export const highlightRaw = (text: string): string => {
   });
 
   // 3. Operational Alerts (Diets & Issues)
-  const alerts = ["OAT MILK", "SOYA MILK", "NUT FREE", "NO NUT", "ANAPHYLAXIS", "PEANUT", "NUT ALLERGY", "GLUTEN FREE", "GF", "COELIAC", "CELIAC", "DAIRY FREE", "COMPLAINT", "PGI", "ISSUE"];
+  const alerts = ["OAT MILK", "SOYA MILK", "NUT FREE", "NO NUT", "ANAPHYLAXIS", "PEANUT", "NUT ALLERGY", "GLUTEN FREE", "GF", "COELIAC", "CELIAC", "DAIRY FREE", "COMPLAINT", "PGI"];
   alerts.forEach(word => {
     const re = new RegExp(`\\b(${word})\\b`, 'gi');
     html = html.replace(re, '<span class="hl-badge hl-ctx-red">$1</span>');
@@ -81,7 +81,7 @@ const HIGHLIGHT_RULES: HighlightRule[] = [
   ...['VIP', 'DIRECTOR', 'CELEBRITY', 'OWNER', 'CHAIRMAN', 'HIGH PROFILE', 'PRIDE OF BRITAIN', 'POB_STAFF', 'POB']
     .map(w => ({ pattern: new RegExp(`\\b(${w})\\b`, 'gi'), className: 'hl-badge hl-vip' })),
   // Alerts
-  ...['OAT MILK', 'SOYA MILK', 'NUT FREE', 'NO NUT', 'ANAPHYLAXIS', 'PEANUT', 'NUT ALLERGY', 'GLUTEN FREE', 'GF', 'COELIAC', 'CELIAC', 'DAIRY FREE', 'COMPLAINT', 'PGI', 'ISSUE']
+  ...['OAT MILK', 'SOYA MILK', 'NUT FREE', 'NO NUT', 'ANAPHYLAXIS', 'PEANUT', 'NUT ALLERGY', 'GLUTEN FREE', 'GF', 'COELIAC', 'CELIAC', 'DAIRY FREE', 'COMPLAINT', 'PGI']
     .map(w => ({ pattern: new RegExp(`\\b(${w})\\b`, 'gi'), className: 'hl-badge hl-ctx-red' })),
   // Rate codes
   ...['CEL_DBB_1', 'MAGESC', 'MIN', 'RO', 'BB_1', 'BB_2', 'BB_3', 'COMP', 'LHBB', 'APR_1_BB', 'APR_2_BB', 'APR_3_BB', 'POB_STAFF', 'STAFF']

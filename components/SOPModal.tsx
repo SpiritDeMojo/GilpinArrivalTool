@@ -868,6 +868,17 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                     </div>
                     <Tip>Use the All / Main Hotel / Lake House filter buttons to focus on a specific property. Stats and room count update accordingly.</Tip>
                   </Card>
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      <strong>🐕 Dogs In House &amp; Guest Flags</strong> — The system automatically detects pets, dietary alerts, VIP status, occasions, and previous issues from guest booking data.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="🐕" label="Dogs In House" sub="Detects pets using breed-specific matching (cockapoo, labrador, spaniel, etc.) and contextual phrases (dog bed, dog bowl, pet in room). Negations like 'no dogs' or 'no pets' are excluded. Shown as a summary section with room numbers and guest names." />
+                      <MiniCard icon="🏷️" label="Guest Flags" sub="Automatic flags: VIP ⭐, Nut Allergy 🥜, Gluten Free 🍞, Dairy Free 🧀, Pets 🐾, Occasion 🎉, Prev Issue 🚩, Comp Stay 🟢, Voucher 🎫. Flags use word-boundary matching to prevent false positives." />
+                      <MiniCard icon="🛡️" label="Anti-False-Positive" sub="Flags that are prone to false matches (Pets, Prev Issue) use word-boundary regex and only scan curated fields — never the raw PMS dump. This prevents words like 'tissue' triggering an issue flag." />
+                    </div>
+                    <Tip>Dogs In House appears below the room grid when any guest has a confirmed pet. It&apos;s also included in the print report.</Tip>
+                  </Card>
                 </section>
 
                 {/* ── 25 — EV CHARGING ── */}
@@ -924,7 +935,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               {/* ── FOOTER ── */}
               <div className="bg-slate-100 dark:bg-[#0a0a0a] p-6 md:p-8 text-center border-t border-slate-200 dark:border-[#222]">
                 <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-600 font-mono tracking-widest uppercase">
-                  Gilpin Hotel & Lake House • Standard Operating Procedures • v21.0 • Internal Use Only
+                  Gilpin Hotel &amp; Lake House &bull; Standard Operating Procedures &bull; v22.0 &bull; Internal Use Only
                 </p>
               </div>
             </div>

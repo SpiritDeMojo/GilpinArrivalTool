@@ -155,12 +155,6 @@ export interface Guest {
 
   /** Previous stay history */
   stayHistory?: { arrival: string; departure: string; room: string }[];
-
-  /** Dinner time extracted from facilities (e.g. "19:30") */
-  dinnerTime?: string;
-
-  /** Dinner venue extracted from facilities (e.g. "Gilpin Spice") */
-  dinnerVenue?: string;
 }
 
 export interface ArrivalSession {
@@ -196,6 +190,8 @@ export interface Flag {
   name: string;
   emoji: string;
   keys: string[];
+  /** When true, keys must match as whole words (word-boundary regex) instead of substring includes */
+  wordBoundary?: boolean;
 }
 
 export type PropertyFilter = 'total' | 'main' | 'lake';

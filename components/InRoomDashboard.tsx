@@ -49,16 +49,33 @@ const ALL_ROOMS: { name: string; number: number; property: 'main' | 'lake' }[] =
   ].map((name, i) => ({ name, number: 51 + i, property: 'lake' as const })),
 ];
 
-/** Match flags from guest raw data */
+/** Match flags from guest raw data — uses word-boundary regex for flagged keywords to prevent false positives */
 const matchFlags = (guest: Guest): { emoji: string; name: string }[] => {
   const matched: { emoji: string; name: string }[] = [];
-  const haystack = [
+  // Build two haystacks: full (includes rawHtml) and curated (excludes rawHtml to prevent PMS noise)
+  const curatedHaystack = [
     guest.prefillNotes, guest.preferences, guest.hkNotes,
-    guest.facilities, guest.rawHtml, guest.rateCode,
+    guest.facilities, guest.rateCode, guest.inRoomItems,
   ].filter(Boolean).join(' ').toLowerCase();
+  const fullHaystack = [curatedHaystack, (guest.rawHtml || '').toLowerCase()].join(' ');
+
   for (const flag of DEFAULT_FLAGS) {
-    if (flag.keys.some(k => haystack.includes(k.toLowerCase()))) {
-      matched.push({ emoji: flag.emoji, name: flag.name });
+    // For pet/issue flags, only scan curated fields (not raw PMS dump) to avoid false positives
+    const searchText = flag.wordBoundary ? curatedHaystack : fullHaystack;
+    if (flag.wordBoundary) {
+      // Word-boundary regex matching — prevents 'dog' matching 'Dogwood', 'issue' matching 'tissue'
+      if (flag.keys.some(k => {
+        // Emoji keys don't need word boundaries
+        if (/^[\u{1F000}-\u{1FFFF}]/u.test(k)) return searchText.includes(k);
+        const re = new RegExp(`\\b${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+        return re.test(searchText);
+      })) {
+        matched.push({ emoji: flag.emoji, name: flag.name });
+      }
+    } else {
+      if (flag.keys.some(k => searchText.includes(k.toLowerCase()))) {
+        matched.push({ emoji: flag.emoji, name: flag.name });
+      }
     }
   }
   return matched;
@@ -257,14 +274,35 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
     [propertyFilter]
   );
 
-  // ── Dogs In House ──
+  // ── Dogs In House (Robust Detection) ──
+  // Only scans curated fields (not rawHtml) using word-boundary + breed-specific matching
+  // to eliminate false positives from words like 'Dogwood', 'catalog', 'Peter', etc.
+  const DOG_PATTERNS = [
+    /\bdog\s*(bed|bowl|in room|friendly|walk|food|treat|cage|crate)\b/i,
+    /\b(pet|pets)\s+(in room|friendly|fee|charge|supplement|welcome)\b/i,
+    /\b(bringing|has|have|with|traveling with|travelling with)\s+(a\s+)?dog\b/i,
+    /\b(puppy|canine|greyhound|cockapoo|labrador|retriever|spaniel|terrier|poodle|dachshund|collie|whippet|lurcher|staffie|beagle|cocker|springer)\b/i,
+    /🐕|🐶|🐾/,
+  ];
+  const DOG_NEGATIONS = /\b(no dogs?|no pets?|not? (pet|dog))\b/i;
+
   const dogsInHouse = useMemo(() => {
     const dogs: { roomNum: number; guest: Guest; detail: string }[] = [];
     occupancyMap.forEach(({ guest }, roomNum) => {
-      const haystack = [guest.prefillNotes, guest.hkNotes, guest.rawHtml, guest.preferences].filter(Boolean).join(' ').toLowerCase();
-      if (haystack.includes('dog') || haystack.includes('🐕') || haystack.includes('🐶') || haystack.includes('pet')) {
-        const full = [guest.prefillNotes, guest.hkNotes, guest.preferences].filter(Boolean).join(' ');
-        const detail = full.match(/🐕[^•]*/i)?.[0]?.trim() || full.match(/dog[^•]*/i)?.[0]?.trim() || 'Dog in room';
+      // Only scan curated fields — NOT rawHtml (PMS dump causes false positives)
+      const haystack = [guest.prefillNotes, guest.hkNotes, guest.preferences, guest.inRoomItems].filter(Boolean).join(' ');
+      const haystackLower = haystack.toLowerCase();
+
+      // Check for negations first
+      if (DOG_NEGATIONS.test(haystackLower)) return;
+
+      // Must match at least one specific dog/pet pattern
+      const hasDog = DOG_PATTERNS.some(p => p.test(haystack));
+      if (hasDog) {
+        const detail = haystack.match(/🐕[^•]*/i)?.[0]?.trim()
+          || haystack.match(/dog\s*(bed|bowl|in room)[^•]*/i)?.[0]?.trim()
+          || haystack.match(/\b(puppy|greyhound|cockapoo|labrador|retriever|spaniel|terrier|poodle|collie|whippet|lurcher|staffie|beagle|cocker|springer)[^•]*/i)?.[0]?.trim()
+          || 'Dog in room';
         dogs.push({ roomNum, guest, detail });
       }
     });
@@ -302,11 +340,20 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
       return { room, occ, flags };
     });
 
-    // Detect dogs from notes/hkNotes/rawHtml
+    // Detect dogs — same robust logic as on-screen, no rawHtml scanning
+    const printDogPatterns = [
+      /\bdog\s*(bed|bowl|in room|friendly|walk|food|treat|cage|crate)\b/i,
+      /\b(pet|pets)\s+(in room|friendly|fee|charge|supplement|welcome)\b/i,
+      /\b(bringing|has|have|with|traveling with|travelling with)\s+(a\s+)?dog\b/i,
+      /\b(puppy|canine|greyhound|cockapoo|labrador|retriever|spaniel|terrier|poodle|dachshund|collie|whippet|lurcher|staffie|beagle|cocker|springer)\b/i,
+      /🐕|🐶|🐾/,
+    ];
+    const printDogNegation = /\b(no dogs?|no pets?|not? (pet|dog))\b/i;
     const dogsInHouse = Array.from(occupancyMap.entries())
       .filter(([_, occ]) => {
-        const haystack = [occ.guest.prefillNotes, occ.guest.hkNotes, occ.guest.rawHtml, occ.guest.preferences].filter(Boolean).join(' ').toLowerCase();
-        return haystack.includes('dog') || haystack.includes('🐕') || haystack.includes('🐶') || haystack.includes('pet');
+        const haystack = [occ.guest.prefillNotes, occ.guest.hkNotes, occ.guest.preferences, occ.guest.inRoomItems].filter(Boolean).join(' ');
+        if (printDogNegation.test(haystack)) return false;
+        return printDogPatterns.some(p => p.test(haystack));
       })
       .map(([roomNum, occ]) => ({ roomNum, guest: occ.guest }));
 

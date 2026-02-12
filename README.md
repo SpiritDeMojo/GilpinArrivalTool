@@ -31,7 +31,7 @@ The Gilpin Arrival Tool transforms unstructured PMS arrival PDFs into a live, in
 Parses PMS arrival PDFs with high-fidelity extraction of guest data: room assignments, ETA windows, car registrations (multi-pattern UK plate matching with AI fallback), facilities & dining, allergies & dietary requirements, occasions, in-room items (28 keywords), loyalty history, and multi-section notes.
 
 ### 🤖 Gemini AI Integration
-- **AI Audit** — Gemini 2.5 Flash refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes
+- **AI Audit** — Gemini 2.5 Flash refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes. Anti-fabrication validation prevents hallucinated facilities and car registrations
 - **AI Live Assistant** — Conversational AI colleague powered by Gemini native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands in real-time
 - **AI Cleaning Priority** — Intelligent room preparation ordering based on ETA, guest type, and operational constraints
 - **AI Room Upgrades** — Analyses guest profiles against empty rooms and suggests strategic upgrades with deduplication (each room suggested at most once)
@@ -154,6 +154,8 @@ The interface features a handcrafted animation system designed for a polished, p
 - 📦 **13 Package Mappings** — AI audit maps rate codes to human-readable names (Winter Offer, B&B, Room Only, etc.)
 - 🧱 **Modular CSS Architecture** — 10 specialised files (design-tokens, variables, base, animations, navbar, components, in-house, responsive, print, barrel) for maintainability
 - 🏠 **In House Dashboard** — Real-time 38-room occupancy grid with arrival/stayover detection, room moves (Firebase sync), car plate tracking, EV charging, and print report
+- 🐕 **Dogs In House** — Breed-specific pet detection (cockapoo, labrador, spaniel + 15 breeds) with contextual phrase matching (dog bed, dog bowl, pet in room). Anti-false-positive: word-boundary regex, negation handling ("no dogs"), and curated-field-only scanning
+- 🏷️ **Smart Flag Detection** — 10 auto-flags (VIP, allergies, pets, occasions, prev issues) with word-boundary matching for prone-to-false-positive flags. Scans curated fields only — never raw PMS dump
 - 🏨 **Room 29 (Mint)** — Excluded from all room lists as it is not yet built / in use
 
 ---

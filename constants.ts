@@ -66,9 +66,9 @@ export const DEFAULT_FLAGS: Flag[] = [
   { id: 4, name: "Nut Allergy", emoji: "🥜", keys: ["nut free", "no nut", "allergic to nuts", "peanut", "nut allergy"] },
   { id: 5, name: "Gluten Free", emoji: "🍞", keys: ["gluten free", "gf", "coeliac", "celiac"] },
   { id: 6, name: "Dairy Free", emoji: "🧀", keys: ["dairy free", "lactose intollerant", "no dairy", "milk allergy"] },
-  { id: 7, name: "Pets", emoji: "🐾", keys: ["dog", "cat", "pet in room", "canine", "puppy", "greyhound", "cockapoo", "labrador", "retriever"] },
+  { id: 7, name: "Pets", emoji: "🐾", keys: ["dog bed", "dog bowl", "dog in room", "pet in room", "🐕", "🐶", "🐾", "canine", "puppy", "greyhound", "cockapoo", "labrador", "retriever", "spaniel", "terrier", "poodle", "dachshund", "collie", "whippet", "lurcher", "staffie", "beagle", "cocker", "springer"], wordBoundary: true },
   { id: 9, name: "Comp stay", emoji: "🟢", keys: ["comp stay", "complimentary", "upgrade", "unaware"] },
-  { id: 10, name: "Prev Issue", emoji: "🚩", keys: ["complaint", "PGI", "issue", "dissatisfied", "previous problem"] },
+  { id: 10, name: "Prev Issue", emoji: "🚩", keys: ["complaint", "PGI", "dissatisfied", "previous problem", "previous issue", "guest issue", "raised a concern"], wordBoundary: true },
   { id: 11, name: "Occasion", emoji: "🎉", keys: ["birthday", "anniversary", "honeymoon", "proposal", "engagement", "babymoon"] },
   { id: 12, name: "Voucher", emoji: "🎫", keys: ["voucher"] }
 ];
