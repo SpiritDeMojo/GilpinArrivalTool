@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- * STAYOVER CALCULATOR + NIGHT MANAGER STATS — Test Suite
+ * STAYOVER CALCULATOR + IN HOUSE STATS — Test Suite
  * ═══════════════════════════════════════════════════════════════
  *
  * Covers:
@@ -9,7 +9,7 @@
  *  3) Room deduplication (latest session wins)
  *  4) Dinner parsing from facilities & rawHtml
  *  5) Room move propagation: changing guest.room changes occupancy map
- *  6) Night Manager stats accuracy (occupied, empty, pax, cars, occupancy %)
+ *  6) In House stats accuracy (occupied, empty, pax, cars, occupancy %)
  *  7) Session coverage
  *  8) Edge cases
  *  9) Security / library audit
@@ -58,8 +58,8 @@ describe('useStayoverCalculator — Stayover Identification', () => {
         expect(result.current.stayovers[0].totalNights).toBe(2);
     });
 
-    it('does NOT count a guest arriving on the target date (they are an arrival, not stayover)', () => {
-        // Guest arrives Feb 9, target = Feb 9 → NOT a stayover
+    it('includes a guest arriving on the target date as type arrival', () => {
+        // Guest arrives Feb 9, target = Feb 9 → included as 'arrival'
         const sessions = [
             mkSession('s1', '2026-02-09', [
                 mkGuest({ id: 'g1', room: '5 Crook', name: 'Jones Emily', duration: '3' }),
@@ -68,7 +68,9 @@ describe('useStayoverCalculator — Stayover Identification', () => {
         const targetDate = new Date('2026-02-09T00:00:00');
         const { result } = renderHook(() => useStayoverCalculator(sessions, targetDate));
 
-        expect(result.current.stayovers).toHaveLength(0);
+        expect(result.current.stayovers).toHaveLength(1);
+        expect(result.current.stayovers[0].type).toBe('arrival');
+        expect(result.current.stayovers[0].nightNumber).toBe(1);
     });
 
     it('does NOT count a guest who has already departed', () => {
@@ -291,12 +293,12 @@ describe('getRoomNumber', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// 6. NIGHT MANAGER STATS ACCURACY
+// 6. IN HOUSE STATS ACCURACY
 // ═══════════════════════════════════════════════════════════════
 
-describe('Night Manager Stats — Occupancy Map Logic', () => {
+describe('In House Stats — Occupancy Map Logic', () => {
     /**
-     * Simulates the occupancyMap build logic from NightManagerDashboard
+     * Simulates the occupancyMap build logic from InHouseDashboard
      * to verify stats are 100% data-driven.
      */
     const ALL_ROOMS = [
@@ -502,7 +504,7 @@ describe('Security — No New Dependencies', () => {
             'xlsx',
         ]);
 
-        // No new libraries were added in the Night Manager enhancements.
+        // No new libraries were added in the In House enhancements.
         // The room move modal, print layouts, and dark mode fix use only:
         //  - React (useState, useMemo, useCallback) — existing
         //  - framer-motion (motion, AnimatePresence) — existing

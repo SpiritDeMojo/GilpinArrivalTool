@@ -28,6 +28,8 @@ export interface StayoverGuest {
     dinnerVenue: string | null;
     /** Number of diners */
     dinnerCovers: number | null;
+    /** Whether this is a stayover or an arrival (arrivals also need turndown) */
+    type: 'stayover' | 'arrival';
 }
 
 /**
@@ -112,14 +114,15 @@ function normalizeDate(d: Date): Date {
 }
 
 /**
- * Hook: computes stayover guests for a target date across all loaded sessions.
+ * Hook: computes occupied rooms (stayovers + same-day arrivals) for a target date.
  *
- * A stayover guest is one who:
- *   - Arrived BEFORE the target date
- *   - Departs ON or AFTER the target date (i.e., they sleep there the night of targetDate)
+ * A room is occupied if the guest:
+ *   - Arrived BEFORE the target date (stayover), OR
+ *   - Arrives ON the target date (arrival — also needs turndown)
+ *   - AND departs AFTER the target date (still sleeping there tonight)
  *
  * @param sessions  All loaded ArrivalSessions
- * @param targetDate The date to compute stayovers for (typically today)
+ * @param targetDate The date to compute occupancy for (typically today)
  * @returns { stayovers, sessionCoverage, hasEnoughSessions }
  */
 export function useStayoverCalculator(
@@ -150,18 +153,21 @@ export function useStayoverCalculator(
                 const departureDate = new Date(arrivalDate);
                 departureDate.setDate(departureDate.getDate() + totalNights);
 
-                // Stayover check:
-                // - Arrived STRICTLY BEFORE target date (not on target date — those are arrivals)
-                // - Departs AFTER target date (still sleeping there tonight)
+                // Occupancy check:
+                // - Arrived BEFORE the target date (stayover), OR
+                // - Arrived ON the target date (arrival — also needs turndown)
+                // - AND departs AFTER the target date (still sleeping there tonight)
                 const arrivedBefore = arrivalDate.getTime() < target.getTime();
+                const arrivingSameDay = arrivalDate.getTime() === target.getTime();
                 const departsAfter = departureDate.getTime() > target.getTime();
 
-                if (arrivedBefore && departsAfter) {
+                if ((arrivedBefore || arrivingSameDay) && departsAfter) {
                     // Calculate night number (1-indexed)
                     const daysDiff = Math.ceil(
                         (target.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60 * 24)
                     );
-                    const nightNumber = daysDiff + 1; // Night 1 is arrival night
+                    const nightNumber = arrivingSameDay ? 1 : daysDiff + 1;
+                    const type = arrivingSameDay ? 'arrival' as const : 'stayover' as const;
 
                     // Skip if we already have a more recent record for this room
                     const roomKey = guest.room.toLowerCase().trim();
@@ -196,6 +202,7 @@ export function useStayoverCalculator(
                         dinnerTime,
                         dinnerVenue,
                         dinnerCovers,
+                        type,
                     });
                 }
             }

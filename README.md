@@ -144,8 +144,8 @@ The interface features a handcrafted animation system designed for a polished, p
 - 🛡️ **Defense-in-Depth Sanitisation** — All Firebase write paths sanitise `undefined → null` to prevent RTDB crashes
 - 🔄 **37 Rate Code Variants** — Parser recognises MINIMOON, DBB, BB_2, WIN codes, underscore variants, Lake House prefixes
 - 📦 **13 Package Mappings** — AI audit maps rate codes to human-readable names (Winter Offer, B&B, Room Only, etc.)
-- 🧩 **Modular CSS Architecture** — 9 specialised files (variables, base, animations, navbar, components, night-manager, responsive, print, barrel) for maintainability
-- 🌙 **In House Dashboard** — Real-time 38-room occupancy grid with arrival/stayover detection, room moves (Firebase sync), car plate tracking, and print report
+- 🧱 **Modular CSS Architecture** — 9 specialised files (variables, base, animations, navbar, components, in-house, responsive, print, barrel) for maintainability
+- 🏠 **In House Dashboard** — Real-time 38-room occupancy grid with arrival/stayover detection, room moves (Firebase sync), car plate tracking, and print report
 - 🏨 **Room 29 (Mint)** — Excluded from all room lists as it is not yet built / in use
 
 ---

@@ -128,7 +128,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const allowed: Record<string, string[]> = {
             HK: ['housekeeping'],
             MAIN: ['maintenance'],
-            REC: ['arrivals', 'housekeeping', 'maintenance', 'frontofhouse', 'nightmanager', 'packages'],
+            REC: ['arrivals', 'housekeeping', 'maintenance', 'frontofhouse', 'inhouse', 'packages'],
         };
         if (!allowed[department]?.includes(dashboardView)) {
             setDashboardView(allowed[department][0] as any);

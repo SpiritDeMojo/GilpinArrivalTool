@@ -275,7 +275,7 @@ export interface CourtesyCallNote {
 /**
  * Dashboard view type
  */
-export type DashboardView = 'arrivals' | 'housekeeping' | 'maintenance' | 'frontofhouse' | 'nightmanager' | 'packages';
+export type DashboardView = 'arrivals' | 'housekeeping' | 'maintenance' | 'frontofhouse' | 'inhouse' | 'packages';
 
 /**
  * Status update event for real-time sync

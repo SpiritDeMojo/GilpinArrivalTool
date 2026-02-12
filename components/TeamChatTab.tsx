@@ -607,6 +607,7 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                 background: 'var(--surface, rgba(249,249,249,0.94))',
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)',
+                borderRadius: '20px 20px 0 0',
             }}>
                 {/* Clear chat */}
                 {messages.length > 0 && (

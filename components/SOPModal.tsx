@@ -842,12 +842,12 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   </Card>
                 </section>
 
-                {/* ── 24 — NIGHT MANAGER DASHBOARD ── */}
+                {/* ── 24 — IN HOUSE DASHBOARD ── */}
                 <section id="nightmgr">
                   <Divider num="24" title="In House Dashboard" />
                   <Card>
                     <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
-                      The In House Dashboard provides a real-time overview of all 38 rooms (30 Main Hotel + 8 Lake House) with occupancy data, guest details, and operational tools. Access via the <strong>🌙 In House</strong> tab.
+                      The In House Dashboard provides a real-time overview of all 38 rooms (30 Main Hotel + 8 Lake House) with occupancy data, guest details, and operational tools. Access via the <strong>🏠 In House</strong> tab.
                     </p>
                     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                       <MiniCard icon="🏨" label="Room Grid" sub="Colour-coded cards: green = arrival, indigo = stayover, dashed = empty. Click any occupied room to expand guest details (flags, car plates, preferences, in-room items)." />

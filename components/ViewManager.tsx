@@ -16,12 +16,12 @@ import HousekeepingDashboard from './HousekeepingDashboard';
 import MaintenanceDashboard from './MaintenanceDashboard';
 import ReceptionDashboard from './ReceptionDashboard';
 import TurndownDashboard from './TurndownDashboard';
-import NightManagerDashboard from './NightManagerDashboard';
+import InHouseDashboard from './NightManagerDashboard';
 const PackageGenerator = React.lazy(() => import('./PackageGenerator'));
 import { Guest, DashboardView } from '../types';
 
 /* ── Tab order for directional transitions ── */
-const TAB_ORDER: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'frontofhouse', 'nightmanager', 'packages'];
+const TAB_ORDER: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'frontofhouse', 'inhouse', 'packages'];
 
 /* ── Directional page-transition variants ── */
 const getPageVariants = (direction: number) => ({
@@ -47,7 +47,7 @@ const TABS: TabConfig[] = [
     { key: 'housekeeping', emoji: '🧹', labelFull: 'Housekeeping', labelShort: 'HK', badgeColor: 'bg-green-500', departments: ['HK', 'REC'] },
     { key: 'maintenance', emoji: '🔧', labelFull: 'Maintenance', labelShort: 'Maint', badgeColor: 'bg-amber-500', departments: ['MAIN', 'REC'] },
     { key: 'frontofhouse', emoji: '🛎️', labelFull: 'Front of House', labelShort: 'FoH', badgeColor: 'bg-blue-500', departments: ['REC'] },
-    { key: 'nightmanager', emoji: '🌙', labelFull: 'In House', labelShort: 'IH', badgeColor: 'bg-indigo-600', departments: ['REC'] },
+    { key: 'inhouse', emoji: '🏠', labelFull: 'In House', labelShort: 'IH', badgeColor: 'bg-indigo-600', departments: ['REC'] },
 ];
 
 const ViewManager: React.FC = () => {
@@ -416,16 +416,16 @@ const ViewManager: React.FC = () => {
                                 </motion.div>
                             )}
 
-                            {dashboardView === 'nightmanager' && (
+                            {dashboardView === 'inhouse' && (
                                 <motion.div
-                                    key="nightmanager"
+                                    key="inhouse"
                                     variants={pageVariants}
                                     initial="initial"
                                     animate="animate"
                                     exit="exit"
                                     transition={pageTransition}
                                 >
-                                    <NightManagerDashboard
+                                    <InHouseDashboard
                                         sessions={sessions}
                                         activeSessionDate={sessions.find(s => s.id === activeSessionId)?.dateObj || null}
                                         todayGuests={guests}

@@ -1,5 +1,5 @@
 /**
- * InHouseDashboard (formerly Night Manager Dashboard)
+ * InHouseDashboard
  *
  * Real-time overview of all hotel rooms with occupancy data, guest details,
  * and operational tools (room moves, print reports, property filtering).
@@ -20,7 +20,7 @@ import { DEFAULT_FLAGS } from '../constants';
 import { useGuestData } from '../contexts/GuestDataProvider';
 import { GeminiService } from '../services/geminiService';
 
-interface NightManagerDashboardProps {
+interface InHouseDashboardProps {
   sessions: ArrivalSession[];
   activeSessionDate: string | null;
   todayGuests: Guest[];
@@ -135,7 +135,7 @@ const RoomMoveModal: React.FC<{
 };
 
 
-const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
+const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
   sessions,
   activeSessionDate,
   todayGuests,
@@ -702,9 +702,9 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Styles now in styles/night-manager.css */}
+      {/* Styles in styles/night-manager.css */}
     </div>
   );
 };
 
-export default React.memo(NightManagerDashboard);
+export default React.memo(InHouseDashboard);

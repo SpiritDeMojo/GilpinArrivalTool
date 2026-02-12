@@ -355,8 +355,8 @@ const TurndownDashboard: React.FC<TurndownDashboardProps> = ({
                 <div className="td-card-header">
                   <div className="td-room-info">
                     <span className="td-room-number">{stayover.guest.room}</span>
-                    <span className="td-night-badge">
-                      Night {stayover.nightNumber}/{stayover.totalNights}
+                    <span className={`td-night-badge${stayover.type === 'arrival' ? ' td-arrival-badge' : ''}`}>
+                      {stayover.type === 'arrival' ? '✈️ Arrival' : `Night ${stayover.nightNumber}/${stayover.totalNights}`}
                     </span>
                   </div>
                   <span
@@ -797,6 +797,11 @@ const TurndownDashboard: React.FC<TurndownDashboardProps> = ({
           border-radius: 10px;
           font-size: 11px;
           font-weight: 700;
+        }
+
+        .td-arrival-badge {
+          background: rgba(34, 197, 94, 0.12);
+          color: #16a34a;
         }
 
         .td-status-badge {

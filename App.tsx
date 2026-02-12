@@ -126,7 +126,7 @@ const App: React.FC = () => {
   // ── Route sync: URL tab → dashboardView ───────────────────────────────
   // Only sync when URL actually changes (e.g. back/forward navigation).
   // dashboardView is NOT a dependency — prevents circular loop with Effect 2.
-  const validTabs: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'frontofhouse', 'nightmanager', 'packages'];
+  const validTabs: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'frontofhouse', 'inhouse', 'packages'];
   useEffect(() => {
     if (urlTab && validTabs.includes(urlTab as DashboardView)) {
       setDashboardView(urlTab as DashboardView);
