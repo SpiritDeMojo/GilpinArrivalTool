@@ -97,6 +97,12 @@ export interface Guest {
   /** Dinner venue override */
   dinnerVenue?: string;
 
+  /** Whether the guest's car is currently on an EV charger */
+  carOnCharge?: boolean;
+
+  /** Timestamp when car was put on charge */
+  carOnChargeAt?: number;
+
   // ==========================================
   // AUDIT & TRACKING FIELDS
   // ==========================================

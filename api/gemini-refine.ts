@@ -190,6 +190,12 @@ Return a raw JSON array of objects. No markdown.
                 if (!Array.isArray(data)) {
                     throw new Error('AI response is not an array');
                 }
+                // Validate result count against input guest count
+                const expectedCount = guests.length;
+                if (data.length !== expectedCount) {
+                    console.warn(`[gemini-refine] Result count mismatch: expected ${expectedCount}, got ${data.length}`);
+                }
+                res.setHeader('X-Result-Count', String(data.length));
                 return res.status(200).json(data);
             } catch (error: unknown) {
                 const err = error as Record<string, any>;

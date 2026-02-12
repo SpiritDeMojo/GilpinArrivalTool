@@ -142,8 +142,8 @@ export function formatBookingStream(rawText: string, guestId?: string, guestName
         data.facilityBookings = bookings.map(b => b.trim());
     }
 
-    // Allergies
-    const allergyMatch = fullText.match(/Allergies:\s*(.*?)(?=\s*(?:HK Notes:|Guest Notes:|Unit:|Booking Notes|$))/i);
+    // Allergies — end-markers include Token: and Deposit: to prevent inline truncation
+    const allergyMatch = fullText.match(/Allergies:\s*(.*?)(?=\s*(?:HK Notes:|Guest Notes:|Unit:|Token:|Deposit:|Booking Notes|$))/i);
     if (allergyMatch && allergyMatch[1].trim()) data.allergies = allergyMatch[1].trim();
 
     // HK Notes

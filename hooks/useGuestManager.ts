@@ -799,6 +799,47 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         }
 
         if (refinements) {
+          // ── GUARD: Result count mismatch ──
+          // If AI returns fewer results than guests sent, skip batch to prevent
+          // misaligned data application (Issue #4)
+          if (refinements.length !== currentBatchGuests.length) {
+            console.error(`[AI Audit] MISMATCH: Sent ${currentBatchGuests.length} guests but received ${refinements.length} results — skipping batch to prevent data corruption`);
+            setProgressMsg(`⚠️ AI returned ${refinements.length}/${currentBatchGuests.length} results — retrying...`);
+            // Retry once with the same batch
+            await new Promise(r => setTimeout(r, 3000));
+            refinements = await GeminiService.refineGuestBatch(currentBatchGuests, ['notes', 'facilities', 'car']);
+            if (!refinements || refinements.length !== currentBatchGuests.length) {
+              console.error('[AI Audit] Retry also returned mismatched count — skipping batch');
+              setProgressMsg(`⚠️ Batch ${i + 1} skipped (AI count mismatch)`);
+              await new Promise(r => setTimeout(r, 2000));
+              continue;
+            }
+          }
+
+          // ── CROSS-CHECK: Ensure hkNotes contains all allergies from notes ──
+          // If the AI forgets an allergy in hkNotes, auto-append it (Issue #5 — food safety)
+          const allergyPatterns = [
+            /allergy/i, /gluten/i, /dairy/i, /lactose/i, /nut\b/i, /vegan/i, /vegetarian/i,
+            /shellfish/i, /crustacean/i, /egg\s+allergy/i, /soy/i, /sesame/i, /sulphite/i,
+            /halal/i, /kosher/i, /coeliac/i, /celiac/i, /epipen/i
+          ];
+          refinements.forEach((ref: any) => {
+            if (!ref.notes || !ref.hkNotes) return;
+            const missingInHK: string[] = [];
+            allergyPatterns.forEach(pattern => {
+              if (pattern.test(ref.notes) && !pattern.test(ref.hkNotes)) {
+                // Extract the allergy phrase from notes
+                const match = ref.notes.match(new RegExp(`[^•]*${pattern.source}[^•]*`, 'i'));
+                if (match) missingInHK.push(match[0].trim());
+              }
+            });
+            if (missingInHK.length > 0) {
+              const uniqueMissing = [...new Set(missingInHK)];
+              console.warn(`[AI Audit] Cross-check: Adding missing allergies to hkNotes:`, uniqueMissing);
+              ref.hkNotes = ref.hkNotes + ' • ' + uniqueMissing.join(' • ');
+            }
+          });
+
           setAuditPhase('applying');
           setProgressMsg('APPLYING RESULTS...');
           console.log('[AI Audit] Got refinements:', refinements.length, 'results');
@@ -851,20 +892,31 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                     console.log('[AI Audit] Corrected package from', ref.packages, 'to', correctedPackage, 'based on rate code', rateCode);
                   }
 
+                  const existing = updatedGuests[gIndex];
                   updatedGuests[gIndex] = {
-                    ...updatedGuests[gIndex],
-                    prefillNotes: ref.notes || updatedGuests[gIndex].prefillNotes,
-                    facilities: ref.facilities || updatedGuests[gIndex].facilities,
-                    inRoomItems: ref.inRoomItems || updatedGuests[gIndex].inRoomItems,
-                    preferences: ref.preferences || updatedGuests[gIndex].preferences,
-                    packageName: correctedPackage || updatedGuests[gIndex].packageName,
-                    ll: ref.history || updatedGuests[gIndex].ll,
+                    ...existing,
+                    prefillNotes: ref.notes || existing.prefillNotes,
+                    facilities: ref.facilities || existing.facilities,
+                    inRoomItems: ref.inRoomItems || existing.inRoomItems,
+                    preferences: ref.preferences || existing.preferences,
+                    packageName: correctedPackage || existing.packageName,
+                    ll: ref.history || existing.ll,
                     // Parser car is more reliable (regex-based) — AI only fills gaps
-                    car: updatedGuests[gIndex].car || ref.car || '',
+                    car: existing.car || ref.car || '',
                     // Housekeeping intelligence (allergies, dietary, room prep, smoking, children)
-                    hkNotes: ref.hkNotes || updatedGuests[gIndex].hkNotes || '',
-                    // Structured parser fields are preserved via spread (adults, children,
-                    // infants, preRegistered, bookingSource, etc. survive untouched)
+                    hkNotes: ref.hkNotes || existing.hkNotes || '',
+                    // ── Explicitly preserve parser-extracted structured fields (Issue #6) ──
+                    // These must never be overwritten by AI output
+                    adults: existing.adults,
+                    children: existing.children,
+                    infants: existing.infants,
+                    preRegistered: existing.preRegistered,
+                    bookingSource: existing.bookingSource,
+                    smokingPreference: existing.smokingPreference,
+                    depositAmount: existing.depositAmount,
+                    billingMethod: existing.billingMethod,
+                    stayHistory: existing.stayHistory,
+                    stayHistoryCount: existing.stayHistoryCount,
                   };
                 }
               } else {

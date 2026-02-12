@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 export class ExcelService {
 
   static export(guests: Guest[]) {
-    // Headers mapped precisely to Rec Host Sheet: A, B, C, D, E, F, G, H, I, J, K, L
+    // Headers mapped precisely to Rec Host Sheet: A, B, C, D, E, F, G, H, I, J, K, L, M
     const headers = [
       "Room",
       "Guest Name",
@@ -16,6 +16,7 @@ export class ExcelService {
       "Arrival Time",
       "Location",
       "Notes",
+      "HK Notes",
       "Status",
       "Initial",
       "Time"
@@ -57,9 +58,9 @@ export class ExcelService {
 
     masterRooms.forEach(item => {
       if (item.header) {
-        wsData.push([item.header, "", "", "", "", "", "", "", "", "", "", ""]);
+        wsData.push([item.header, "", "", "", "", "", "", "", "", "", "", "", ""]);
       } else if (item.gap) {
-        wsData.push(["", "", "", "", "", "", "", "", "", "", "", ""]);
+        wsData.push(["", "", "", "", "", "", "", "", "", "", "", "", ""]);
       } else {
         const g = guestMap.get(item.n);
         if (g) {
@@ -73,12 +74,13 @@ export class ExcelService {
             "", // Arrival Time
             "", // Location
             g.prefillNotes.replace(/\n/g, ' • '),
+            (g.hkNotes || '').replace(/\n/g, ' • '), // HK Notes (allergies, dietary, room prep)
             "", // Status
             "", // Initial
             ""  // Time
           ]);
         } else {
-          wsData.push([item.l, "", "", "", "", "", "", "", "", "", "", ""]);
+          wsData.push([item.l, "", "", "", "", "", "", "", "", "", "", "", ""]);
         }
       }
     });
@@ -89,10 +91,10 @@ export class ExcelService {
     });
 
     if (extraGuests.length > 0) {
-      wsData.push(["", "", "", "", "", "", "", "", "", "", "", ""]);
-      wsData.push(["Extra / Unassigned", "", "", "", "", "", "", "", "", "", "", ""]);
+      wsData.push(["", "", "", "", "", "", "", "", "", "", "", "", ""]);
+      wsData.push(["Extra / Unassigned", "", "", "", "", "", "", "", "", "", "", "", ""]);
       extraGuests.forEach(g => {
-        wsData.push([g.room, g.name, g.car, "", g.ll, g.eta, "", "", g.prefillNotes.replace(/\n/g, ' • '), "", "", ""]);
+        wsData.push([g.room, g.name, g.car, "", g.ll, g.eta, "", "", g.prefillNotes.replace(/\n/g, ' • '), (g.hkNotes || '').replace(/\n/g, ' • '), "", "", ""]);
       });
     }
 
@@ -110,6 +112,7 @@ export class ExcelService {
       { wch: 12 }, // Arrival Time
       { wch: 15 }, // Location
       { wch: 50 }, // Notes
+      { wch: 40 }, // HK Notes
       { wch: 10 }, // Status
       { wch: 8 },  // Initial
       { wch: 8 }   // Time

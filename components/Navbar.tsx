@@ -135,32 +135,23 @@ const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* CENTER-RIGHT: Sync indicator (visible on all sizes) */}
-      {connectionStatus && (
-        <div className="hidden xl:flex items-center mx-4 flex-shrink-0">
-          {connectionStatus === 'connected' && (
-            <span className="status-badge connected" title="Real-time sync active">🟢 Synced</span>
-          )}
-          {connectionStatus === 'connecting' && (
-            <span
-              className="status-badge connecting"
-              title="Click to reconnect"
-              style={{ cursor: 'pointer' }}
-              onClick={onReconnect}
-            >🟡 Connecting</span>
-          )}
-          {connectionStatus === 'offline' && (
-            <span
-              className="status-badge offline"
-              title="Click to reconnect"
-              onClick={onReconnect}
-            >🔴 Offline</span>
-          )}
-        </div>
-      )}
 
       {/* --- Desktop Actions --- */}
       <div className="hidden xl:flex items-center gap-3">
+        {/* Sync Indicator — polished pill next to hamburger */}
+        {connectionStatus && (
+          <button
+            className={`nav-sync-pill nav-sync-pill--${connectionStatus}`}
+            onClick={() => { if (connectionStatus !== 'connected' && onReconnect) onReconnect(); }}
+            title={connectionStatus === 'connected' ? 'Real-time sync active' : 'Click to reconnect'}
+          >
+            <span className="nav-sync-dot" />
+            <span className="nav-sync-label">
+              {connectionStatus === 'connected' ? 'Synced' : connectionStatus === 'connecting' ? 'Syncing' : 'Offline'}
+            </span>
+          </button>
+        )}
+
         {/* Desktop Hamburger Button */}
         <button
           onClick={() => { setIsDesktopMenuOpen(!isDesktopMenuOpen); setIsDesktopPrintOpen(false); }}

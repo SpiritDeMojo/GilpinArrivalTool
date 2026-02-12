@@ -1,6 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { Guest, Flag } from '../types';
-import { ROOM_MAP } from '../constants';
+import { ROOM_MAP, ROOM_TYPES, getRoomNumber } from '../constants';
 
 // 🛑 CRITICAL FIX: Synchronize Worker version with API version (5.4.624)
 // This must match the version in index.html's import map to avoid the version mismatch error.
@@ -318,10 +318,9 @@ export class PDFService {
     const typeMatch = singleLineText.match(roomTypeRegex);
     if (typeMatch) {
       roomType = typeMatch[1].toUpperCase();
-    } else {
-      const looseTypeMatch = singleLineText.match(/\b(MR|CR|JS|GR|SL|SS|LHC|LHM|LHS|LHSS)\b/);
-      if (looseTypeMatch) roomType = looseTypeMatch[1].toUpperCase();
     }
+    // No loose fallback — the ROOM_TYPES enrichment (by room number) handles
+    // all cases and avoids false positives from staff initials like SL/SS.
 
     // --- 2. GUEST NAME (with couple name handling) ---
     let nameRaw = "";
@@ -542,7 +541,7 @@ export class PDFService {
 
     // --- 7. ALLERGIES (Specific Extraction) ---
     let allergies: string[] = [];
-    const allergySection = this.extractSection(singleLineText, "Allergies:", ["HK Notes:", "Guest Notes:", "Unit:", "Page"]);
+    const allergySection = this.extractSection(singleLineText, "Allergies:", ["HK Notes:", "Guest Notes:", "Unit:", "Page", "Token:", "Deposit:"]);
     if (allergySection && !/^\s*(NDR|None|N\/A|No\s+Dietary|No\s+known)\s*$/i.test(allergySection.trim())) {
       // Real allergies found (not just NDR/None)
       allergies.push(`⚠️ ALLERGY: ${allergySection.trim()}`);
@@ -553,6 +552,15 @@ export class PDFService {
     if ((scanLower.includes("dairy free") || scanLower.includes("lactose")) && !allergies.some(a => /dairy|lactose/i.test(a))) allergies.push("🧀 Dairy Free");
     if (scanLower.includes("vegan") && !allergies.some(a => /vegan/i.test(a))) allergies.push("🌱 Vegan");
     if (scanLower.includes("vegetarian") && !allergies.some(a => /vegetarian/i.test(a))) allergies.push("🥬 Vegetarian");
+    // Extended allergy/dietary keywords — ensures nothing is silently dropped
+    if ((scanLower.includes("shellfish") || scanLower.includes("crustacean")) && !allergies.some(a => /shellfish|crustacean/i.test(a))) allergies.push("🦐 Shellfish Allergy");
+    if (scanLower.includes("fish allergy") && !allergies.some(a => /fish allergy/i.test(a))) allergies.push("🐟 Fish Allergy");
+    if (scanLower.includes("egg allergy") && !allergies.some(a => /egg/i.test(a))) allergies.push("🥚 Egg Allergy");
+    if ((scanLower.includes("soy allergy") || scanLower.includes("soya allergy")) && !allergies.some(a => /soy/i.test(a))) allergies.push("🫘 Soy Allergy");
+    if (scanLower.includes("sesame") && !allergies.some(a => /sesame/i.test(a))) allergies.push("⚠️ Sesame Allergy");
+    if (scanLower.includes("sulphite") && !allergies.some(a => /sulphite/i.test(a))) allergies.push("⚠️ Sulphite Sensitivity");
+    if (scanLower.includes("halal") && !allergies.some(a => /halal/i.test(a))) allergies.push("☪️ Halal");
+    if (scanLower.includes("kosher") && !allergies.some(a => /kosher/i.test(a))) allergies.push("✡️ Kosher");
 
     // --- 8. OCCASION (Explicit Extraction) ---
     let occasionNote = "";
@@ -644,10 +652,10 @@ export class PDFService {
     const rateCode = rateMatch ? rateMatch[1].toUpperCase() : "";
 
     const noteSections = [
-      this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Booking Notes:", "Allergies:"]),
-      this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:", "Booking Notes:", "Allergies:"]),
-      this.extractSection(singleLineText, "Booking Notes:", ["Unit:", "Page", "HK Notes:", "Guest Notes:", "Allergies:", "Facility Bookings:"]),
-      this.extractSection(singleLineText, "Traces:", ["Booking Notes", "Been Before", "Occasion:", "Facility Bookings:"]),
+      this.extractSection(singleLineText, "HK Notes:", ["Unit:", "Page", "Guest Notes:", "Booking Notes:", "Allergies:", "Previous Stays", "In Room", "Smoking"]),
+      this.extractSection(singleLineText, "Guest Notes:", ["Unit:", "Page", "HK Notes:", "Booking Notes:", "Allergies:", "Previous Stays", "In Room", "Smoking"]),
+      this.extractSection(singleLineText, "Booking Notes:", ["Unit:", "Page", "HK Notes:", "Guest Notes:", "Allergies:", "Facility Bookings:", "Previous Stays", "In Room", "Smoking"]),
+      this.extractSection(singleLineText, "Traces:", ["Booking Notes", "Been Before", "Occasion:", "Facility Bookings:", "Previous Stays"]),
     ];
 
     // --- Improvement #7: Better In-Room Items (exact names from "In Room on Arrival:") ---
@@ -708,6 +716,10 @@ export class PDFService {
       });
     });
 
+    // Enrich roomType with human-readable name from constants
+    const roomNum = getRoomNumber(room);
+    const enrichedRoomType = (roomNum > 0 && ROOM_TYPES[roomNum]) ? ROOM_TYPES[roomNum] : roomType;
+
     return {
       id: block.id,
       room,
@@ -723,7 +735,7 @@ export class PDFService {
       packageName: rateCode,
       rateCode,
       rawHtml: rawTextLines.join("\n"),
-      roomType,
+      roomType: enrichedRoomType,
       // Enhanced fields — only include when present (Firebase rejects undefined)
       ...(adults != null ? { adults } : {}),
       ...(children != null ? { children } : {}),

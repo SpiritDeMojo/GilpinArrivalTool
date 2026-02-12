@@ -215,21 +215,23 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
     return { mainBreakfast: mainBf, lakeBreakfast: lakeBf };
   }, [occupancyMap, includesBreakfast]);
 
-  /** Per-property pax and car counts */
-  const { mainPax, lakePax, mainCars, lakeCars } = useMemo(() => {
-    let mPax = 0, lPax = 0, mCars = 0, lCars = 0;
+  /** Per-property pax, car, and EV charging counts */
+  const { mainPax, lakePax, mainCars, lakeCars, mainEV, lakeEV } = useMemo(() => {
+    let mPax = 0, lPax = 0, mCars = 0, lCars = 0, mEV = 0, lEV = 0;
     occupancyMap.forEach(({ guest }, roomNum) => {
       const pax = parseInt(guest.ll || '0', 10) || 1;
       const room = ALL_ROOMS.find(r => r.number === roomNum);
       if (room?.property === 'lake') {
         lPax += pax;
         if (guest.car?.trim()) lCars++;
+        if (guest.carOnCharge) lEV++;
       } else {
         mPax += pax;
         if (guest.car?.trim()) mCars++;
+        if (guest.carOnCharge) mEV++;
       }
     });
-    return { mainPax: mPax, lakePax: lPax, mainCars: mCars, lakeCars: lCars };
+    return { mainPax: mPax, lakePax: lPax, mainCars: mCars, lakeCars: lCars, mainEV: mEV, lakeEV: lEV };
   }, [occupancyMap]);
 
   /**
@@ -239,16 +241,16 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
   const displayStats = useMemo(() => {
     if (propertyFilter === 'main') {
       const rooms = mainRooms.length;
-      return { occupied: mainOccupied, empty: rooms - mainOccupied, pct: Math.round((mainOccupied / rooms) * 100), pax: mainPax, cars: mainCars, breakfast: mainBreakfast, total: rooms };
+      return { occupied: mainOccupied, empty: rooms - mainOccupied, pct: Math.round((mainOccupied / rooms) * 100), pax: mainPax, cars: mainCars, evCharging: mainEV, breakfast: mainBreakfast, total: rooms };
     }
     if (propertyFilter === 'lake') {
       const rooms = lakeRooms.length;
-      return { occupied: lakeOccupied, empty: rooms - lakeOccupied, pct: Math.round((lakeOccupied / rooms) * 100), pax: lakePax, cars: lakeCars, breakfast: lakeBreakfast, total: rooms };
+      return { occupied: lakeOccupied, empty: rooms - lakeOccupied, pct: Math.round((lakeOccupied / rooms) * 100), pax: lakePax, cars: lakeCars, evCharging: lakeEV, breakfast: lakeBreakfast, total: rooms };
     }
     const allRooms = ALL_ROOMS.length;
     const totalOcc = mainOccupied + lakeOccupied;
-    return { occupied: totalOcc, empty: allRooms - totalOcc, pct: Math.round((totalOcc / allRooms) * 100), pax: mainPax + lakePax, cars: mainCars + lakeCars, breakfast: mainBreakfast + lakeBreakfast, total: allRooms };
-  }, [propertyFilter, mainOccupied, lakeOccupied, mainRooms.length, lakeRooms.length, mainPax, lakePax, mainCars, lakeCars, mainBreakfast, lakeBreakfast]);
+    return { occupied: totalOcc, empty: allRooms - totalOcc, pct: Math.round((totalOcc / allRooms) * 100), pax: mainPax + lakePax, cars: mainCars + lakeCars, evCharging: mainEV + lakeEV, breakfast: mainBreakfast + lakeBreakfast, total: allRooms };
+  }, [propertyFilter, mainOccupied, lakeOccupied, mainRooms.length, lakeRooms.length, mainPax, lakePax, mainCars, lakeCars, mainEV, lakeEV, mainBreakfast, lakeBreakfast]);
 
   const filteredRooms = useMemo(() =>
     propertyFilter === 'all' ? ALL_ROOMS : ALL_ROOMS.filter(r => r.property === propertyFilter),
@@ -385,6 +387,7 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
             {hasCar && (
               <div className="nm-car">
                 <span className="nm-car-plate">🚗 {occ.guest.car}</span>
+                {occ.guest.carOnCharge && <span className="nm-ev-badge" title="EV Charging">⚡</span>}
               </div>
             )}
 
@@ -445,15 +448,31 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
                     </div>
                   )}
                   {/* Room Move Button */}
-                  <button
-                    className="nm-move-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMoveGuest({ guest: occ.guest, roomNum: room.number });
-                    }}
-                  >
-                    🔄 Move Room
-                  </button>
+                  <div className="nm-action-row">
+                    {hasCar && (
+                      <button
+                        className={`nm-ev-toggle ${occ.guest.carOnCharge ? 'active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateGuest(occ.guest.id, {
+                            carOnCharge: !occ.guest.carOnCharge,
+                            carOnChargeAt: !occ.guest.carOnCharge ? Date.now() : undefined,
+                          });
+                        }}
+                      >
+                        ⚡ {occ.guest.carOnCharge ? 'On Charge' : 'Plug In'}
+                      </button>
+                    )}
+                    <button
+                      className="nm-move-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMoveGuest({ guest: occ.guest, roomNum: room.number });
+                      }}
+                    >
+                      🔄 Move Room
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -487,6 +506,9 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
           <div className="nm-stat pct"><span className="nm-stat-number">{displayStats.pct}%</span><span className="nm-stat-label">Occupancy</span></div>
           <div className="nm-stat pax"><span className="nm-stat-number">{displayStats.pax}</span><span className="nm-stat-label">Guests</span></div>
           <div className="nm-stat cars"><span className="nm-stat-number">{displayStats.cars}</span><span className="nm-stat-label">Cars</span></div>
+          {displayStats.evCharging > 0 && (
+            <div className="nm-stat ev"><span className="nm-stat-number">⚡ {displayStats.evCharging}</span><span className="nm-stat-label">Charging</span></div>
+          )}
           <div className="nm-stat breakfast"><span className="nm-stat-number">{displayStats.breakfast}</span><span className="nm-stat-label">Breakfast</span></div>
         </div>
       </motion.header>

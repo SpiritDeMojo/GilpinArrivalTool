@@ -443,16 +443,48 @@ const ViewManager: React.FC = () => {
           transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        /* Floating island when NOT sticky */
+        /* Desktop: full-width bar when NOT sticky */
         .dashboard-view-tabs:not(.fixed) {
-          border-radius: 20px;
-          margin: 8px auto;
-          max-width: 700px;
+          border-radius: 16px;
+          margin: 8px 16px;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
         }
 
         [data-theme="dark"] .dashboard-view-tabs:not(.fixed) {
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Desktop: tabs stretch to fill */
+        @media (min-width: 1024px) {
+          .view-tabs-container {
+            flex: 1;
+          }
+          .view-tabs-container .view-tab {
+            flex: 1;
+            justify-content: center;
+            text-align: center;
+          }
+        }
+
+        /* Tablet/Mobile (< 1024px): horizontal scroll slider */
+        @media (max-width: 1023px) {
+          .view-tabs-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            padding: 2px 4px;
+            mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent);
+          }
+          .view-tabs-container::-webkit-scrollbar {
+            display: none;
+          }
+          .view-tabs-container .view-tab {
+            flex-shrink: 0;
+            scroll-snap-align: center;
+          }
         }
 
         /* Sticky state — full width with shadow/blur + dock animation */
@@ -557,12 +589,11 @@ const ViewManager: React.FC = () => {
           }
         }
 
-        /* Mobile: island stays rounded, just smaller */
+        /* Mobile: glassmorphism island */
         @media (max-width: 768px) {
           .dashboard-view-tabs:not(.fixed) {
-            border-radius: 16px;
+            border-radius: 14px;
             margin: 6px 8px;
-            max-width: none;
             background: rgba(255, 255, 255, 0.6);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
@@ -576,11 +607,10 @@ const ViewManager: React.FC = () => {
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
           }
 
-          /* Stage 2: when docked, go seamless */
+          /* When docked, go seamless */
           .dashboard-view-tabs.dock-attached {
             border-radius: 0 !important;
             margin: 0 !important;
-            max-width: none !important;
             border: none;
             background: var(--nav-bg);
           }
