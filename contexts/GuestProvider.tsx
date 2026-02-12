@@ -95,12 +95,15 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } = useGuestManager(DEFAULT_FLAGS);
 
     // ── Local UI state ──────────────────────────────────────────────────────
-    const [propertyFilter, setPropertyFilter] = useState<PropertyFilter>(() => {
-        // Default to user's location if set, otherwise 'total'
-        if (location === 'lake') return 'lake';
-        if (location === 'main') return 'main';
-        return 'total';
-    });
+    // Property filter always defaults to 'total' so staff can see cross-property data.
+    // The activeFilter stat cards (Main Hotel / Lake House) handle per-property focus.
+    const [propertyFilter, setPropertyFilter] = useState<PropertyFilter>('total');
+
+    // Default the stat card highlight to the user's location (if set)
+    useEffect(() => {
+        if (location === 'main') setActiveFilter('main');
+        else if (location === 'lake') setActiveFilter('lake');
+    }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
     // Show session browser when no active session
     const showSessionBrowser = sessions.length === 0 && !isProcessing;
