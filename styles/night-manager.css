@@ -139,6 +139,7 @@
 .nm-room-top    { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
 .nm-room-number { font-size: 22px; font-weight: 900; color: var(--gilpin-gold, #c5a065); margin-bottom: 2px; line-height: 1; }
 .nm-room-name   { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-sub, #64748b); }
+.nm-room-type   { font-size: 9px; font-weight: 600; color: var(--gilpin-gold, #c5a065); opacity: 0.7; letter-spacing: 0.5px; margin-top: 1px; }
 .nm-flags       { display: flex; gap: 2px; }
 .nm-flag        { font-size: 14px; }
 
@@ -159,7 +160,12 @@
 }
 .nm-status-on_site   { background: rgba(34,197,94,0.15); color: #16a34a; border: 1px solid rgba(34,197,94,0.3); }
 .nm-status-off_site   { background: rgba(251,191,36,0.15); color: #d97706; border: 1px solid rgba(251,191,36,0.3); }
+.nm-status-checked_in { background: rgba(34,197,94,0.2); color: #15803d; border: 1px solid rgba(34,197,94,0.4); }
 .nm-status-checked_out { background: rgba(148,163,184,0.15); color: #64748b; border: 1px solid rgba(148,163,184,0.3); }
+.nm-status-awaiting_room { background: rgba(251,191,36,0.15); color: #b45309; border: 1px solid rgba(251,191,36,0.3); }
+.nm-status-room_ready_notified { background: rgba(59,130,246,0.15); color: #2563eb; border: 1px solid rgba(59,130,246,0.3); }
+.nm-status-courtesy_call_due { background: rgba(168,85,247,0.15); color: #7c3aed; border: 1px solid rgba(168,85,247,0.3); }
+.nm-status-call_complete { background: rgba(34,197,94,0.15); color: #16a34a; border: 1px solid rgba(34,197,94,0.3); }
 .nm-status-no_show    { background: rgba(239,68,68,0.1);  color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
 .nm-status-cancelled  { background: rgba(148,163,184,0.1);  color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
 

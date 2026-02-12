@@ -12,6 +12,53 @@ export const ROOM_MAP: RoomMapping = {
   'boat': 60, 'lodge': 60
 };
 
+/**
+ * Room type categories — maps room number → category name.
+ * Main Hotel hierarchy (lowest → highest): Classic → Master → Junior Suite → Garden Room → Spa Lodge → Spa Suite
+ * Lake House hierarchy: LH Classic → LH Master → LH Suite / LH Spa Suite
+ */
+export type RoomType =
+  | 'Classic' | 'Master' | 'Junior Suite' | 'Garden Room' | 'Spa Lodge' | 'Spa Suite'
+  | 'LH Suite' | 'LH Classic' | 'LH Master' | 'LH Spa Suite';
+
+export const ROOM_TYPES: Record<number, RoomType> = {
+  // Main Hotel
+  5: 'Classic', 10: 'Classic',
+  1: 'Master', 2: 'Master', 3: 'Master', 4: 'Master', 6: 'Master', 7: 'Master',
+  8: 'Junior Suite', 9: 'Junior Suite', 11: 'Junior Suite', 12: 'Junior Suite',
+  13: 'Junior Suite', 14: 'Junior Suite',
+  15: 'Garden Room', 16: 'Garden Room', 17: 'Garden Room', 18: 'Garden Room',
+  19: 'Garden Room', 20: 'Garden Room',
+  21: 'Spa Lodge', 22: 'Spa Lodge', 23: 'Spa Lodge', 24: 'Spa Lodge', 25: 'Spa Lodge',
+  26: 'Spa Suite', 27: 'Spa Suite', 28: 'Spa Suite', 30: 'Spa Suite', 31: 'Spa Suite',
+  // Lake House
+  51: 'LH Suite',
+  53: 'LH Classic',
+  52: 'LH Master', 54: 'LH Master', 55: 'LH Master', 56: 'LH Master',
+  57: 'LH Spa Suite', 58: 'LH Spa Suite',
+};
+
+/**
+ * Valid upgrade paths — one category up only.
+ * Strategic purpose: free the cheaper room for last-minute bookings.
+ */
+export const UPGRADE_HIERARCHY: Record<RoomType, RoomType[]> = {
+  'Classic': ['Master'],
+  'Master': ['Junior Suite'],
+  'Junior Suite': ['Garden Room'],
+  'Garden Room': ['Spa Lodge'],
+  'Spa Lodge': ['Spa Suite'],
+  'Spa Suite': [],                    // Already top tier — no upgrade
+  'LH Classic': ['LH Master'],
+  'LH Master': ['LH Suite', 'LH Spa Suite'],
+  'LH Suite': ['LH Spa Suite'],
+  'LH Spa Suite': [],                    // Already top tier
+};
+
+/** Get the room type for a room number */
+export const getRoomType = (roomNum: number): RoomType | null => ROOM_TYPES[roomNum] || null;
+
+
 export const DEFAULT_FLAGS: Flag[] = [
   { id: 1, name: "VIP", emoji: "⭐", keys: ["VIP", "Director", "Celebrity", "Owner", "Chairman", "High Profile", "Pride of Britain", "POB_STAFF", "POB", "Porsche"] },
   { id: 2, name: "Oat Milk", emoji: "🥛", keys: ["oat milk", "carton of oat"] },

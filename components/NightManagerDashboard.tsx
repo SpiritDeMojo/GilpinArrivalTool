@@ -14,7 +14,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrivalSession, Guest } from '../types';
-import { getRoomNumber, GILPIN_LOGO_URL } from '../constants';
+import { getRoomNumber, GILPIN_LOGO_URL, getRoomType } from '../constants';
 import { useStayoverCalculator } from '../hooks/useStayoverCalculator';
 import { DEFAULT_FLAGS } from '../constants';
 import { useGuestData } from '../contexts/GuestDataProvider';
@@ -279,16 +279,23 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
     setShowUpgradePanel(true);
     try {
       // Find empty rooms
-      const emptyRoomsList = ALL_ROOMS.filter(r => !occupancyMap.has(r.number));
-      // Build guest list for AI
-      const guestList = Array.from(occupancyMap.entries()).map(([_, occ]) => ({
-        room: occ.guest.room,
-        name: occ.guest.name,
-        ll: occ.guest.ll || '',
-        duration: occ.guest.duration || '',
-        notes: occ.guest.prefillNotes || occ.guest.hkNotes || '',
-        preferences: occ.guest.preferences || '',
+      const emptyRoomsList = ALL_ROOMS.filter(r => !occupancyMap.has(r.number)).map(r => ({
+        ...r,
+        roomType: getRoomType(r.number) || 'Unknown',
       }));
+      // Build guest list for AI with room type context
+      const guestList = Array.from(occupancyMap.entries()).map(([_, occ]) => {
+        const roomNum = parseInt(occ.guest.room.split(' ')[0]) || 0;
+        return {
+          room: occ.guest.room,
+          name: occ.guest.name,
+          ll: occ.guest.ll || '',
+          duration: occ.guest.duration || '',
+          notes: occ.guest.prefillNotes || occ.guest.hkNotes || '',
+          preferences: occ.guest.preferences || '',
+          roomType: getRoomType(roomNum) || 'Unknown',
+        };
+      });
       const result = await GeminiService.suggestUpgrades(guestList, emptyRoomsList);
       setUpgradeSuggestions(result || []);
     } catch (e) {
@@ -340,6 +347,7 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
           <div className="nm-room-id">
             <div className="nm-room-number">{room.number}</div>
             <div className="nm-room-name">{room.name}</div>
+            {getRoomType(room.number) && <div className="nm-room-type">{getRoomType(room.number)}</div>}
           </div>
           {occ && flags.length > 0 && (
             <div className="nm-flags">
@@ -422,6 +430,12 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
                     <div className="nm-detail-row">
                       <span className="nm-detail-label">In-Room</span>
                       <span className="nm-detail-value">{occ.guest.inRoomItems}</span>
+                    </div>
+                  )}
+                  {occ.guest.facilities && (
+                    <div className="nm-detail-row">
+                      <span className="nm-detail-label">Facilities</span>
+                      <span className="nm-detail-value">{occ.guest.facilities}</span>
                     </div>
                   )}
                   {occ.guest.duration && (
