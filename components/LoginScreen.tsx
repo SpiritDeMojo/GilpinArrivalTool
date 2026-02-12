@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '../contexts/UserProvider';
-import { Department } from '../types';
+import { Department, UserLocation } from '../types';
 
 /* ── Floating Particle Background ── */
 function GoldParticles() {
@@ -140,9 +140,10 @@ const errorVariants = {
 };
 
 export default function LoginScreen() {
-  const { setUserName, setDepartment } = useUser();
+  const { setUserName, setDepartment, setLocation } = useUser();
   const [name, setName] = useState('');
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<UserLocation | null>(null);
   const [error, setError] = useState('');
   const [shakeKey, setShakeKey] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,18 +166,29 @@ export default function LoginScreen() {
       setShakeKey(k => k + 1);
       return;
     }
+    if (!selectedLocation) {
+      setError('Please select your location');
+      setShakeKey(k => k + 1);
+      return;
+    }
     setIsSubmitting(true);
     // Brief animation before navigating
     setTimeout(() => {
+      setLocation(selectedLocation);
       setDepartment(selectedDept);
       setUserName(trimmed);
     }, 400);
-  }, [name, selectedDept, setUserName, setDepartment]);
+  }, [name, selectedDept, selectedLocation, setUserName, setDepartment, setLocation]);
 
   const departments: { code: Department; label: string; icon: string; desc: string }[] = [
     { code: 'HK', label: 'Housekeeping', icon: '🧹', desc: 'Room cleaning & prep' },
     { code: 'MAIN', label: 'Maintenance', icon: '🔧', desc: 'Repairs & upkeep' },
     { code: 'REC', label: 'Front of House', icon: '🛎️', desc: 'Full access — all departments' },
+  ];
+
+  const locations: { code: UserLocation; label: string; icon: string; desc: string }[] = [
+    { code: 'main', label: 'Gilpin Hotel', icon: '🏛️', desc: 'Main Hotel — 30 rooms' },
+    { code: 'lake', label: 'Lake House', icon: '🏡', desc: 'Lake House — 8 rooms' },
   ];
 
   return (
@@ -265,6 +277,35 @@ export default function LoginScreen() {
             ))}
           </div>
 
+          <motion.label className="login-label" style={{ marginTop: '0.5rem' }} variants={fieldVariants}>
+            Your location
+          </motion.label>
+          <div className="login-dept-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            {locations.map((loc, i) => (
+              <motion.button
+                key={loc.code}
+                type="button"
+                className={`login-dept-card ${selectedLocation === loc.code ? 'login-dept-card--active' : ''}`}
+                onClick={() => { setSelectedLocation(loc.code); setError(''); }}
+                custom={i}
+                variants={deptCardVariants}
+                initial="hidden"
+                animate="visible"
+                whileHover={{ scale: 1.06, y: -4, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <motion.span
+                  className="login-dept-icon"
+                  animate={selectedLocation === loc.code ? { scale: [1, 1.3, 1], transition: { duration: 0.4 } } : {}}
+                >
+                  {loc.icon}
+                </motion.span>
+                <span className="login-dept-name">{loc.label}</span>
+                <span className="login-dept-desc">{loc.desc}</span>
+              </motion.button>
+            ))}
+          </div>
+
           {/* Error with shake animation */}
           <AnimatePresence mode="wait">
             {error && (
@@ -284,7 +325,7 @@ export default function LoginScreen() {
           <motion.button
             type="submit"
             className="login-button"
-            disabled={name.trim().length < 2 || !selectedDept || isSubmitting}
+            disabled={name.trim().length < 2 || !selectedDept || !selectedLocation || isSubmitting}
             variants={buttonVariants}
             initial="hidden"
             animate="visible"

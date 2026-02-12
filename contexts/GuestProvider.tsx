@@ -76,7 +76,7 @@ const GuestContextBridge: React.FC<{ children: React.ReactNode }> = ({ children 
 // This is the main provider that orchestrates hooks and distributes values
 // into the 3 sub-contexts. It remains in index.tsx as <GuestProvider>.
 export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { userName, department } = useUser();
+    const { userName, department, location } = useUser();
     const { dashboardView, setDashboardView } = useView();
     const { registerActions } = useHotkeys();
     const isRec = department === 'REC';
@@ -95,7 +95,12 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } = useGuestManager(DEFAULT_FLAGS);
 
     // ── Local UI state ──────────────────────────────────────────────────────
-    const [propertyFilter, setPropertyFilter] = useState<PropertyFilter>('total');
+    const [propertyFilter, setPropertyFilter] = useState<PropertyFilter>(() => {
+        // Default to user's location if set, otherwise 'total'
+        if (location === 'lake') return 'lake';
+        if (location === 'main') return 'main';
+        return 'total';
+    });
 
     // Show session browser when no active session
     const showSessionBrowser = sessions.length === 0 && !isProcessing;

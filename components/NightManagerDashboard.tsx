@@ -18,6 +18,7 @@ import { getRoomNumber, GILPIN_LOGO_URL } from '../constants';
 import { useStayoverCalculator } from '../hooks/useStayoverCalculator';
 import { DEFAULT_FLAGS } from '../constants';
 import { useGuestData } from '../contexts/GuestDataProvider';
+import { GeminiService } from '../services/geminiService';
 
 interface NightManagerDashboardProps {
   sessions: ArrivalSession[];
@@ -143,6 +144,9 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
   const [propertyFilter, setPropertyFilter] = useState<'all' | 'main' | 'lake'>('all');
   const [expandedRoom, setExpandedRoom] = useState<number | null>(null);
   const [moveGuest, setMoveGuest] = useState<{ guest: Guest; roomNum: number } | null>(null);
+  const [upgradeSuggestions, setUpgradeSuggestions] = useState<any[]>([]);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [showUpgradePanel, setShowUpgradePanel] = useState(false);
 
   const targetDate = useMemo(() => {
     if (activeSessionDate) {
@@ -269,6 +273,49 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
     window.print();
   }, []);
 
+  /** Request AI upgrade suggestions */
+  const handleSuggestUpgrades = useCallback(async () => {
+    setUpgradeLoading(true);
+    setShowUpgradePanel(true);
+    try {
+      // Find empty rooms
+      const emptyRoomsList = ALL_ROOMS.filter(r => !occupancyMap.has(r.number));
+      // Build guest list for AI
+      const guestList = Array.from(occupancyMap.entries()).map(([_, occ]) => ({
+        room: occ.guest.room,
+        name: occ.guest.name,
+        ll: occ.guest.ll || '',
+        duration: occ.guest.duration || '',
+        notes: occ.guest.prefillNotes || occ.guest.hkNotes || '',
+        preferences: occ.guest.preferences || '',
+      }));
+      const result = await GeminiService.suggestUpgrades(guestList, emptyRoomsList);
+      setUpgradeSuggestions(result || []);
+    } catch (e) {
+      console.error('[AI Upgrade] Error:', e);
+      setUpgradeSuggestions([]);
+    } finally {
+      setUpgradeLoading(false);
+    }
+  }, [occupancyMap]);
+
+  /** Accept an upgrade — move guest to new room */
+  const handleAcceptUpgrade = useCallback((suggestion: any) => {
+    const entry = Array.from(occupancyMap.entries()).find(
+      ([_, occ]) => occ.guest.name === suggestion.guestName
+    );
+    if (entry) {
+      const roomName = ALL_ROOMS.find(r => r.number === suggestion.suggestedRoom)?.name || '';
+      updateGuest(entry[1].guest.id, { room: `${suggestion.suggestedRoom} ${roomName}`.trim() });
+      setUpgradeSuggestions(prev => prev.filter(s => s.guestName !== suggestion.guestName));
+    }
+  }, [occupancyMap, updateGuest]);
+
+  /** Reject a suggestion — remove from list */
+  const handleRejectUpgrade = useCallback((guestName: string) => {
+    setUpgradeSuggestions(prev => prev.filter(s => s.guestName !== guestName));
+  }, []);
+
   /** Render a single room card */
   const renderRoomCard = (room: { name: string; number: number; property: 'main' | 'lake' }) => {
     const occ = occupancyMap.get(room.number);
@@ -278,10 +325,12 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
     const hasDinner = occ?.guest.dinnerTime && occ.guest.dinnerTime !== 'none';
     const pax = occ ? parseInt(occ.guest.ll || '0', 10) : 0;
 
+    const guestStatusClass = occ?.guest.guestStatus === 'on_site' || occ?.guest.guestStatus === 'checked_in' ? 'arrived' : occ?.guest.guestStatus === 'checked_out' ? 'checked-out' : '';
+
     return (
       <motion.div
         key={room.number}
-        className={`nm-room ${occ ? 'occupied' : 'empty'} ${occ?.type === 'stayover' ? 'stayover' : ''} ${isExpanded ? 'expanded' : ''}`}
+        className={`nm-room ${occ ? 'occupied' : 'empty'} ${occ?.type === 'stayover' ? 'stayover' : ''} ${isExpanded ? 'expanded' : ''} ${guestStatusClass}`}
         variants={{ hidden: { opacity: 0, scale: 0.9 }, show: { opacity: 1, scale: 1 } }}
         layout
         onClick={() => occ && handleToggle(room.number)}
@@ -308,6 +357,20 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
               <span className="nm-guest-type">
                 {occ.type === 'stayover' ? `Night ${occ.nightNum}/${occ.totalNights}` : 'Arriving today'}
               </span>
+              {occ.guest.guestStatus && occ.guest.guestStatus !== 'pre_arrival' && (
+                <span className={`nm-status-badge nm-status-${occ.guest.guestStatus}`}>
+                  {occ.guest.guestStatus === 'on_site' ? '✓ On Site' :
+                    occ.guest.guestStatus === 'checked_in' ? '🔑 Checked In' :
+                      occ.guest.guestStatus === 'checked_out' ? '🚪 Out' :
+                        occ.guest.guestStatus === 'off_site' ? '📤 Away' :
+                          occ.guest.guestStatus === 'no_show' ? '❌ No Show' :
+                            occ.guest.guestStatus === 'cancelled' ? '⊘ Cancelled' :
+                              occ.guest.guestStatus === 'awaiting_room' ? '⏳ Awaiting Room' :
+                                occ.guest.guestStatus === 'room_ready_notified' ? '📱 Room Ready' :
+                                  occ.guest.guestStatus === 'courtesy_call_due' ? '📞 Call Due' :
+                                    occ.guest.guestStatus === 'call_complete' ? '✅ Call Done' : ''}
+                </span>
+              )}
               {pax > 0 && <span className="nm-pax">👤 {pax}</span>}
             </div>
 
@@ -428,6 +491,9 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
           ))}
         </div>
         <button className="nm-print-btn" onClick={handlePrint}>🖨️ Print Report</button>
+        <button className="nm-print-btn" onClick={handleSuggestUpgrades} disabled={upgradeLoading} style={{ marginLeft: 8 }}>
+          {upgradeLoading ? '⏳ Analysing...' : '✨ AI Upgrades'}
+        </button>
       </div>
 
       {/* Property Breakdown — with breakfast badge */}
@@ -453,6 +519,45 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
           </div>
         )}
       </div>
+
+      {/* ═══ AI Upgrade Suggestion Panel ═══ */}
+      {showUpgradePanel && (
+        <motion.div
+          className="nm-upgrade-panel no-print"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="nm-upgrade-header">
+            <h3>✨ AI Room Upgrade Suggestions</h3>
+            <button className="nm-upgrade-close" onClick={() => setShowUpgradePanel(false)}>✕</button>
+          </div>
+          {upgradeLoading ? (
+            <div className="nm-upgrade-loading">
+              <span className="nm-upgrade-spinner" /> Analysing guests, availability & special occasions...
+            </div>
+          ) : upgradeSuggestions.length === 0 ? (
+            <div className="nm-upgrade-empty">No upgrade opportunities found for today's guests.</div>
+          ) : (
+            <div className="nm-upgrade-list">
+              {upgradeSuggestions.map((s, i) => (
+                <div key={i} className="nm-upgrade-card">
+                  <div className="nm-upgrade-guest">
+                    <strong>{s.guestName}</strong>
+                    <span className="nm-upgrade-move">Room {s.currentRoom} → Room {s.suggestedRoom} ({s.suggestedRoomName})</span>
+                  </div>
+                  <div className="nm-upgrade-reason">{s.reason}</div>
+                  <span className={`nm-upgrade-priority nm-priority-${s.priority?.toLowerCase()}`}>{s.priority}</span>
+                  <div className="nm-upgrade-actions">
+                    <button className="nm-upgrade-accept" onClick={() => handleAcceptUpgrade(s)}>✓ Accept</button>
+                    <button className="nm-upgrade-reject" onClick={() => handleRejectUpgrade(s.guestName)}>✕ Skip</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* ═══ Screen Room Grid ═══ */}
       {mainFilteredRooms.length > 0 && (
@@ -505,7 +610,7 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
               <thead>
                 <tr>
                   <th>Room</th><th>Name</th><th>Guest</th><th>Type</th>
-                  <th>Car</th><th>Pax</th><th>Dinner</th><th>Flags</th>
+                  <th>Car</th><th>Pax</th><th>Bkfst</th><th>Dinner</th><th>Flags</th>
                 </tr>
               </thead>
               <tbody>
@@ -520,6 +625,7 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
                       <td>{occ ? (occ.type === 'stayover' ? `S ${occ.nightNum}/${occ.totalNights}` : 'ARR') : ''}</td>
                       <td className="nm-print-plate">{occ?.guest.car || ''}</td>
                       <td>{occ ? (parseInt(occ.guest.ll || '0', 10) || '') : ''}</td>
+                      <td>{occ ? (occ.guest.packageName && occ.guest.packageName !== 'RO' && occ.guest.packageName !== 'Room Only' ? '✓' : '') : ''}</td>
                       <td>{occ?.guest.dinnerTime && occ.guest.dinnerTime !== 'none' ? `${occ.guest.dinnerTime}${occ.guest.dinnerVenue ? ` (${occ.guest.dinnerVenue})` : ''}` : ''}</td>
                       <td>{flags.map(f => f.emoji).join(' ')}</td>
                     </tr>
@@ -538,7 +644,7 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
               <thead>
                 <tr>
                   <th>Room</th><th>Name</th><th>Guest</th><th>Type</th>
-                  <th>Car</th><th>Pax</th><th>Dinner</th><th>Flags</th>
+                  <th>Car</th><th>Pax</th><th>Bkfst</th><th>Dinner</th><th>Flags</th>
                 </tr>
               </thead>
               <tbody>
@@ -553,6 +659,7 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
                       <td>{occ ? (occ.type === 'stayover' ? `S ${occ.nightNum}/${occ.totalNights}` : 'ARR') : ''}</td>
                       <td className="nm-print-plate">{occ?.guest.car || ''}</td>
                       <td>{occ ? (parseInt(occ.guest.ll || '0', 10) || '') : ''}</td>
+                      <td>{occ ? (occ.guest.packageName && occ.guest.packageName !== 'RO' && occ.guest.packageName !== 'Room Only' ? '✓' : '') : ''}</td>
                       <td>{occ?.guest.dinnerTime && occ.guest.dinnerTime !== 'none' ? `${occ.guest.dinnerTime}${occ.guest.dinnerVenue ? ` (${occ.guest.dinnerVenue})` : ''}` : ''}</td>
                       <td>{flags.map(f => f.emoji).join(' ')}</td>
                     </tr>

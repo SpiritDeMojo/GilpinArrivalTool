@@ -3,6 +3,7 @@
 // ==========================================
 
 export type Department = 'HK' | 'MAIN' | 'REC';
+export type UserLocation = 'main' | 'lake';
 
 /** Map user-friendly aliases to canonical department codes */
 export const DEPARTMENT_ALIASES: Record<string, Department> = {
@@ -255,7 +256,10 @@ export type GuestStatus =
   | 'room_ready_notified'
   | 'checked_in'
   | 'courtesy_call_due'
-  | 'call_complete';
+  | 'call_complete'
+  | 'checked_out'
+  | 'no_show'
+  | 'cancelled';
 
 /**
  * Note from a courtesy call
@@ -373,6 +377,9 @@ export const GUEST_STATUS_INFO: Record<GuestStatus, { label: string; emoji: stri
   checked_in: { label: 'Checked In', emoji: '🔑', color: '#22c55e' },
   courtesy_call_due: { label: 'Courtesy Call Due', emoji: '📞', color: '#ef4444' },
   call_complete: { label: 'Call Complete', emoji: '✅', color: '#10b981' },
+  checked_out: { label: 'Checked Out', emoji: '🚪', color: '#64748b' },
+  no_show: { label: 'No Show', emoji: '❌', color: '#dc2626' },
+  cancelled: { label: 'Cancelled', emoji: '⊘', color: '#94a3b8' },
 };
 
 /**

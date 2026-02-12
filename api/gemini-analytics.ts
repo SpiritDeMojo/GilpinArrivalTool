@@ -55,11 +55,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 3. **riskAnalysis**: Array of EXACTLY 4 objects.
    - NAMES: 'Allergies', 'Previous Issues', 'Billing Alerts', 'TBD Logistics'.
    - Count occurrences of ⚠️, 🚩, 💰, and "TBD" in notes. Return 0 if none found.
+4. **propertyBreakdown**: Object with mainCount (rooms 1-31), lakeCount (rooms 51-58).
+5. **breakfastTotal**: Total guests who have breakfast packages (BB, DBB, HB — NOT 'RO' or 'Room Only').
+6. **upgradeOpportunities**: Count of returning guests (L&L=Yes) who could benefit from a comp upgrade.
 
 **METRICS:**
 - loyaltyRate: Integer percentage of guests with "Yes" in L&L.
 - vipIntensity: Integer percentage of VIP guests.
-- strategicInsights: 2 punchy tactical sentences focusing on the current manifest property mix.
+- strategicInsights: 2 punchy tactical sentences focusing on the current manifest property mix, occupancy balance, and breakfast/operational planning.
 
 **OUTPUT:** Pure JSON. No markdown backticks.`;
 
@@ -109,9 +112,19 @@ ${s.guests.map((g: any) => `- ${g.name} | Rm: ${g.room} | LL: ${g.ll} | Nts: ${g
                                 },
                                 strategicInsights: { type: Type.STRING },
                                 loyaltyRate: { type: Type.NUMBER },
-                                vipIntensity: { type: Type.NUMBER }
+                                vipIntensity: { type: Type.NUMBER },
+                                propertyBreakdown: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        mainCount: { type: Type.NUMBER },
+                                        lakeCount: { type: Type.NUMBER }
+                                    },
+                                    required: ["mainCount", "lakeCount"]
+                                },
+                                breakfastTotal: { type: Type.NUMBER },
+                                upgradeOpportunities: { type: Type.NUMBER }
                             },
-                            required: ["strategicMix", "occupancyPulse", "riskAnalysis", "strategicInsights", "loyaltyRate", "vipIntensity"]
+                            required: ["strategicMix", "occupancyPulse", "riskAnalysis", "strategicInsights", "loyaltyRate", "vipIntensity", "propertyBreakdown", "breakfastTotal", "upgradeOpportunities"]
                         }
                     }
                 });

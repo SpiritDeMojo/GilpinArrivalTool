@@ -163,4 +163,34 @@ export class GeminiService {
       return null;
     }
   }
+
+  /**
+   * AI Room Upgrade Suggestions: Analyzes guests and available rooms
+   * to suggest complimentary upgrades for returning/VIP/celebration guests.
+   */
+  static async suggestUpgrades(
+    guests: { room: string; name: string; ll: string; duration: string; notes: string; preferences: string }[],
+    emptyRooms: { number: number; name: string; property: 'main' | 'lake' }[]
+  ): Promise<{ guestName: string; currentRoom: string; suggestedRoom: number; suggestedRoomName: string; reason: string; priority: string }[] | null> {
+    try {
+      const response = await fetchWithRetry('/api/gemini-upgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guests, emptyRooms })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        if (response.status === 500 && err.error?.includes('not configured')) {
+          alert('AI features require the Gemini API key to be configured on the server.');
+        }
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('[AI Upgrade] Error:', error);
+      return null;
+    }
+  }
 }
