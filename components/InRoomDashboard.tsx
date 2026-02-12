@@ -256,6 +256,21 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
     propertyFilter === 'all' ? ALL_ROOMS : ALL_ROOMS.filter(r => r.property === propertyFilter),
     [propertyFilter]
   );
+
+  // ── Dogs In House ──
+  const dogsInHouse = useMemo(() => {
+    const dogs: { roomNum: number; guest: Guest; detail: string }[] = [];
+    occupancyMap.forEach(({ guest }, roomNum) => {
+      const haystack = [guest.prefillNotes, guest.hkNotes, guest.rawHtml, guest.preferences].filter(Boolean).join(' ').toLowerCase();
+      if (haystack.includes('dog') || haystack.includes('🐕') || haystack.includes('🐶') || haystack.includes('pet')) {
+        const full = [guest.prefillNotes, guest.hkNotes, guest.preferences].filter(Boolean).join(' ');
+        const detail = full.match(/🐕[^•]*/i)?.[0]?.trim() || full.match(/dog[^•]*/i)?.[0]?.trim() || 'Dog in room';
+        dogs.push({ roomNum, guest, detail });
+      }
+    });
+    dogs.sort((a, b) => a.roomNum - b.roomNum);
+    return dogs;
+  }, [occupancyMap]);
   const mainFilteredRooms = filteredRooms.filter(r => r.property === 'main');
   const lakeFilteredRooms = filteredRooms.filter(r => r.property === 'lake');
 
@@ -272,8 +287,130 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
   });
 
   const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    // Build occupied rooms for Main Hotel and Lake House
+    const mainPrintRooms = mainRooms.map(room => {
+      const occ = occupancyMap.get(room.number);
+      const flags = occ ? matchFlags(occ.guest) : [];
+      return { room, occ, flags };
+    });
+    const lakePrintRooms = lakeRooms.map(room => {
+      const occ = occupancyMap.get(room.number);
+      const flags = occ ? matchFlags(occ.guest) : [];
+      return { room, occ, flags };
+    });
+
+    // Detect dogs from notes/hkNotes/rawHtml
+    const dogsInHouse = Array.from(occupancyMap.entries())
+      .filter(([_, occ]) => {
+        const haystack = [occ.guest.prefillNotes, occ.guest.hkNotes, occ.guest.rawHtml, occ.guest.preferences].filter(Boolean).join(' ').toLowerCase();
+        return haystack.includes('dog') || haystack.includes('🐕') || haystack.includes('🐶') || haystack.includes('pet');
+      })
+      .map(([roomNum, occ]) => ({ roomNum, guest: occ.guest }));
+
+    const renderRow = (entry: typeof mainPrintRooms[0]) => {
+      const { room, occ, flags } = entry;
+      if (!occ) return `<tr class="empty-row"><td class="room">${room.number}</td><td>${room.name}</td><td colspan="7" class="empty-cell">—</td></tr>`;
+
+      const pax = parseInt(occ.guest.ll || '0', 10) || '';
+      const car = occ.guest.car || '';
+      const type = occ.type === 'stayover' ? `S ${occ.nightNum}/${occ.totalNights}` : 'ARR';
+      const dinner = occ.guest.dinnerTime && occ.guest.dinnerTime !== 'none'
+        ? `${occ.guest.dinnerTime}${occ.guest.dinnerVenue ? ` (${occ.guest.dinnerVenue})` : ''}`
+        : '';
+      const bkfst = occ.guest.packageName && occ.guest.packageName !== 'RO' && occ.guest.packageName !== 'Room Only' ? '✓' : '';
+      const notes = occ.guest.prefillNotes || '';
+      const flagStr = flags.map(f => f.emoji).join(' ');
+
+      return `<tr>
+        <td class="room">${room.number}</td>
+        <td>${room.name}</td>
+        <td class="guest-name">${occ.guest.name}</td>
+        <td class="type">${type}</td>
+        <td class="plate">${car}</td>
+        <td>${pax}</td>
+        <td>${bkfst}</td>
+        <td>${dinner}</td>
+        <td class="notes">${notes}</td>
+        <td>${flagStr}</td>
+      </tr>`;
+    };
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<title>In House Report — ${dateStr}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; padding: 20px; color: #1e293b; font-size: 11px; }
+  .header { text-align: center; margin-bottom: 16px; border-bottom: 3px solid #c5a065; padding-bottom: 12px; }
+  .header h1 { font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #0f172a; }
+  .header .date { font-size: 13px; color: #64748b; margin-top: 4px; }
+  .header .stats { font-size: 11px; color: #94a3b8; margin-top: 6px; }
+  .section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #0f172a; margin: 16px 0 8px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #0f172a; color: white; padding: 6px 8px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .room { font-weight: 800; color: #c5a065; font-size: 13px; width: 40px; }
+  .guest-name { font-weight: 600; }
+  .type { font-weight: 700; font-size: 10px; }
+  .plate { font-family: monospace; font-size: 10px; }
+  .notes { font-size: 10px; max-width: 250px; word-wrap: break-word; color: #475569; }
+  .empty-row { opacity: 0.4; }
+  .empty-cell { text-align: center; color: #94a3b8; }
+  .dogs-section { margin-top: 16px; page-break-inside: avoid; }
+  .dogs-section h2 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #b45309; margin-bottom: 8px; border-bottom: 2px solid #fbbf24; padding-bottom: 4px; }
+  .dogs-table th { background: #b45309; }
+  .footer { text-align: center; margin-top: 20px; font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🏠 In House Report</h1>
+  <div class="date">${dateStr}</div>
+  <div class="stats">${mainOccupied + lakeOccupied} Occupied • ${ALL_ROOMS.length - (mainOccupied + lakeOccupied)} Empty • ${Math.round(((mainOccupied + lakeOccupied) / ALL_ROOMS.length) * 100)}% Occupancy • ${mainPax + lakePax} Guests • ${mainCars + lakeCars} Cars • ${mainBreakfast + lakeBreakfast} Breakfast</div>
+</div>
+
+<h2 class="section-title">Main Hotel (${mainOccupied}/${mainRooms.length})</h2>
+<table>
+  <thead><tr>
+    <th>Rm</th><th>Name</th><th>Guest</th><th>Type</th><th>Car</th><th>Pax</th><th>Bkfst</th><th>Dinner</th><th>Notes</th><th>🏷️</th>
+  </tr></thead>
+  <tbody>${mainPrintRooms.map(renderRow).join('')}</tbody>
+</table>
+
+<h2 class="section-title">Lake House (${lakeOccupied}/${lakeRooms.length})</h2>
+<table>
+  <thead><tr>
+    <th>Rm</th><th>Name</th><th>Guest</th><th>Type</th><th>Car</th><th>Pax</th><th>Bkfst</th><th>Dinner</th><th>Notes</th><th>🏷️</th>
+  </tr></thead>
+  <tbody>${lakePrintRooms.map(renderRow).join('')}</tbody>
+</table>
+
+${dogsInHouse.length > 0 ? `
+<div class="dogs-section">
+  <h2>🐕 Dogs In House (${dogsInHouse.length})</h2>
+  <table class="dogs-table">
+    <thead><tr><th>Room</th><th>Guest</th><th>Details</th></tr></thead>
+    <tbody>${dogsInHouse.map(d => {
+      const haystack = [d.guest.prefillNotes, d.guest.hkNotes, d.guest.preferences].filter(Boolean).join(' ');
+      const dogDetail = haystack.match(/🐕[^•]*/i)?.[0]?.trim() || haystack.match(/dog[^•]*/i)?.[0]?.trim() || 'Dog in room';
+      return `<tr><td class="room">${d.roomNum}</td><td class="guest-name">${d.guest.name}</td><td>${dogDetail}</td></tr>`;
+    }).join('')}</tbody>
+  </table>
+</div>` : ''}
+
+<div class="footer">Gilpin Hotel & Lake House • In House Report • Printed ${new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+</body>
+</html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  }, [occupancyMap, mainRooms, lakeRooms, mainOccupied, lakeOccupied, mainPax, lakePax, mainCars, lakeCars, mainBreakfast, lakeBreakfast, dateStr]);
 
   /** Request AI upgrade suggestions */
   const handleSuggestUpgrades = useCallback(async () => {
@@ -633,6 +770,29 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
               ))}
             </div>
           )}
+        </motion.div>
+      )}
+
+      {/* ═══ Dogs In House Section ═══ */}
+      {dogsInHouse.length > 0 && (
+        <motion.div
+          className="nm-dogs-section no-print"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <h2 className="nm-section-title" style={{ color: '#b45309', borderBottomColor: '#fbbf24' }}>🐕 Dogs In House ({dogsInHouse.length})</h2>
+          <div className="nm-dogs-grid">
+            {dogsInHouse.map(d => (
+              <div key={d.roomNum} className="nm-dog-card">
+                <span className="nm-dog-room">{d.roomNum}</span>
+                <div className="nm-dog-info">
+                  <span className="nm-dog-guest">{d.guest.name}</span>
+                  <span className="nm-dog-detail">{d.detail}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </motion.div>
       )}
 

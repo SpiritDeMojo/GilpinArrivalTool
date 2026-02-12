@@ -152,10 +152,10 @@ const TurndownDashboard: React.FC<TurndownDashboardProps> = ({
     .header h1 { font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #0f172a; }
     .header .date { font-size: 14px; color: #64748b; margin-top: 4px; }
     .header .stats { font-size: 12px; color: #94a3b8; margin-top: 8px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { background: #0f172a; color: white; padding: 10px 12px; text-align: left;
-         font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-    td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #0f172a; color: white; padding: 8px 10px; text-align: left;
+         font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+    td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
     tr:nth-child(even) { background: #f8fafc; }
     .room { font-weight: 800; color: #c5a065; font-size: 15px; }
     .guest-name { font-weight: 600; }
@@ -164,6 +164,7 @@ const TurndownDashboard: React.FC<TurndownDashboardProps> = ({
     .venue { color: #6366f1; font-weight: 600; }
     .night-info { color: #64748b; font-size: 11px; }
     .off-site { color: #dc2626; font-weight: 700; }
+    .allergies { color: #dc2626; font-weight: 700; font-size: 10px; max-width: 160px; word-wrap: break-word; }
     .footer { text-align: center; margin-top: 24px; font-size: 10px; color: #94a3b8;
               text-transform: uppercase; letter-spacing: 2px; border-top: 1px solid #e2e8f0; padding-top: 12px; }
     @media print { body { padding: 0; } .footer { position: fixed; bottom: 10px; left: 0; right: 0; } }
@@ -178,13 +179,14 @@ const TurndownDashboard: React.FC<TurndownDashboardProps> = ({
   <table>
     <thead>
       <tr>
-        <th style="width: 10%">#</th>
-        <th style="width: 12%">Room</th>
-        <th style="width: 22%">Guest</th>
-        <th style="width: 14%">Dinner</th>
-        <th style="width: 16%">Venue</th>
-        <th style="width: 12%">Night</th>
-        <th style="width: 14%">Status</th>
+        <th style="width: 6%">#</th>
+        <th style="width: 10%">Room</th>
+        <th style="width: 18%">Guest</th>
+        <th style="width: 10%">Dinner</th>
+        <th style="width: 14%">Venue</th>
+        <th style="width: 10%">Night</th>
+        <th style="width: 22%">Allergies / Notes</th>
+        <th style="width: 10%">Status</th>
       </tr>
     </thead>
     <tbody>
@@ -192,6 +194,11 @@ const TurndownDashboard: React.FC<TurndownDashboardProps> = ({
       const time = s.guest.dinnerTime || s.dinnerTime;
       const venue = s.guest.dinnerVenue || s.dinnerVenue;
       const isOffSite = s.guest.guestStatus === 'off_site';
+      // Extract allergies from hkNotes and prefillNotes
+      const allNotes = [s.guest.hkNotes, s.guest.prefillNotes].filter(Boolean).join(' ');
+      const allergyPatterns = /allerg[a-z]*|nut[s]?[- ]free|gluten[- ]free|dairy[- ]free|vegan|vegetarian|coeliac|celiac|lactose|shellfish|sesame|soy[a ]|egg[- ]free|intoleran/gi;
+      const allergyMatches = allNotes.match(allergyPatterns);
+      const allergies = allergyMatches ? [...new Set(allergyMatches.map(m => m.trim()))].join(', ') : '';
       return `<tr>
           <td>${i + 1}</td>
           <td class="room">${s.guest.room}</td>
@@ -202,6 +209,7 @@ const TurndownDashboard: React.FC<TurndownDashboardProps> = ({
         }</td>
           <td>${venue ? `<span class="venue">${venue}</span>` : '—'}</td>
           <td class="night-info">Night ${s.nightNumber} of ${s.totalNights}</td>
+          <td class="allergies">${allergies || '—'}</td>
           <td>${s.guest.turndownStatus === 'complete' ? '✅' : s.guest.turndownStatus === 'in_progress' ? '🧹' : '🌙'}</td>
         </tr>`;
     }).join('')}
