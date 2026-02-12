@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { AnimatePresence, motion, LayoutGroup } from 'framer-motion';
 import { useView } from '../contexts/ViewProvider';
 import { useUser } from '../contexts/UserProvider';
@@ -15,10 +15,13 @@ import ErrorBoundary from './ErrorBoundary';
 import HousekeepingDashboard from './HousekeepingDashboard';
 import MaintenanceDashboard from './MaintenanceDashboard';
 import ReceptionDashboard from './ReceptionDashboard';
+import TurndownDashboard from './TurndownDashboard';
+import NightManagerDashboard from './NightManagerDashboard';
+const PackageGenerator = React.lazy(() => import('./PackageGenerator'));
 import { Guest, DashboardView } from '../types';
 
 /* ── Tab order for directional transitions ── */
-const TAB_ORDER: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'reception'];
+const TAB_ORDER: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'frontofhouse', 'nightmanager', 'packages'];
 
 /* ── Directional page-transition variants ── */
 const getPageVariants = (direction: number) => ({
@@ -43,7 +46,8 @@ const TABS: TabConfig[] = [
     { key: 'arrivals', emoji: '📋', labelFull: 'Arrivals', labelShort: 'Arr', badgeColor: '', departments: ['REC'] },
     { key: 'housekeeping', emoji: '🧹', labelFull: 'Housekeeping', labelShort: 'HK', badgeColor: 'bg-green-500', departments: ['HK', 'REC'] },
     { key: 'maintenance', emoji: '🔧', labelFull: 'Maintenance', labelShort: 'Maint', badgeColor: 'bg-amber-500', departments: ['MAIN', 'REC'] },
-    { key: 'reception', emoji: '🛎️', labelFull: 'Reception', labelShort: 'Recep', badgeColor: 'bg-blue-500', departments: ['REC'] },
+    { key: 'frontofhouse', emoji: '🛎️', labelFull: 'Front of House', labelShort: 'FoH', badgeColor: 'bg-blue-500', departments: ['REC'] },
+    { key: 'nightmanager', emoji: '🌙', labelFull: 'In House', labelShort: 'IH', badgeColor: 'bg-indigo-600', departments: ['REC'] },
 ];
 
 const ViewManager: React.FC = () => {
@@ -64,7 +68,17 @@ const ViewManager: React.FC = () => {
         isSticky, isOldFile,
         setAuditLogGuest,
         handleFileUpload,
+        handleUpdateTurndownStatus,
+        handleUpdateDinnerTime,
+        handleUpdateDinnerVenue,
+        verifyTurndown,
     } = useGuestContext();
+
+    /* HK sub-tab: arrivals cleaning vs turndown */
+    const [hkSubTab, setHkSubTab] = useState<'arrivals' | 'turndown'>('arrivals');
+
+    const { userName } = useUser();
+    const activeSession = sessions?.find(s => s.id === activeSessionId) || null;
 
     /* Compute transition direction based on tab order */
     const direction = useMemo(() => {
@@ -97,7 +111,7 @@ const ViewManager: React.FC = () => {
     return (
         <>
             {/* ─── Docking Tabs with Sliding Pill ─── */}
-            {guests.length > 0 && (
+            {guests.length > 0 && dashboardView !== 'packages' && (
                 <div
                     className={`no-print dashboard-view-tabs transition-all duration-300 ${isSticky
                         ? 'fixed left-0 right-0 z-[1005] shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md dock-attached'
@@ -189,15 +203,17 @@ const ViewManager: React.FC = () => {
             )}
 
             <main className="max-w-[1800px] mx-auto px-4 md:px-10 pb-32 no-print">
-                <SessionBar
-                    sessions={sessions}
-                    activeId={activeSessionId}
-                    onSwitch={switchSession}
-                    onDelete={deleteSession}
-                    onCreate={createNewSession}
-                />
+                {dashboardView !== 'packages' && (
+                    <SessionBar
+                        sessions={sessions}
+                        activeId={activeSessionId}
+                        onSwitch={switchSession}
+                        onDelete={deleteSession}
+                        onCreate={createNewSession}
+                    />
+                )}
 
-                {isRec && showAnalytics && (
+                {isRec && showAnalytics && dashboardView !== 'packages' && (
                     <AnalyticsView
                         activeGuests={guests}
                         allSessions={sessions}
@@ -205,7 +221,19 @@ const ViewManager: React.FC = () => {
                     />
                 )}
 
-                {guests.length === 0 ? (
+                {/* Package Generator — full-page tool view */}
+                {dashboardView === 'packages' ? (
+                    <React.Suspense fallback={
+                        <div className="flex items-center justify-center min-h-[60vh]">
+                            <div className="text-center">
+                                <span className="text-4xl animate-pulse">📦</span>
+                                <p className="text-sm mt-4 opacity-50 font-semibold uppercase tracking-wider">Loading Package Generator…</p>
+                            </div>
+                        </div>
+                    }>
+                        <PackageGenerator />
+                    </React.Suspense>
+                ) : guests.length === 0 ? (
                     <motion.div
                         className="flex flex-col items-center justify-center min-h-[60vh] px-4"
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -302,22 +330,53 @@ const ViewManager: React.FC = () => {
 
                             {dashboardView === 'housekeeping' && (
                                 <motion.div
-                                    key="housekeeping"
+                                    key={`housekeeping-${hkSubTab}`}
                                     variants={pageVariants}
                                     initial="initial"
                                     animate="animate"
                                     exit="exit"
                                     transition={pageTransition}
                                 >
-                                    <HousekeepingDashboard
-                                        guests={guests}
-                                        onUpdateHKStatus={handleUpdateHKStatus}
-                                        onAddRoomNote={handleAddRoomNote}
-                                        onResolveNote={handleResolveNote}
-                                        onViewAuditLog={(g) => setAuditLogGuest(g)}
-                                    />
+                                    {/* HK Sub-tab Toggle */}
+                                    <div className="hk-subtab-bar">
+                                        <button
+                                            className={`hk-subtab-btn ${hkSubTab === 'arrivals' ? 'active' : ''}`}
+                                            onClick={() => setHkSubTab('arrivals')}
+                                        >
+                                            Arrivals
+                                        </button>
+                                        <button
+                                            className={`hk-subtab-btn ${hkSubTab === 'turndown' ? 'active' : ''}`}
+                                            onClick={() => setHkSubTab('turndown')}
+                                        >
+                                            Turndown
+                                        </button>
+                                    </div>
+
+                                    {hkSubTab === 'arrivals' ? (
+                                        <HousekeepingDashboard
+                                            guests={guests}
+                                            onUpdateHKStatus={handleUpdateHKStatus}
+                                            onAddRoomNote={handleAddRoomNote}
+                                            onResolveNote={handleResolveNote}
+                                            onViewAuditLog={(g) => setAuditLogGuest(g)}
+                                        />
+                                    ) : (
+                                        <TurndownDashboard
+                                            sessions={sessions}
+                                            activeSessionDate={sessions.find(s => s.id === activeSessionId)?.dateObj || null}
+                                            onUpdateTurndownStatus={handleUpdateTurndownStatus}
+                                            onUpdateDinnerTime={handleUpdateDinnerTime}
+                                            onUpdateDinnerVenue={handleUpdateDinnerVenue}
+                                            activeSession={activeSession}
+                                            userName={userName}
+                                            onVerifyTurndown={() => verifyTurndown(userName)}
+                                        />
+                                    )}
                                 </motion.div>
                             )}
+
+
 
                             {dashboardView === 'maintenance' && (
                                 <motion.div
@@ -338,9 +397,9 @@ const ViewManager: React.FC = () => {
                                 </motion.div>
                             )}
 
-                            {dashboardView === 'reception' && (
+                            {dashboardView === 'frontofhouse' && (
                                 <motion.div
-                                    key="reception"
+                                    key="frontofhouse"
                                     variants={pageVariants}
                                     initial="initial"
                                     animate="animate"
@@ -353,6 +412,23 @@ const ViewManager: React.FC = () => {
                                         onUpdateInRoomDelivery={handleUpdateInRoomDelivery}
                                         onAddCourtesyNote={handleAddCourtesyNote}
                                         onViewAuditLog={(g: Guest) => setAuditLogGuest(g)}
+                                    />
+                                </motion.div>
+                            )}
+
+                            {dashboardView === 'nightmanager' && (
+                                <motion.div
+                                    key="nightmanager"
+                                    variants={pageVariants}
+                                    initial="initial"
+                                    animate="animate"
+                                    exit="exit"
+                                    transition={pageTransition}
+                                >
+                                    <NightManagerDashboard
+                                        sessions={sessions}
+                                        activeSessionDate={sessions.find(s => s.id === activeSessionId)?.dateObj || null}
+                                        todayGuests={guests}
                                     />
                                 </motion.div>
                             )}
@@ -432,6 +508,53 @@ const ViewManager: React.FC = () => {
         /* Non-active tab should show border on hover */
         .view-tab:not(.active):hover {
           border-color: var(--gilpin-gold);
+        }
+
+        /* HK Sub-tab Bar (Arrivals / Turndown toggle) */
+        .hk-subtab-bar {
+          display: flex;
+          gap: 4px;
+          background: var(--bg-container, #f1f5f9);
+          border: 1px solid var(--border-color, #e2e8f0);
+          border-radius: 14px;
+          padding: 4px;
+          margin-bottom: 16px;
+          max-width: 320px;
+        }
+
+        .hk-subtab-btn {
+          flex: 1;
+          padding: 10px 16px;
+          border: none;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+          background: transparent;
+          color: var(--text-sub, #64748b);
+        }
+
+        .hk-subtab-btn:hover:not(.active) {
+          background: rgba(99, 102, 241, 0.08);
+          color: var(--text-bold, #1e293b);
+        }
+
+        .hk-subtab-btn.active {
+          background: linear-gradient(135deg, #6366f1, #4f46e5);
+          color: white;
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .hk-subtab-btn.active:first-child {
+          background: var(--gilpin-gold, #c5a065);
+          box-shadow: 0 4px 12px rgba(197, 160, 101, 0.3);
+        }
+
+        @media (max-width: 768px) {
+          .hk-subtab-bar {
+            max-width: none;
+          }
         }
 
         /* Mobile: island stays rounded, just smaller */

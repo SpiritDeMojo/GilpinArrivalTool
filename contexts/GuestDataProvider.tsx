@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import {
     Guest, FilterType, ArrivalSession, PropertyFilter,
-    HKStatus, MaintenanceStatus, GuestStatus,
+    HKStatus, MaintenanceStatus, GuestStatus, TurndownStatus,
     RoomNote, CourtesyCallNote
 } from '../types';
 import type { DashboardView } from '../types';
@@ -58,6 +58,7 @@ export interface GuestDataContextValue {
     isSessionLocked: boolean;
     lockSession: () => void;
     unlockSession: () => void;
+    verifyTurndown: (verifiedBy?: string) => void;
 
     // Department status handlers
     handleUpdateHKStatus: (guestId: string, status: HKStatus) => void;
@@ -70,11 +71,16 @@ export interface GuestDataContextValue {
     handleResolveNote: (guestId: string, noteId: string, resolvedBy: string) => void;
     handleAddCourtesyNote: (guestId: string, note: Omit<CourtesyCallNote, 'id' | 'timestamp'>) => void;
 
+    // Turndown handlers (cross-session)
+    handleUpdateTurndownStatus: (guestId: string, status: TurndownStatus, originSessionId: string) => void;
+    handleUpdateDinnerTime: (guestId: string, dinnerTime: string, originSessionId: string) => void;
+    handleUpdateDinnerVenue: (guestId: string, venue: string, originSessionId: string) => void;
+
     // Notifications
     isMuted: boolean;
     toggleMute: () => void;
     notifications: any[];
-    badges: { housekeeping: number; maintenance: number; reception: number };
+    badges: { housekeeping: number; maintenance: number; frontofhouse: number };
     pushNotification: (notif: any) => void;
     dismissNotification: (id: string) => void;
     clearAllNotifications: () => void;

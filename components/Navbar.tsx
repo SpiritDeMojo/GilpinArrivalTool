@@ -24,19 +24,25 @@ interface NavbarProps {
   onSaveSession?: () => void;
   isSessionLocked?: boolean;
   isSticky?: boolean;
+  onOpenPackages?: () => void;
+  showPackages?: boolean;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
   arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP,
   hasGuests, onAIRefine, onToggleAnalytics, showAnalytics,
-  isMuted, onToggleMute, connectionStatus, onReconnect, onSaveSession, isSessionLocked, isSticky
+  isMuted, onToggleMute, connectionStatus, onReconnect, onSaveSession, isSessionLocked, isSticky,
+  onOpenPackages, showPackages
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDesktopMenuOpen, setIsDesktopMenuOpen] = useState(false);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [isDesktopPrintOpen, setIsDesktopPrintOpen] = useState(false);
   const { userName, department, logout } = useUser();
   const weather = useWeather();
   const isRec = department === 'REC';
   const menuRef = useRef<HTMLDivElement>(null);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<HTMLDivElement>(null);
 
   // Listen for page-change events to spin the globe
@@ -57,7 +63,7 @@ const Navbar: React.FC<NavbarProps> = ({
   // Close menu on route change or escape key
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setIsMenuOpen(false); setIsPrintOpen(false); }
+      if (e.key === 'Escape') { setIsMenuOpen(false); setIsPrintOpen(false); setIsDesktopMenuOpen(false); setIsDesktopPrintOpen(false); }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
@@ -65,9 +71,22 @@ const Navbar: React.FC<NavbarProps> = ({
 
   // Lock body scroll when menu is open
   useEffect(() => {
-    document.body.style.overflow = isMenuOpen ? 'hidden' : '';
+    document.body.style.overflow = (isMenuOpen || isDesktopMenuOpen) ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isDesktopMenuOpen]);
+
+  // Close desktop menu on click outside
+  useEffect(() => {
+    if (!isDesktopMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (desktopMenuRef.current && !desktopMenuRef.current.contains(e.target as Node)) {
+        setIsDesktopMenuOpen(false);
+        setIsDesktopPrintOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isDesktopMenuOpen]);
 
   const closeMenu = () => setIsMenuOpen(false);
 
@@ -142,109 +161,197 @@ const Navbar: React.FC<NavbarProps> = ({
 
       {/* --- Desktop Actions --- */}
       <div className="hidden xl:flex items-center gap-3">
-        <button onClick={toggleTheme} className="nav-action-btn">
-          {isDark ? 'Obsidian' : 'Ivory'}
+        {/* Desktop Hamburger Button */}
+        <button
+          onClick={() => { setIsDesktopMenuOpen(!isDesktopMenuOpen); setIsDesktopPrintOpen(false); }}
+          className={`nav-action-btn nav-action-btn--icon transition-all ${isDesktopMenuOpen ? 'nav-action-btn--active ring-2 ring-[#c5a065]/50' : ''}`}
+          title="Menu"
+          style={{ fontSize: 16 }}
+        >
+          <span className="text-lg leading-none">{isDesktopMenuOpen ? '✕' : '☰'}</span>
         </button>
 
-        <div className="flex gap-2">
-          {hasGuests && (
-            <>
-              {isRec && (
-                <button
-                  onClick={onToggleAnalytics}
-                  className={`nav-action-btn ${showAnalytics ? 'nav-action-btn--active' : ''}`}
-                >
-                  📊 Intelligence
-                </button>
-              )}
+        {/* Manual / SOP — always visible as ❓ */}
+        <button
+          onClick={onOpenSOP}
+          className="nav-action-btn nav-action-btn--icon"
+          title="Titanium Manual"
+          style={{ fontSize: 16 }}
+        >
+          <span className="text-lg leading-none">❓</span>
+        </button>
+      </div>
 
-              {isRec && (
-                <button onClick={onAIRefine} className="nav-action-btn">
-                  ✨ AI Audit
-                </button>
-              )}
+      {/* ===== DESKTOP SLIDE-DOWN MENU ===== */}
+      {isDesktopMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <div className="hidden xl:block fixed inset-0 z-[2998]" style={{ background: 'rgba(0,0,0,0.3)' }} onClick={() => { setIsDesktopMenuOpen(false); setIsDesktopPrintOpen(false); }} />
 
-              {isRec && hasGuests && onSaveSession && (
-                <button
-                  onClick={onSaveSession}
-                  className={`nav-action-btn ${isSessionLocked ? 'nav-action-btn--active' : ''}`}
-                  title={isSessionLocked ? 'Session saved — click to unlock' : 'Save & lock this session'}
-                >
-                  {isSessionLocked ? '🔒 Saved' : '💾 Save'}
-                </button>
-              )}
+          <div ref={desktopMenuRef} className="hidden xl:block fixed right-4 z-[3000]"
+            style={{
+              top: 56,
+              width: 320,
+              background: 'rgba(2, 6, 23, 0.97)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              animation: 'menuSlide 0.2s ease-out',
+              borderRadius: '0 0 16px 16px',
+              border: '1px solid rgba(197,160,101,0.12)',
+              borderTop: 'none',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+            }}
+          >
+            <style>{`
+              @keyframes menuSlide {
+                from { opacity: 0; transform: translateY(-8px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+            `}</style>
 
-              {isRec && (
-                <div className="relative">
-                  <button onClick={() => setIsPrintOpen(!isPrintOpen)} className={`nav-action-btn ${isPrintOpen ? 'nav-action-btn--active' : ''}`}>
-                    🖨️ Print
-                  </button>
-                  {isPrintOpen && (
-                    <div className="absolute right-0 top-full pt-2 z-[2000]">
-                      <div className="bg-white dark:bg-stone-900 border border-[#c5a065]/20 shadow-2xl rounded-xl p-2 w-44">
-                        <button onClick={() => { onPrint('main'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Master List</button>
-                        <button onClick={() => { onPrint('greeter'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">Greeter View</button>
-                        <button onClick={() => { onPrint('inroom'); setIsPrintOpen(false); }} className="w-full text-left p-3 text-[10px] font-black uppercase hover:bg-slate-100 dark:hover:bg-stone-800 rounded-lg">In-Room Assets</button>
+            <div className="p-4 space-y-3">
+              {/* ── GROUP 1: Account ── */}
+              <div className="rounded-2xl border border-slate-700/50 overflow-hidden">
+                <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-4 pt-3 pb-1">Account</p>
+
+                {userName && (
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#c5a065] flex items-center justify-center text-white text-xs font-black">
+                        {userName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-white font-bold text-sm">{userName}</span>
+                        {department && (
+                          <span className="text-[9px] font-black uppercase tracking-wider text-[#c5a065]">
+                            {DEPARTMENT_LABELS[department]}
+                          </span>
+                        )}
                       </div>
                     </div>
+                    <button onClick={() => { logout(); setIsDesktopMenuOpen(false); }}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 text-rose-400 text-[10px] font-black uppercase tracking-wider border border-rose-500/20 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+
+                {/* Theme */}
+                <button onClick={() => { toggleTheme(); setIsDesktopMenuOpen(false); }}
+                  className="flex items-center gap-3 px-4 py-3 text-white font-semibold text-sm border-t border-slate-700/30 hover:bg-white/5 transition-colors w-full text-left cursor-pointer"
+                >
+                  <span className="w-6 text-center">{isDark ? '☀️' : '🌙'}</span>
+                  <span>{isDark ? 'Ivory Mode' : 'Obsidian Mode'}</span>
+                </button>
+
+                {/* Mute */}
+                <button onClick={() => { onToggleMute(); }}
+                  className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm border-t border-slate-700/30 hover:bg-white/5 transition-colors w-full text-left cursor-pointer ${isMuted ? 'text-[#c5a065]' : 'text-white'}`}
+                >
+                  <span className="w-6 text-center">{isMuted ? '🔕' : '🔔'}</span>
+                  <span>{isMuted ? 'Notifications Off' : 'Notifications On'}</span>
+                </button>
+              </div>
+
+              {/* ── GROUP 2: Tools (REC only) ── */}
+              {hasGuests && isRec && (
+                <div className="rounded-2xl border border-slate-700/50 overflow-hidden">
+                  <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-4 pt-3 pb-1">Tools</p>
+
+                  {/* AI Audit */}
+                  <button onClick={() => { onAIRefine(); setIsDesktopMenuOpen(false); }}
+                    className="flex items-center gap-3 px-4 py-3 text-white font-semibold text-sm hover:bg-white/5 transition-colors w-full text-left cursor-pointer"
+                  >
+                    <span className="w-6 text-center">✨</span>
+                    <span>AI Audit</span>
+                  </button>
+
+                  {/* Save / Lock */}
+                  {onSaveSession && (
+                    <button onClick={() => { onSaveSession(); setIsDesktopMenuOpen(false); }}
+                      className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm border-t border-slate-700/30 hover:bg-white/5 transition-colors w-full text-left cursor-pointer ${isSessionLocked ? 'text-[#c5a065]' : 'text-white'}`}
+                    >
+                      <span className="w-6 text-center">{isSessionLocked ? '🔒' : '💾'}</span>
+                      <span>{isSessionLocked ? 'Saved — Click to Unlock' : 'Save & Lock'}</span>
+                    </button>
                   )}
+
+                  {/* Intelligence */}
+                  <button onClick={() => { onToggleAnalytics(); setIsDesktopMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm border-t border-slate-700/30 hover:bg-white/5 transition-colors w-full text-left cursor-pointer ${showAnalytics ? 'text-[#c5a065]' : 'text-white'}`}
+                  >
+                    <span className="w-6 text-center">📊</span>
+                    <span>Intelligence</span>
+                  </button>
+
+                  {/* Print — with sub-menu */}
+                  <div className="border-t border-slate-700/30">
+                    <button onClick={() => setIsDesktopPrintOpen(!isDesktopPrintOpen)}
+                      className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm hover:bg-white/5 transition-colors w-full text-left cursor-pointer ${isDesktopPrintOpen ? 'text-[#c5a065]' : 'text-white'}`}
+                    >
+                      <span className="w-6 text-center">🖨️</span>
+                      <span>Print</span>
+                      <span className="ml-auto text-[10px] text-slate-500">{isDesktopPrintOpen ? '▲' : '▼'}</span>
+                    </button>
+                    {isDesktopPrintOpen && (
+                      <div className="bg-slate-800/50 px-4 py-1">
+                        {(['main', 'greeter', 'inroom'] as const).map(mode => (
+                          <button key={mode}
+                            onClick={() => { onPrint(mode); setIsDesktopMenuOpen(false); setIsDesktopPrintOpen(false); }}
+                            className="w-full text-left py-2.5 text-xs font-bold text-slate-300 hover:text-[#c5a065] transition-colors flex items-center gap-2 cursor-pointer"
+                          >
+                            {mode === 'main' ? '📄 Master List' : mode === 'greeter' ? '👋 Greeter View' : '🛏️ In-Room Delivery'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Excel */}
+                  <button onClick={() => { onExcel(); setIsDesktopMenuOpen(false); }}
+                    className="flex items-center gap-3 px-4 py-3 text-white font-semibold text-sm border-t border-slate-700/30 hover:bg-white/5 transition-colors w-full text-left cursor-pointer"
+                  >
+                    <span className="w-6 text-center">⬇️</span>
+                    <span>Export Excel</span>
+                  </button>
+
+                  {/* New Booking */}
+                  <button onClick={() => { onAddManual(); setIsDesktopMenuOpen(false); }}
+                    className="flex items-center gap-3 px-4 py-3 text-[#c5a065] font-semibold text-sm border-t border-slate-700/30 hover:bg-white/5 transition-colors w-full text-left cursor-pointer"
+                  >
+                    <span className="w-6 text-center">➕</span>
+                    <span>New Booking</span>
+                  </button>
                 </div>
               )}
 
-              {isRec && (
-                <button onClick={onExcel} className="nav-action-btn">⬇️ Excel</button>
-              )}
-              {isRec && (
-                <button onClick={onAddManual} className="nav-action-btn">➕ Add</button>
-              )}
+              {/* ── GROUP 3: Utilities ── */}
+              <div className="rounded-2xl border border-slate-700/50 overflow-hidden">
+                <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-4 pt-3 pb-1">Utilities</p>
 
+                {/* Package Generator */}
+                {isRec && onOpenPackages && (
+                  <button onClick={() => { onOpenPackages(); setIsDesktopMenuOpen(false); }}
+                    className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm hover:bg-white/5 transition-colors w-full text-left cursor-pointer ${showPackages ? 'text-[#c5a065]' : 'text-white'}`}
+                  >
+                    <span className="w-6 text-center">📦</span>
+                    <span>Package Generator</span>
+                  </button>
+                )}
 
-
-
-              <button
-                onClick={onToggleMute}
-                className={`nav-action-btn nav-action-btn--icon ${isMuted ? 'nav-action-btn--active' : ''}`}
-                title={isMuted ? 'Notifications muted' : 'Notifications on'}
-              >
-                <span className="text-lg leading-none">{isMuted ? '🔕' : '🔔'}</span>
-              </button>
-            </>
-          )}
-
-          <button
-            onClick={() => document.getElementById('file-upload-nav')?.click()}
-            className="nav-action-btn nav-action-btn--icon"
-          >
-            <span className="text-lg">📁</span>
-          </button>
-        </div>
-
-        <button onClick={onOpenSOP} className="nav-action-btn nav-action-btn--icon">?</button>
-
-        {/* User Badge with Department */}
-        {userName && (
-          <div className="flex items-center gap-2 ml-1">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#c5a065]/10 border border-[#c5a065]/30">
-              <div className="w-6 h-6 rounded-full bg-[#c5a065] flex items-center justify-center text-white text-[10px] font-black">
-                {userName.charAt(0).toUpperCase()}
+                {/* Upload File */}
+                <button onClick={() => { document.getElementById('file-upload-nav')?.click(); setIsDesktopMenuOpen(false); }}
+                  className="flex items-center gap-3 px-4 py-3 text-white font-semibold text-sm border-t border-slate-700/30 hover:bg-white/5 transition-colors w-full text-left cursor-pointer"
+                >
+                  <span className="w-6 text-center">📁</span>
+                  <span>Upload PDF</span>
+                </button>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider">{userName}</span>
-              {department && (
-                <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-[#c5a065]/20 text-[#c5a065]">
-                  {DEPARTMENT_LABELS[department]}
-                </span>
-              )}
             </div>
-            <button
-              onClick={logout}
-              className="w-7 h-7 rounded-full bg-slate-100 dark:bg-stone-800 flex items-center justify-center text-xs transition-all hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 border border-transparent hover:border-red-300 dark:hover:border-red-800"
-              title="Sign out"
-            >
-              ↪
-            </button>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* ===== MOBILE ACTIONS BAR ===== */}
       <div className="flex xl:hidden items-center gap-1 flex-shrink-0 relative z-[1015]">
@@ -298,12 +405,12 @@ const Navbar: React.FC<NavbarProps> = ({
           </>
         )}
 
-        {/* Manual — standalone icon */}
+        {/* Manual — standalone ❓ icon */}
         <div role="button" onClick={() => { onOpenSOP(); setIsMenuOpen(false); setIsPrintOpen(false); }} style={mobIcon}
           className="rounded-xl flex items-center justify-center transition-all bg-slate-800 active:scale-95"
           title="Titanium Manual"
         >
-          <span className="text-sm leading-none">📖</span>
+          <span className="text-sm leading-none">❓</span>
         </div>
 
         {/* Hamburger */}
@@ -416,8 +523,20 @@ const Navbar: React.FC<NavbarProps> = ({
                   <span className="w-6 text-center">➕</span>
                   <span>New Booking</span>
                 </div>
+
+                {/* Package Generator */}
+                {onOpenPackages && (
+                  <div role="button" onClick={() => { onOpenPackages(); closeMenu(); }} style={{ cursor: 'pointer', minHeight: 'auto' }}
+                    className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm border-t border-slate-700/30 active:bg-white/5 transition-colors ${showPackages ? 'text-[#c5a065]' : 'text-white'}`}
+                  >
+                    <span className="w-6 text-center">📦</span>
+                    <span>Package Generator</span>
+                  </div>
+                )}
               </div>
             )}
+
+
           </div>
         </div>
       )}

@@ -44,15 +44,20 @@ Real-time multi-device synchronisation via Firebase Realtime Database. Upload mu
 | Dashboard | Purpose | Key Features |
 |-----------|---------|--------------|
 | **Reception** | Guest arrival workflow | ETA timeline, check-in flow, guest status management, courtesy call tracking |
-| **Housekeeping** | Room preparation & readiness | Room readiness status, in-room delivery tracking, AI cleaning priority, cross-department notes |
+| **Housekeeping** | Room preparation & readiness | Room readiness status, turndown management, in-room delivery tracking, AI cleaning priority, cross-department notes |
 | **Maintenance** | Room inspection & handoff | Independent maintenance status, cross-department room notes, priority tagging |
+| **Front of House** | Guest presence & service | On-site/off-site tracking, courtesy call logging, guest greeting intelligence |
+| **In House** | Overnight operations | 38-room grid (Main Hotel + Lake House), occupancy stats, room moves, stayover tracking, print reports |
 | **Analytics** | Operational overview | Arrival counts, property breakdown (Main Hotel / Lake House), allergy & VIP tracking |
 
 ### 💬 Real-Time Messenger
 Tabbed chat panel with cross-department Team Chat and AI Live Assistant. Features messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime, and FAB pulse ring for unread messages.
 
 ### 🖨️ Smart Print Layouts
-Three optimised print modes — **Master**, **Greeter**, and **Delivery** — with auto-sizing columns and dense formatting that maximises paper utilisation in landscape orientation.
+Three optimised print modes — **Master**, **Greeter**, and **Delivery** — with auto-sizing columns and dense formatting that maximises paper utilisation in landscape orientation. Plus dedicated **In House Report** and **Turndown List** print layouts.
+
+### 📦 Package Generator
+Bespoke guest itinerary builder with preset templates (Magical Escape, Gilpinmoon), date automation, visual styling (fonts, accent colours, custom logos), direct WYSIWYG editing, formatting toolbar (bold/italic/underline/size), and Save/Load (JSON). Print-ready A4 landscape output.
 
 ### 🔌 Connection Resilience
 Production-hardened reconnection engine with auto-reconnect on background return (`visibilitychange` + `focus`), stale watchdog (30s timeout), and nuclear reconnect (full Firebase SDK teardown/rebuild) for permanently broken mobile WebSockets.
@@ -112,7 +117,7 @@ The interface features a handcrafted animation system designed for a polished, p
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 19 · TypeScript 5.7 · Modular Vanilla CSS (8 files) |
+| **Frontend** | React 19 · TypeScript 5.7 · Modular Vanilla CSS (9 files) |
 | **Build** | Vite 6 |
 | **Animations** | Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes |
 | **Backend** | Vercel Serverless Functions (`/api/gemini-*`) |
@@ -139,7 +144,9 @@ The interface features a handcrafted animation system designed for a polished, p
 - 🛡️ **Defense-in-Depth Sanitisation** — All Firebase write paths sanitise `undefined → null` to prevent RTDB crashes
 - 🔄 **37 Rate Code Variants** — Parser recognises MINIMOON, DBB, BB_2, WIN codes, underscore variants, Lake House prefixes
 - 📦 **13 Package Mappings** — AI audit maps rate codes to human-readable names (Winter Offer, B&B, Room Only, etc.)
-- 🧩 **Modular CSS Architecture** — 8 specialised files (variables, base, animations, navbar, components, responsive, print, barrel) for maintainability
+- 🧩 **Modular CSS Architecture** — 9 specialised files (variables, base, animations, navbar, components, night-manager, responsive, print, barrel) for maintainability
+- 🌙 **In House Dashboard** — Real-time 38-room occupancy grid with arrival/stayover detection, room moves (Firebase sync), car plate tracking, and print report
+- 🏨 **Room 29 (Mint)** — Excluded from all room lists as it is not yet built / in use
 
 ---
 

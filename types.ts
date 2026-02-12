@@ -21,7 +21,7 @@ export const DEPARTMENT_ALIASES: Record<string, Department> = {
 export const DEPARTMENT_LABELS: Record<Department, string> = {
   HK: 'Housekeeping',
   MAIN: 'Maintenance',
-  REC: 'Reception',
+  REC: 'Front of House',
 };
 
 export interface Guest {
@@ -84,6 +84,19 @@ export interface Guest {
   roomStatus?: RoomStatus;
 
   // ==========================================
+  // TURNDOWN FIELDS
+  // ==========================================
+
+  /** Turndown completion status */
+  turndownStatus?: TurndownStatus;
+
+  /** Manual dinner time override (HH:MM or 'none') */
+  dinnerTime?: string;
+
+  /** Dinner venue override */
+  dinnerVenue?: string;
+
+  // ==========================================
   // AUDIT & TRACKING FIELDS
   // ==========================================
 
@@ -143,6 +156,10 @@ export interface ArrivalSession {
   lockedAt?: number;
   /** Who locked/saved this session */
   lockedBy?: string;
+  /** Timestamp when turndown list was verified by reception */
+  turndownVerifiedAt?: number;
+  /** Who verified the turndown list */
+  turndownVerifiedBy?: string;
 }
 
 export interface GlobalAnalyticsData {
@@ -195,13 +212,21 @@ export type MaintenanceStatus =
   | 'complete';         // Maintenance complete
 
 /**
+ * Turndown status (evening room preparation)
+ */
+export type TurndownStatus =
+  | 'not_started'       // Awaiting turndown
+  | 'in_progress'       // Turndown in progress
+  | 'complete';         // Turndown complete
+
+/**
  * Cross-department room note
  */
 export interface RoomNote {
   id: string;
   timestamp: number;
   author: string;
-  department: 'housekeeping' | 'maintenance' | 'reception';
+  department: 'housekeeping' | 'maintenance' | 'frontofhouse';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category: 'issue' | 'info' | 'request' | 'resolved';
   message: string;
@@ -246,7 +271,7 @@ export interface CourtesyCallNote {
 /**
  * Dashboard view type
  */
-export type DashboardView = 'arrivals' | 'housekeeping' | 'maintenance' | 'reception';
+export type DashboardView = 'arrivals' | 'housekeeping' | 'maintenance' | 'frontofhouse' | 'nightmanager' | 'packages';
 
 /**
  * Status update event for real-time sync
@@ -302,6 +327,15 @@ export const HK_STATUS_INFO: Record<HKStatus, { label: string; emoji: string; co
 export const MAINTENANCE_STATUS_INFO: Record<MaintenanceStatus, { label: string; emoji: string; color: string; bgColor: string }> = {
   pending: { label: 'Pending Check', emoji: '🔧', color: '#f59e0b', bgColor: '#fefce8' },
   in_progress: { label: 'In Progress', emoji: '⚙️', color: '#3b82f6', bgColor: '#eff6ff' },
+  complete: { label: 'Complete', emoji: '✅', color: '#22c55e', bgColor: '#f0fdf4' },
+};
+
+/**
+ * Turndown status display info
+ */
+export const TURNDOWN_STATUS_INFO: Record<TurndownStatus, { label: string; emoji: string; color: string; bgColor: string }> = {
+  not_started: { label: 'Not Started', emoji: '🌙', color: '#6366f1', bgColor: '#eef2ff' },
+  in_progress: { label: 'In Progress', emoji: '🧹', color: '#f59e0b', bgColor: '#fefce8' },
   complete: { label: 'Complete', emoji: '✅', color: '#22c55e', bgColor: '#f0fdf4' },
 };
 

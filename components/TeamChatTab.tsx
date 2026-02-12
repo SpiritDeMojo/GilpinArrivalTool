@@ -36,7 +36,7 @@ interface TeamChatTabProps {
 /* ─── Constants ─── */
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🙏'];
 const DEPT_COLORS: Record<string, string> = {
-    reception: '#007aff',
+    frontofhouse: '#007aff',
     housekeeping: '#34c759',
     maintenance: '#ff9500',
     management: '#af52de',
@@ -249,7 +249,7 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                     if (onPushNotification) {
                         onPushNotification({
                             type: 'chat_message',
-                            department: 'reception',
+                            department: 'frontofhouse',
                             room: '',
                             guestName: latest.author,
                             message: latest.text.length > 60 ? latest.text.substring(0, 60) + '…' : latest.text,

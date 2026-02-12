@@ -3,6 +3,10 @@
    Body, typography, scrollbar, focus, transitions
    ============================================== */
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     font-family: var(--font-sans);
     background-color: var(--bg-base);
@@ -13,6 +17,8 @@ body {
     transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     overflow-x: hidden;
     line-height: 1.5;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
 }
 
 .heading-font {

@@ -37,6 +37,8 @@ const SECTIONS = [
   { id: 'sorting', num: '20', icon: '🔀', title: 'Dashboard Sorting' },
   { id: 'ainotes', num: '21', icon: '🧠', title: 'AI Note Placement' },
   { id: 'theming', num: '22', icon: '🎨', title: 'Design & Theming' },
+  { id: 'packages', num: '23', icon: '📦', title: 'Package Generator' },
+  { id: 'nightmgr', num: '24', icon: '🌙', title: 'In House Dashboard' },
 ];
 
 /* ─── Reusable sub-components ─── */
@@ -118,7 +120,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   </h2>
                 </div>
                 <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-                  Standard Operating Procedures • <span className="text-[#c5a065]">v18.0</span>
+                  Standard Operating Procedures • <span className="text-[#c5a065]">v19.0</span>
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -812,12 +814,63 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   </Card>
                 </section>
 
+                {/* ── 23 — PACKAGE GENERATOR ── */}
+                <section id="packages">
+                  <Divider num="23" title="Package Generator" />
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      Create bespoke guest itinerary packages with the built-in Package Generator. Access via <strong>☰ → Package Generator</strong>.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="✨" label="Presets" sub="Choose Magical Escape (3-day), Gilpinmoon (4-day), or start from a blank template." />
+                      <MiniCard icon="👤" label="Guest Info" sub="Enter guest names and room assignment. Changes reflect instantly on the cover page." />
+                      <MiniCard icon="📅" label="Date Automation" sub="Pick a start date — day titles update automatically (Day One · Monday 10 Feb, etc.)." />
+                      <MiniCard icon="🎨" label="Visual Style" sub="Switch fonts (Garamond, Lato, Playfair), pick accent colours, and upload a custom logo." />
+                    </div>
+                    <div style={{ height: 16 }} />
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="✏️" label="Direct Text Editing" sub="Click any text on the A4 preview to edit it directly — guest names, labels, day titles, activities, and even the hotel address." />
+                      <MiniCard icon="🔤" label="Formatting Toolbar" sub="Select text and use Bold (B), Italic (I), Underline (U) buttons. Adjust size with the XS→3XL dropdown. Clear formatting with ✕." />
+                      <MiniCard icon="🖨️" label="Print" sub="Click Print in the toolbar to open a clean A4-landscape print preview. Formatting (bold, italic) is preserved in print output." />
+                      <MiniCard icon="💾" label="Save / Load" sub="Save your itinerary as a JSON file and reload it later. Useful for templates and recurring packages." />
+                    </div>
+                    <div style={{ height: 16 }} />
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="📱" label="Mobile Mode" sub="On portrait mobile, a rotation prompt offers landscape guidance. Tap 'Continue in Portrait' for a responsive editor with a wrapping toolbar and swipeable sidebar overlay." />
+                    </div>
+                    <Tip>All text on the preview sheets is editable. Select text and use the toolbar to apply bold, italic, or underline formatting before printing.</Tip>
+                  </Card>
+                </section>
+
+                {/* ── 24 — NIGHT MANAGER DASHBOARD ── */}
+                <section id="nightmgr">
+                  <Divider num="24" title="In House Dashboard" />
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      The In House Dashboard provides a real-time overview of all 38 rooms (30 Main Hotel + 8 Lake House) with occupancy data, guest details, and operational tools. Access via the <strong>🌙 In House</strong> tab.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="🏨" label="Room Grid" sub="Colour-coded cards: green = arrival, indigo = stayover, dashed = empty. Click any occupied room to expand guest details (flags, car plates, preferences, in-room items)." />
+                      <MiniCard icon="📊" label="Live Stats" sub="Header shows Occupied, Empty, Occupancy %, Guests (pax), and Cars. Property breakdown bars show Main Hotel and Lake House separately." />
+                      <MiniCard icon="🔄" label="Room Move" sub="Click a room → expand details → 🔄 Move Room. Choose an empty room from the picker grid. The move syncs immediately to Firebase and all stats recalculate." />
+                      <MiniCard icon="🖨️" label="Print Report" sub="Click Print Report for a landscape table with Room, Name, Guest, Type, Car, Pax, Dinner, and Flags. Separate sections for Main Hotel and Lake House." />
+                    </div>
+                    <div style={{ height: 16 }} />
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="🚗" label="Car Plates" sub="Registration plates show as monospaced badges. Dark mode uses bright text for visibility. Plates are included in the print report." />
+                      <MiniCard icon="📅" label="Stayover Calculation" sub="Guests who arrived BEFORE today and depart AFTER today are stayovers. Night number (e.g., Night 2/3) is shown. Latest session data takes priority for dedup." />
+                      <MiniCard icon="📱" label="Mobile View" sub="Room cards switch to a horizontal scrollable slider on screens under 768px with scroll-snap for smooth swiping." />
+                    </div>
+                    <Tip>Use the All / Main Hotel / Lake House filter buttons to focus on a specific property. Stats and room count update accordingly.</Tip>
+                  </Card>
+                </section>
+
               </div>
 
               {/* ── FOOTER ── */}
               <div className="bg-slate-100 dark:bg-[#0a0a0a] p-6 md:p-8 text-center border-t border-slate-200 dark:border-[#222]">
                 <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-600 font-mono tracking-widest uppercase">
-                  Gilpin Hotel & Lake House • Standard Operating Procedures • v19.0 • Internal Use Only
+                  Gilpin Hotel & Lake House • Standard Operating Procedures • v20.0 • Internal Use Only
                 </p>
               </div>
             </div>

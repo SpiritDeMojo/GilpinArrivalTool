@@ -46,7 +46,7 @@
 
 /* --- CRITICAL DARK THEME FIX --- */
 [data-theme="dark"] textarea,
-[data-theme="dark"] input,
+[data-theme="dark"] input:not(.pkg-sheet input),
 [data-theme="dark"] select,
 [data-theme="dark"] .guest-row textarea {
     color: var(--text-main);

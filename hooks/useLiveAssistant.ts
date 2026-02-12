@@ -80,7 +80,7 @@ export const useLiveAssistant = ({ guests, onAddRoomNote, onUpdateGuest }: UseLi
           if (guest) {
             onAddRoomNote(guest.id, {
               author: 'AI Assistant',
-              department: noteData.department || 'reception',
+              department: noteData.department || 'frontofhouse',
               priority: noteData.priority || 'medium',
               category: noteData.category || 'request',
               message: noteData.message,

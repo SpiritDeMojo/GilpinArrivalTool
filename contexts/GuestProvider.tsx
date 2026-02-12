@@ -4,7 +4,7 @@ import { useView } from './ViewProvider';
 import { useHotkeys } from './HotkeysProvider';
 import {
     Guest, Flag, FilterType, ArrivalSession, PropertyFilter,
-    HKStatus, MaintenanceStatus, GuestStatus,
+    HKStatus, MaintenanceStatus, GuestStatus, TurndownStatus,
     RoomNote, CourtesyCallNote
 } from '../types';
 import { useGuestManager } from '../hooks/useGuestManager';
@@ -85,12 +85,12 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const {
         guests, filteredGuests, arrivalDateStr, isOldFile, activeFilter, setActiveFilter,
         isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
-        handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest, onExcelExport,
+        handleFileUpload, handleAIRefine, updateGuest, updateGuestInSession, deleteGuest, addManual, duplicateGuest, onExcelExport,
         sessions, activeSessionId, switchSession, deleteSession, createNewSession,
         joinSession,
         firebaseEnabled, connectionStatus,
         shareSession, getShareUrl,
-        isSessionLocked, lockSession, unlockSession,
+        isSessionLocked, lockSession, unlockSession, verifyTurndown,
         manualReconnect
     } = useGuestManager(DEFAULT_FLAGS);
 
@@ -120,7 +120,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const allowed: Record<string, string[]> = {
             HK: ['housekeeping'],
             MAIN: ['maintenance'],
-            REC: ['arrivals', 'housekeeping', 'maintenance', 'reception'],
+            REC: ['arrivals', 'housekeeping', 'maintenance', 'frontofhouse', 'nightmanager', 'packages'],
         };
         if (!allowed[department]?.includes(dashboardView)) {
             setDashboardView(allowed[department][0] as any);
@@ -238,6 +238,30 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             lastStatusUpdatedBy: note.author
         } as Partial<Guest>);
     }, [guests, updateGuest]);
+    // ── Turndown handlers (cross-session) ────────────────────────────────────
+    const handleUpdateTurndownStatus = useCallback((guestId: string, status: TurndownStatus, originSessionId: string) => {
+        updateGuestInSession(originSessionId, guestId, {
+            turndownStatus: status,
+            lastStatusUpdate: Date.now(),
+            lastStatusUpdatedBy: userName || 'User'
+        } as Partial<Guest>);
+    }, [updateGuestInSession, userName]);
+
+    const handleUpdateDinnerTime = useCallback((guestId: string, dinnerTime: string, originSessionId: string) => {
+        updateGuestInSession(originSessionId, guestId, {
+            dinnerTime,
+            lastStatusUpdate: Date.now(),
+            lastStatusUpdatedBy: userName || 'User'
+        } as Partial<Guest>);
+    }, [updateGuestInSession, userName]);
+
+    const handleUpdateDinnerVenue = useCallback((guestId: string, venue: string, originSessionId: string) => {
+        updateGuestInSession(originSessionId, guestId, {
+            dinnerVenue: venue,
+            lastStatusUpdate: Date.now(),
+            lastStatusUpdatedBy: userName || 'User'
+        } as Partial<Guest>);
+    }, [updateGuestInSession, userName]);
 
     // ── AI guest update handler ─────────────────────────────────────────────
     const handleAIUpdateGuest = useCallback((guestId: string, updates: Partial<Guest>) => {
@@ -270,9 +294,10 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest, onExcelExport,
         sessions, activeSessionId, switchSession, deleteSession, createNewSession, joinSession,
         showSessionBrowser,
-        isSessionLocked, lockSession, unlockSession,
+        isSessionLocked, lockSession, unlockSession, verifyTurndown,
         handleUpdateHKStatus, handleUpdateMaintenanceStatus, handleUpdateGuestStatus, handleUpdateInRoomDelivery,
         handleAddRoomNote, handleResolveNote, handleAddCourtesyNote,
+        handleUpdateTurndownStatus, handleUpdateDinnerTime, handleUpdateDinnerVenue,
         isMuted, toggleMute, notifications, badges, pushNotification, dismissNotification, clearAllNotifications, clearBadge,
         isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput, errorMessage, hasMic,
         startLiveAssistant, toggleMic, sendTextMessage, disconnect, clearHistory,
@@ -285,9 +310,10 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest, onExcelExport,
         sessions, activeSessionId, switchSession, deleteSession, createNewSession, joinSession,
         showSessionBrowser,
-        isSessionLocked, lockSession, unlockSession,
+        isSessionLocked, lockSession, unlockSession, verifyTurndown,
         handleUpdateHKStatus, handleUpdateMaintenanceStatus, handleUpdateGuestStatus, handleUpdateInRoomDelivery,
         handleAddRoomNote, handleResolveNote, handleAddCourtesyNote,
+        handleUpdateTurndownStatus, handleUpdateDinnerTime, handleUpdateDinnerVenue,
         isMuted, toggleMute, notifications, badges, pushNotification, dismissNotification, clearAllNotifications, clearBadge,
         isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput, errorMessage, hasMic,
         startLiveAssistant, toggleMic, sendTextMessage, disconnect, clearHistory,

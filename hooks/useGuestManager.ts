@@ -662,6 +662,35 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     }
   };
 
+  /**
+   * Update a guest in ANY session (not just the active one).
+   * Used by Turndown to update stayover guests from prior sessions.
+   */
+  const updateGuestInSession = (sessionId: string, guestId: string, updates: Partial<Guest>) => {
+    // 1. Optimistic local update
+    setSessions(prev =>
+      prev.map(s =>
+        s.id === sessionId
+          ? {
+            ...s,
+            guests: s.guests.map(g =>
+              g.id === guestId ? { ...g, ...updates } : g
+            ),
+            lastModified: Date.now(),
+          }
+          : s
+      )
+    );
+
+    // 2. Atomic Firebase update
+    if (firebaseEnabled) {
+      pendingLocalUpdates.current.add(guestId);
+      updateGuestFields(sessionId, guestId, updates)
+        .catch(err => console.error('Cross-session sync failed for guest', guestId, err))
+        .finally(() => pendingLocalUpdates.current.delete(guestId));
+    }
+  };
+
   const deleteGuest = (id: string) => {
     const newGuests = guests.filter(g => g.id !== id);
     updateActiveSessionGuests(newGuests);
@@ -968,6 +997,24 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     console.log('🔓 Session unlocked:', activeSessionId);
   }, [activeSessionId, firebaseEnabled, sessions, syncInitialUpload]);
 
+  /** Mark the active session's turndown list as verified by reception */
+  const verifyTurndown = useCallback((verifiedBy?: string) => {
+    if (!activeSessionId) return;
+    const now = Date.now();
+    const who = verifiedBy || 'Reception';
+    setSessions(prev => prev.map(s => {
+      if (s.id !== activeSessionId) return s;
+      return { ...s, turndownVerifiedAt: now, turndownVerifiedBy: who, lastModified: now };
+    }));
+    if (firebaseEnabled) {
+      const session = sessions.find(s => s.id === activeSessionId);
+      if (session) {
+        syncInitialUpload({ ...session, turndownVerifiedAt: now, turndownVerifiedBy: who, lastModified: now }, true);
+      }
+    }
+    console.log('✅ Turndown verified by', who);
+  }, [activeSessionId, firebaseEnabled, sessions, syncInitialUpload]);
+
   // ── Manual reconnect (nuclear — full SDK teardown) ──────────────────────
   const manualReconnect = useCallback(async () => {
     // Debounce: prevent rapid re-tapping (15s cooldown)
@@ -1082,7 +1129,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     joinSession,
     guests, filteredGuests, arrivalDateStr, isOldFile, activeFilter, setActiveFilter,
     isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
-    handleFileUpload, handleAIRefine, updateGuest, deleteGuest, addManual, duplicateGuest,
+    handleFileUpload, handleAIRefine, updateGuest, updateGuestInSession, deleteGuest, addManual, duplicateGuest,
     validateETA,
     onExcelExport: () => ExcelService.export(guests),
     // Firebase status
@@ -1095,6 +1142,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     isSessionLocked,
     lockSession,
     unlockSession,
+    verifyTurndown,
     // Manual reconnect
     manualReconnect,
     // PMS integration

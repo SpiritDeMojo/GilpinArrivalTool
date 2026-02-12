@@ -11,7 +11,7 @@ interface ActivityLogPanelProps {
 const DEPARTMENT_COLORS: Record<string, string> = {
     housekeeping: '#3b82f6',
     maintenance: '#f59e0b',
-    reception: '#10b981',
+    frontofhouse: '#10b981',
 };
 
 const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
@@ -37,11 +37,11 @@ const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
                 const fieldToDept: Record<string, string> = {
                     hkStatus: 'housekeeping',
                     maintenanceStatus: 'maintenance',
-                    guestStatus: 'reception',
-                    inRoomDelivered: 'reception',
-                    courtesyCallNotes: 'reception',
+                    guestStatus: 'frontofhouse',
+                    inRoomDelivered: 'frontofhouse',
+                    courtesyCallNotes: 'frontofhouse',
                 };
-                const dept = fieldToDept[entry.field] || 'reception';
+                const dept = fieldToDept[entry.field] || 'frontofhouse';
                 if (dept !== filterDept) return;
             }
             items.push({ id: entry.id, timestamp: entry.timestamp, type: 'audit', data: entry });
@@ -145,7 +145,7 @@ const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
                     flexWrap: 'wrap',
                     borderBottom: '1px solid var(--border-ui, rgba(197,160,101,0.1))',
                 }}>
-                    {['all', 'housekeeping', 'maintenance', 'reception'].map(dept => (
+                    {['all', 'housekeeping', 'maintenance', 'frontofhouse'].map(dept => (
                         <button
                             key={dept}
                             onClick={() => setFilterDept(dept)}
@@ -163,7 +163,7 @@ const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
                                 transition: 'all 0.15s ease',
                             }}
                         >
-                            {dept === 'all' ? '📋 All' : dept === 'housekeeping' ? '🧹 HK' : dept === 'maintenance' ? '🔧 Maint' : '🛎️ Recep'}
+                            {dept === 'all' ? '📋 All' : dept === 'housekeeping' ? '🧹 HK' : dept === 'maintenance' ? '🔧 Maint' : '🛎️ FoH'}
                         </button>
                     ))}
                 </div>
@@ -234,10 +234,10 @@ const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
                                         const fieldToDept: Record<string, string> = {
                                             hkStatus: 'housekeeping',
                                             maintenanceStatus: 'maintenance',
-                                            guestStatus: 'reception',
-                                            inRoomDelivered: 'reception',
+                                            guestStatus: 'frontofhouse',
+                                            inRoomDelivered: 'frontofhouse',
                                         };
-                                        const dept = fieldToDept[entry.field] || 'reception';
+                                        const dept = fieldToDept[entry.field] || 'frontofhouse';
                                         const deptColor = DEPARTMENT_COLORS[dept] || '#64748b';
 
                                         return (

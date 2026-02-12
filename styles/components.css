@@ -636,8 +636,8 @@
    v17.1 PRODUCTION POLISH
    ============================================== */
 
-/* Dark mode: force correct text color on all inputs */
-[data-theme="dark"] input,
+/* Dark mode: force correct text color on all inputs (except Package Generator sheets) */
+[data-theme="dark"] input:not(.pkg-sheet input),
 [data-theme="dark"] textarea,
 [data-theme="dark"] select {
     color: #f5f5f4;

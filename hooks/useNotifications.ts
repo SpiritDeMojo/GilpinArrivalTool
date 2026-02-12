@@ -6,7 +6,7 @@ import { Guest, DashboardView, HK_STATUS_INFO, MAINTENANCE_STATUS_INFO, GUEST_ST
 export interface AppNotification {
     id: string;
     type: 'hk_status' | 'maint_status' | 'guest_status' | 'room_note' | 'room_ready' | 'chat_message';
-    department: 'housekeeping' | 'maintenance' | 'reception';
+    department: 'housekeeping' | 'maintenance' | 'frontofhouse';
     room: string;
     guestName: string;
     message: string;
@@ -20,7 +20,7 @@ export interface AppNotification {
 export interface DepartmentBadges {
     housekeeping: number;
     maintenance: number;
-    reception: number;
+    frontofhouse: number;
 }
 
 // === Web Audio API Sound Generation ===
@@ -107,7 +107,7 @@ const AUTO_DISMISS_MS = 8000;
 export const useNotifications = (guests: Guest[]) => {
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('notifMuted') === 'true');
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
-    const [badges, setBadges] = useState<DepartmentBadges>({ housekeeping: 0, maintenance: 0, reception: 0 });
+    const [badges, setBadges] = useState<DepartmentBadges>({ housekeeping: 0, maintenance: 0, frontofhouse: 0 });
     const prevGuestsRef = useRef<Map<string, Guest>>(new Map());
     const isInitializedRef = useRef(false);
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -138,7 +138,7 @@ export const useNotifications = (guests: Guest[]) => {
             for (const tab of notif.badgeTabs) {
                 if (tab === 'housekeeping') next.housekeeping++;
                 if (tab === 'maintenance') next.maintenance++;
-                if (tab === 'reception') next.reception++;
+                if (tab === 'frontofhouse') next.frontofhouse++;
             }
             return next;
         });
@@ -173,7 +173,7 @@ export const useNotifications = (guests: Guest[]) => {
         setBadges(prev => {
             if (view === 'housekeeping') return { ...prev, housekeeping: 0 };
             if (view === 'maintenance') return { ...prev, maintenance: 0 };
-            if (view === 'reception') return { ...prev, reception: 0 };
+            if (view === 'frontofhouse') return { ...prev, frontofhouse: 0 };
             return prev;
         });
     }, []);
@@ -228,7 +228,7 @@ export const useNotifications = (guests: Guest[]) => {
                         message: `${rm} → ${info.label}`,
                         emoji: info.emoji,
                         color: info.color,
-                        badgeTabs: ['housekeeping', 'reception'],
+                        badgeTabs: ['housekeeping', 'frontofhouse'],
                     });
                     if (!playedChime) { playTone('chime'); playedChime = true; }
                 }
@@ -244,7 +244,7 @@ export const useNotifications = (guests: Guest[]) => {
                         message: `${rm} → ${info.label}`,
                         emoji: info.emoji,
                         color: info.color,
-                        badgeTabs: ['maintenance', 'reception'],
+                        badgeTabs: ['maintenance', 'frontofhouse'],
                     });
                     if (!playedChime) { playTone('chime'); playedChime = true; }
                 }
@@ -257,25 +257,25 @@ export const useNotifications = (guests: Guest[]) => {
                         if (guest.guestStatus === 'on_site') {
                             pushNotification({
                                 type: 'guest_status',
-                                department: 'reception',
+                                department: 'frontofhouse',
                                 room: guest.room,
                                 guestName: guest.name,
                                 message: `${rm} Guest Arrived`,
                                 emoji: '🚗',
                                 color: '#3b82f6',
-                                badgeTabs: ['reception'],
+                                badgeTabs: ['frontofhouse'],
                             });
                             if (!playedDoorbell) { playTone('doorbell'); playedDoorbell = true; }
                         } else if (guest.guestStatus === 'checked_in') {
                             pushNotification({
                                 type: 'guest_status',
-                                department: 'reception',
+                                department: 'frontofhouse',
                                 room: guest.room,
                                 guestName: guest.name,
                                 message: `${rm} Checked In`,
                                 emoji: '🔑',
                                 color: '#22c55e',
-                                badgeTabs: ['reception'],
+                                badgeTabs: ['frontofhouse'],
                             });
                             if (!playedChime) { playTone('chime'); playedChime = true; }
                         }
@@ -286,13 +286,13 @@ export const useNotifications = (guests: Guest[]) => {
                 if (!isRoomReady(old) && isRoomReady(guest)) {
                     pushNotification({
                         type: 'room_ready',
-                        department: 'reception',
+                        department: 'frontofhouse',
                         room: guest.room,
                         guestName: guest.name,
                         message: `${rm} Ready!`,
                         emoji: '✅',
                         color: '#10b981',
-                        badgeTabs: ['reception', 'housekeeping'],
+                        badgeTabs: ['frontofhouse', 'housekeeping'],
                     });
                     if (!playedChime) { playTone('chime'); playedChime = true; }
                 }

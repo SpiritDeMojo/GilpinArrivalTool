@@ -176,7 +176,7 @@ export default function LoginScreen() {
   const departments: { code: Department; label: string; icon: string; desc: string }[] = [
     { code: 'HK', label: 'Housekeeping', icon: '🧹', desc: 'Room cleaning & prep' },
     { code: 'MAIN', label: 'Maintenance', icon: '🔧', desc: 'Repairs & upkeep' },
-    { code: 'REC', label: 'Reception', icon: '🛎️', desc: 'Full access' },
+    { code: 'REC', label: 'Front of House', icon: '🛎️', desc: 'Full access — all departments' },
   ];
 
   return (

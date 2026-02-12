@@ -15,7 +15,7 @@ function departmentToView(dept: AppNotification['department']): DashboardView {
     switch (dept) {
         case 'housekeeping': return 'housekeeping';
         case 'maintenance': return 'maintenance';
-        case 'reception': return 'reception';
+        case 'frontofhouse': return 'frontofhouse';
     }
 }
 
@@ -23,7 +23,7 @@ function departmentToView(dept: AppNotification['department']): DashboardView {
 const DEPT_CONFIG: Record<AppNotification['department'], { label: string; iconColor: string }> = {
     housekeeping: { label: 'Housekeeping', iconColor: '#22c55e' },
     maintenance: { label: 'Maintenance', iconColor: '#f59e0b' },
-    reception: { label: 'Reception', iconColor: '#3b82f6' },
+    frontofhouse: { label: 'Front of House', iconColor: '#3b82f6' },
 };
 
 /* ── Toast animation variants ── */

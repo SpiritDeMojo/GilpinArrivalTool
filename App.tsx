@@ -12,6 +12,7 @@ import Navbar from './components/Navbar';
 import UnifiedChatPanel from './components/UnifiedChatPanel';
 import LoadingHub from './components/LoadingHub';
 import { PrintLayout } from './components/PrintLayout';
+import ItineraryQueue from './components/ItineraryQueue';
 const SOPModal = React.lazy(() => import('./components/SOPModal'));
 import SessionBrowser from './components/SessionBrowser';
 import NotificationToast from './components/NotificationToast';
@@ -36,6 +37,7 @@ const App: React.FC = () => {
     isProcessing, progressMsg, currentBatch, totalBatches, auditPhase, auditGuestNames,
     handleFileUpload, handleAIRefine, addManual, onExcelExport,
     activeSessionId, joinSession, createNewSession,
+    sessions,
     connectionStatus, manualReconnect,
     isSessionLocked, lockSession, unlockSession,
     isMuted, toggleMute, notifications, pushNotification, dismissNotification, clearAllNotifications, clearBadge,
@@ -52,7 +54,11 @@ const App: React.FC = () => {
   const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
   const chatLastCountRef = useRef(0);
   const chatInitializedRef = useRef(false);
-  const deptMapped = department === 'HK' ? 'housekeeping' : department === 'MAIN' ? 'maintenance' : 'reception';
+  const deptMapped = department === 'HK' ? 'housekeeping' : department === 'MAIN' ? 'maintenance' : 'frontofhouse';
+
+  // Itinerary queue state (triggered after save session)
+  const [showItineraryQueue, setShowItineraryQueue] = useState(false);
+  const activeSession = sessions?.find(s => s.id === activeSessionId) || null;
 
   useEffect(() => {
     if (!activeSessionId) return;
@@ -95,7 +101,7 @@ const App: React.FC = () => {
           }
           // In-app toast
           pushNotification({
-            type: 'chat_message', department: 'reception', room: '',
+            type: 'chat_message', department: 'frontofhouse', room: '',
             guestName: latest.author,
             message: latest.text.length > 60 ? latest.text.substring(0, 60) + '…' : latest.text,
             emoji: '💬', color: '#c5a065', badgeTabs: [],
@@ -120,7 +126,7 @@ const App: React.FC = () => {
   // ── Route sync: URL tab → dashboardView ───────────────────────────────
   // Only sync when URL actually changes (e.g. back/forward navigation).
   // dashboardView is NOT a dependency — prevents circular loop with Effect 2.
-  const validTabs: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'reception'];
+  const validTabs: DashboardView[] = ['arrivals', 'housekeeping', 'maintenance', 'frontofhouse', 'nightmanager', 'packages'];
   useEffect(() => {
     if (urlTab && validTabs.includes(urlTab as DashboardView)) {
       setDashboardView(urlTab as DashboardView);
@@ -188,10 +194,21 @@ const App: React.FC = () => {
             }
           } else {
             lockSession();
+            // After saving, check for package guests needing itineraries
+            const packageCodes = /^(MIN|MAG|LHMAG)/i;
+            const packageGuests = guests.filter(g => packageCodes.test(g.rateCode || ''));
+            if (packageGuests.length > 0) {
+              setShowItineraryQueue(true);
+            }
           }
         }}
         isSessionLocked={isSessionLocked}
         isSticky={isSticky}
+        onOpenPackages={() => {
+          setDashboardView('packages');
+          if (activeSessionId) navigate(`/session/${activeSessionId}/packages`, { replace: true });
+        }}
+        showPackages={dashboardView === 'packages'}
       />
 
       {/* Notification Toast Overlay */}
@@ -260,8 +277,17 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Mobile Debug Overlay — ?debug=1 or long-press connection dot */}
+      {/* Mobile Debug Overlay  ?debug=1 or long-press connection dot */}
       <MobileDebugOverlay connectionStatus={connectionStatus} />
+
+      {/* Itinerary Queue Modal  triggered after save for package guests */}
+      {showItineraryQueue && (
+        <ItineraryQueue
+          guests={guests}
+          session={activeSession}
+          onClose={() => setShowItineraryQueue(false)}
+        />
+      )}
     </div>
   );
 };
