@@ -155,6 +155,12 @@ export interface Guest {
 
   /** Previous stay history */
   stayHistory?: { arrival: string; departure: string; room: string }[];
+
+  /** Dinner time extracted from facilities (e.g. "19:30") */
+  dinnerTime?: string;
+
+  /** Dinner venue extracted from facilities (e.g. "Gilpin Spice") */
+  dinnerVenue?: string;
 }
 
 export interface ArrivalSession {

@@ -842,6 +842,46 @@ export const useGuestManager = (initialFlags: Flag[]) => {
             }
           });
 
+          // ── POST-PROCESSING: Validate AI output against source data ──
+          // Prevent fabrication by checking that AI-generated values exist in raw text
+          refinements.forEach((ref: any, idx: number) => {
+            const original = currentBatchGuests[idx];
+            if (!original) return;
+            const rawLower = (original.rawHtml || '').toLowerCase();
+
+            // Car validation: if AI returns a car reg, verify it exists in the raw text
+            if (ref.car && ref.car.trim()) {
+              const carClean = ref.car.replace(/\s/g, '').toUpperCase();
+              const rawUpper = (original.rawHtml || '').toUpperCase().replace(/\s/g, '');
+              // Check if the car reg (without spaces) appears in the raw text (without spaces)
+              if (!rawUpper.includes(carClean) && carClean.length > 0) {
+                console.warn(`[AI Audit] FABRICATION DETECTED: Car "${ref.car}" not found in raw text for ${original.name} — discarding`);
+                ref.car = '';
+              }
+            }
+
+            // History validation: if AI says "Yes" but no loyalty markers in raw text
+            if (ref.history && ref.history.toLowerCase().startsWith('yes')) {
+              const hasLoyaltyMarker = rawLower.includes('been before') ||
+                rawLower.includes('_stayed') || rawLower.includes('_regular') ||
+                rawLower.includes('previous stays');
+              if (!hasLoyaltyMarker) {
+                console.warn(`[AI Audit] FABRICATION DETECTED: History "${ref.history}" but no loyalty markers in raw text for ${original.name} — using parser value`);
+                ref.history = original.ll || 'No';
+              }
+            }
+
+            // Facilities validation: if AI returns facilities but no facility keywords in raw text
+            if (ref.facilities && ref.facilities.trim()) {
+              const hasFacilityKeyword = /\/(spice|source|the lake house|gh\s*pure|spa|massage|aromatherapy|treatments|bento|tea|pure)/i.test(original.rawHtml || '') ||
+                /dinner\s+for\s+\d|spa\s+in-room|champagne\s+on|facility\s+booking/i.test(rawLower);
+              if (!hasFacilityKeyword) {
+                console.warn(`[AI Audit] FABRICATION DETECTED: Facilities "${ref.facilities.substring(0, 50)}" but no facility keywords in raw text for ${original.name} — discarding`);
+                ref.facilities = '';
+              }
+            }
+          });
+
           setAuditPhase('applying');
           setProgressMsg('APPLYING RESULTS...');
           console.log('[AI Audit] Got refinements:', refinements.length, 'results');

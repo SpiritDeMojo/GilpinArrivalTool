@@ -64,6 +64,11 @@ export class GeminiService {
             smokingPreference: g.smokingPreference,
             billingMethod: g.billingMethod,
             inRoomItems: g.inRoomItems,
+            // Parser-extracted fields — AI uses these as baseline, not guessing
+            car: g.car || '',
+            facilities: g.facilities || '',
+            dinnerTime: (g as any).dinnerTime || '',
+            dinnerVenue: (g as any).dinnerVenue || '',
           }))
         })
       });

@@ -45,8 +45,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ai = new GoogleGenAI({ apiKey });
         const modelName = 'gemini-2.0-flash';
 
-        const systemInstruction = `**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v7.0).
+        const systemInstruction = `**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v8.0).
 **MISSION:** Extract EVERY operational detail. If a detail is in the text, it MUST appear in the output. Do not summarize away important nuances.
+
+### 🚫 ANTI-FABRICATION RULES (CRITICAL — READ FIRST)
+* **NEVER fabricate, invent, or hallucinate information.** If a data point is NOT explicitly present in the raw text, return an **empty string ""** for that field.
+* **Car Registration:** Return "" if no vehicle registration plate is found in the raw text. Never guess or invent a plate number. Internal codes (JS, SL, MAG, GRP, DEF, etc.) are NOT car plates.
+* **History/L&L:** Return "No" unless the text explicitly contains "Been Before: Yes", "_Stayed", "_Regular", or "Previous Stays" data. Never assume loyalty.
+* **Facilities:** Return "" if no facility bookings (Spice, Source, Spa, Afternoon Tea, etc.) appear in the text. Never invent dining or spa bookings.
+* **In-Room Items:** Only list items that are explicitly mentioned in the text (e.g. "In Room on Arrival: Champagne, Ice Bucket"). If the parser has pre-extracted items, enhance them — do NOT discard and replace with guesses.
+* **Preferences:** Return "" if no special requests or greeting notes are found. Never invent preferences.
+* This rule applies to ALL fields. When in doubt, return empty rather than guessing.
+
+### 📊 OUTPUT COUNT REQUIREMENT
+* You MUST return EXACTLY one result per guest, in the SAME ORDER as the input.
+* The number of results MUST EQUAL the number of guests provided.
+* Do NOT skip any guest. If a guest has minimal data, still return their entry with empty fields.
 
 ### 0. 📊 STRUCTURED DATA (Pre-Parsed by System)
 Each guest may include pre-parsed structured fields alongside rawHtml. USE THESE for accuracy:
@@ -126,14 +140,19 @@ Each guest may include pre-parsed structured fields alongside rawHtml. USE THESE
 
 **F. history (Loyalty Tracker)**
 * **FORMAT:** "Yes (x[Count])", "Yes", or "No".
+* **RULE:** Return "No" if there is NO "Been Before" field, NO "_Stayed" marker, and NO "Previous Stays" section. Never assume or fabricate loyalty status.
 
 **G. car (Vehicle Registration)**
 * **GOAL:** Extract the guest's vehicle registration / number plate from the raw text.
 * **UK FORMATS:** New (AB12 CDE), Prefix (A123 BCD, M88 HCT), Numeric (30 BHJ), Short (LN75).
 * **RULES:** Strip any leading * characters (PMS marker). Return empty string "" if no plate found. Do NOT return internal codes (JS, SL, MAG, GRP, etc.).
+* **CRITICAL:** If the parser already extracted a car reg (provided as PARSER_CAR), use that value. Only fill this if you find a plate the parser missed.
 
 ### 4. OUTPUT REQUIREMENTS
-Return a raw JSON array of objects. No markdown.
+* Return a raw JSON array of objects. No markdown.
+* You MUST return EXACTLY one object per guest provided, in the same order.
+* For any field where information is not found in the source text, use empty string "".
+* NEVER pad results with fabricated data to fill empty fields.
 `;
 
         const guestDataPayload = guests.map((g: any, i: number) => {
@@ -146,6 +165,10 @@ Return a raw JSON array of objects. No markdown.
             if (g.smokingPreference) structured += ` | SMOKING: ${g.smokingPreference}`;
             if (g.billingMethod) structured += ` | BILLING: ${g.billingMethod}`;
             if (g.inRoomItems) structured += `\nIN-ROOM ITEMS (Parser): ${g.inRoomItems}`;
+            if (g.car) structured += `\nPARSER_CAR: ${g.car}`;
+            if (g.facilities) structured += `\nPARSER_FACILITIES: ${g.facilities}`;
+            if (g.dinnerTime) structured += `\nPARSER_DINNER_TIME: ${g.dinnerTime}`;
+            if (g.dinnerVenue) structured += `\nPARSER_DINNER_VENUE: ${g.dinnerVenue}`;
             structured += `\nRAW: ${g.rawHtml}`;
             return structured;
         }).join("\n\n");

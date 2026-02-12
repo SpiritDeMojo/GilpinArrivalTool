@@ -362,6 +362,31 @@ export class PDFService {
     const allFacilityText = [...facilityMatches, ...standaloneFacilities.map(s => `/${s}`)].join(" ");
     const facilitiesFormatted = this.formatFacilities(allFacilityText);
 
+    // --- 3.1 DINNER TIME & VENUE EXTRACTION ---
+    // Extract from standalone "Dinner for N on DD/MM at HH:MM in VENUE" patterns
+    let dinnerTime = "";
+    let dinnerVenue = "";
+    for (const line of rawTextLines) {
+      const ddMatch = line.match(/Dinner\s+for\s+\d+\s+on\s+[\d/]+\s+at\s+(\d{1,2}[.:,]\d{2})\s+in\s+(.+)/i);
+      if (ddMatch) {
+        dinnerTime = this.parseTimeString(ddMatch[1].replace(/[.,]/g, ':'));
+        dinnerVenue = ddMatch[2].trim().replace(/\s+/g, ' ');
+        break;
+      }
+    }
+    // Fallback: extract from /Spice or /Source facility matches
+    if (!dinnerTime) {
+      for (const m of facilityMatches) {
+        const timeM = m.match(/(\d{1,2}[.:,]\d{2})/i);
+        if (timeM && /spice|source|dinner/i.test(m)) {
+          dinnerTime = this.parseTimeString(timeM[1].replace(/[.,]/g, ':'));
+          if (/spice/i.test(m)) dinnerVenue = 'Gilpin Spice';
+          else if (/source/i.test(m)) dinnerVenue = 'Source';
+          break;
+        }
+      }
+    }
+
     // --- 4. CAR REGISTRATION (Position-Based + Regex) ---
     // Strategy: Use the detected column header x-position to precisely locate car reg text.
     // Falls back to x > 480 if no column header was found.
@@ -747,6 +772,8 @@ export class PDFService {
       ...(billingMethod ? { billingMethod } : {}),
       ...(stayHistory.length > 0 ? { stayHistory } : {}),
       ...(stayHistoryCount != null ? { stayHistoryCount } : {}),
+      ...(dinnerTime ? { dinnerTime } : {}),
+      ...(dinnerVenue ? { dinnerVenue } : {}),
     };
   }
 }
