@@ -60,7 +60,8 @@ LAKE HOUSE:
 3. Never cross between Main Hotel and Lake House properties
 4. Never downgrade — only upgrade
 5. Maximum 5 suggestions per batch
-6. Be conservative — only suggest upgrades that genuinely make strategic sense
+6. **NEVER suggest the same room for more than one guest** — each empty room may appear in AT MOST one suggestion
+7. Be conservative — only suggest upgrades that genuinely make strategic sense
 
 **UPGRADE CRITERIA (in priority order):**
 1. **Returning guests** (L&L = "Yes") — reward loyalty with a comp upgrade
@@ -119,7 +120,21 @@ LAKE HOUSE:
                     .replace(/\s*```$/, '')
                     .trim();
                 const data = JSON.parse(clean || '[]');
-                return res.status(200).json(data);
+
+                // ── Post-processing: deduplicate rooms ──
+                // If the AI suggests the same room for multiple guests,
+                // keep only the first (highest-priority) suggestion per room.
+                const seenRooms = new Set<number>();
+                const emptyRoomNumbers = new Set(emptyRooms.map((r: any) => r.number));
+                const deduped = data.filter((s: any) => {
+                    const roomNum = typeof s.suggestedRoom === 'number' ? s.suggestedRoom : parseInt(s.suggestedRoom, 10);
+                    // Exclude if room not actually empty or already used
+                    if (!emptyRoomNumbers.has(roomNum) || seenRooms.has(roomNum)) return false;
+                    seenRooms.add(roomNum);
+                    return true;
+                });
+
+                return res.status(200).json(deduped);
             } catch (error: unknown) {
                 const err = error as Record<string, any>;
                 const msg = err?.message?.toLowerCase?.() || '';
