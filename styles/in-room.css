@@ -490,3 +490,41 @@
 }
 [data-theme="dark"] .nm-ev-toggle { color: #4ade80; }
 [data-theme="dark"] .nm-ev-badge { color: #4ade80; }
+
+/* EV Charging Section */
+.nm-ev-section {
+  margin-top: 8px; padding: 8px; border-radius: 10px;
+  background: rgba(34,197,94,0.04); border: 1px solid rgba(34,197,94,0.1);
+}
+
+/* Request Charging Button */
+.nm-ev-request {
+  padding: 6px 14px; border-radius: 8px;
+  background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2);
+  color: #f59e0b; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; flex: 1;
+  white-space: nowrap;
+}
+.nm-ev-request:hover {
+  background: rgba(245,158,11,0.15); transform: translateY(-1px);
+}
+.nm-ev-request.active {
+  background: rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.4);
+  box-shadow: 0 0 8px rgba(245,158,11,0.15); color: #f59e0b;
+}
+[data-theme="dark"] .nm-ev-request { color: #fbbf24; }
+
+/* Queue Position Badge */
+.nm-ev-queue-pos {
+  margin-top: 6px; padding: 4px 10px; border-radius: 6px;
+  background: rgba(245,158,11,0.06); border: 1px dashed rgba(245,158,11,0.2);
+  font-size: 10px; color: #92400e; font-weight: 600;
+  text-align: center;
+}
+[data-theme="dark"] .nm-ev-queue-pos { color: #fde68a; }
+
+/* Charge Requested Badge on collapsed card */
+.nm-charge-badge {
+  font-size: 10px; color: #f59e0b; margin-left: 4px;
+}
+[data-theme="dark"] .nm-charge-badge { color: #fbbf24; }

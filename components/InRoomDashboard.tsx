@@ -388,6 +388,7 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
               <div className="nm-car">
                 <span className="nm-car-plate">🚗 {occ.guest.car}</span>
                 {occ.guest.carOnCharge && <span className="nm-ev-badge" title="EV Charging">⚡</span>}
+                {occ.guest.chargeRequested && !occ.guest.carOnCharge && <span className="nm-charge-badge" title="Charging Requested">🔔</span>}
               </div>
             )}
 
@@ -447,22 +448,62 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
                       <span className="nm-detail-value">{occ.guest.duration}</span>
                     </div>
                   )}
+                  {/* EV Charging & Request */}
+                  {hasCar && (
+                    <div className="nm-ev-section">
+                      <div className="nm-action-row">
+                        <button
+                          className={`nm-ev-toggle ${occ.guest.carOnCharge ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const goingOnCharge = !occ.guest.carOnCharge;
+                            updateGuest(occ.guest.id, {
+                              carOnCharge: goingOnCharge,
+                              carOnChargeAt: goingOnCharge ? Date.now() : undefined,
+                              // Clear request when plugging in or unplugging
+                              chargeRequested: goingOnCharge ? false : occ.guest.chargeRequested,
+                              chargeRequestedAt: goingOnCharge ? undefined : occ.guest.chargeRequestedAt,
+                            });
+                          }}
+                        >
+                          ⚡ {occ.guest.carOnCharge ? 'Unplug' : 'Plug In'}
+                        </button>
+                        {!occ.guest.carOnCharge && (
+                          <button
+                            className={`nm-ev-request ${occ.guest.chargeRequested ? 'active' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const requesting = !occ.guest.chargeRequested;
+                              updateGuest(occ.guest.id, {
+                                chargeRequested: requesting,
+                                chargeRequestedAt: requesting ? Date.now() : undefined,
+                              });
+                            }}
+                          >
+                            {occ.guest.chargeRequested ? '🔔 Requested' : '🔋 Request Charging'}
+                          </button>
+                        )}
+                      </div>
+                      {occ.guest.chargeRequested && !occ.guest.carOnCharge && (() => {
+                        // Calculate queue position (FCFS by chargeRequestedAt)
+                        const queueEntries: { name: string; requestedAt: number }[] = [];
+                        occupancyMap.forEach(({ guest: g }) => {
+                          if (g.chargeRequested && !g.carOnCharge && g.chargeRequestedAt) {
+                            queueEntries.push({ name: g.name, requestedAt: g.chargeRequestedAt });
+                          }
+                        });
+                        queueEntries.sort((a, b) => a.requestedAt - b.requestedAt);
+                        const pos = queueEntries.findIndex(q => q.name === occ.guest.name) + 1;
+                        return (
+                          <div className="nm-ev-queue-pos">
+                            🔢 Queue position: <strong>#{pos}</strong> of {queueEntries.length}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                   {/* Room Move Button */}
                   <div className="nm-action-row">
-                    {hasCar && (
-                      <button
-                        className={`nm-ev-toggle ${occ.guest.carOnCharge ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateGuest(occ.guest.id, {
-                            carOnCharge: !occ.guest.carOnCharge,
-                            carOnChargeAt: !occ.guest.carOnCharge ? Date.now() : undefined,
-                          });
-                        }}
-                      >
-                        ⚡ {occ.guest.carOnCharge ? 'On Charge' : 'Plug In'}
-                      </button>
-                    )}
                     <button
                       className="nm-move-btn"
                       onClick={(e) => {
@@ -724,7 +765,7 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Styles in styles/night-manager.css */}
+      {/* Styles in styles/in-room.css */}
     </div>
   );
 };

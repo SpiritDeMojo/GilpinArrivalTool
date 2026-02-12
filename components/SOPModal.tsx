@@ -882,7 +882,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                       <MiniCard icon="🔋" label="EV Badge" sub="A ⚡ badge appears on room cards when a car is on charge. Visible at a glance across the room grid." />
                       <MiniCard icon="📊" label="Charging Stats" sub="The header stat bar shows total cars currently on charge. Filtered by property (Main Hotel / Lake House)." />
                     </div>
-                    <Tip>Night managers can use this to track EV bay usage and ensure cars are rotated overnight.</Tip>
+                    <Tip>Staff can use the In Room dashboard to track EV bay usage and ensure cars are rotated overnight.</Tip>
                   </Card>
                 </section>
 

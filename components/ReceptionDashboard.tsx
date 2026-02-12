@@ -16,6 +16,7 @@ interface ReceptionDashboardProps {
   onUpdateGuestStatus: (guestId: string, status: GuestStatus) => void;
   onUpdateInRoomDelivery: (guestId: string, delivered: boolean) => void;
   onAddCourtesyNote: (guestId: string, note: Omit<CourtesyCallNote, 'id' | 'timestamp'>) => void;
+  onUpdateGuest?: (id: string, updates: Partial<Guest>) => void;
   onViewAuditLog?: (guest: Guest) => void;
 }
 
@@ -26,6 +27,7 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
   onUpdateGuestStatus,
   onUpdateInRoomDelivery,
   onAddCourtesyNote,
+  onUpdateGuest,
   onViewAuditLog
 }) => {
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
@@ -112,6 +114,9 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
       'checked_in': { label: 'Courtesy Due', next: 'courtesy_call_due', icon: '📞' },
       'courtesy_call_due': null,
       'call_complete': null,
+      'checked_out': null,
+      'no_show': null,
+      'cancelled': null,
     };
     return actions[status];
   };
@@ -367,6 +372,49 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Car & EV Charging */}
+                {guest.car?.trim() && (
+                  <div className="rx-ev-section">
+                    <div className="rx-car-info">
+                      <span className="rx-car-plate">🚗 {guest.car}</span>
+                      {guest.carOnCharge && <span className="rx-ev-badge">⚡ On Charge</span>}
+                      {guest.chargeRequested && !guest.carOnCharge && <span className="rx-charge-badge">🔔 Charge Requested</span>}
+                    </div>
+                    {onUpdateGuest && (
+                      <div className="rx-ev-actions">
+                        <button
+                          className={`rx-ev-btn ${guest.carOnCharge ? 'active' : ''}`}
+                          onClick={() => {
+                            const goingOnCharge = !guest.carOnCharge;
+                            onUpdateGuest(guest.id, {
+                              carOnCharge: goingOnCharge,
+                              carOnChargeAt: goingOnCharge ? Date.now() : undefined,
+                              chargeRequested: goingOnCharge ? false : guest.chargeRequested,
+                              chargeRequestedAt: goingOnCharge ? undefined : guest.chargeRequestedAt,
+                            });
+                          }}
+                        >
+                          ⚡ {guest.carOnCharge ? 'Unplug' : 'Plug In'}
+                        </button>
+                        {!guest.carOnCharge && (
+                          <button
+                            className={`rx-ev-request ${guest.chargeRequested ? 'active' : ''}`}
+                            onClick={() => {
+                              const requesting = !guest.chargeRequested;
+                              onUpdateGuest(guest.id, {
+                                chargeRequested: requesting,
+                                chargeRequestedAt: requesting ? Date.now() : undefined,
+                              });
+                            }}
+                          >
+                            {guest.chargeRequested ? '🔔 Requested' : '🔋 Request Charging'}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -820,6 +868,60 @@ const ReceptionDashboard: React.FC<ReceptionDashboardProps> = ({
         .note-icon { font-size: 20px; }
         .note-content p { margin: 0; font-size: 13px; color: var(--text-bold); }
         .note-meta { font-size: 11px; color: var(--text-sub); display: block; margin-top: 4px; }
+
+        /* EV Charging Section */
+        .rx-ev-section {
+          background: rgba(34,197,94,0.04); border: 1px solid rgba(34,197,94,0.12);
+          border-radius: 12px; padding: 12px; margin-bottom: 16px;
+        }
+        [data-theme="dark"] .rx-ev-section { background: rgba(34,197,94,0.06); }
+
+        .rx-car-info {
+          display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;
+        }
+        .rx-car-plate {
+          padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;
+          background: rgba(0,0,0,0.05); border: 1px solid var(--border-color);
+        }
+        [data-theme="dark"] .rx-car-plate { background: rgba(255,255,255,0.06); }
+
+        .rx-ev-badge {
+          padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
+          background: rgba(34,197,94,0.15); color: #16a34a;
+        }
+        [data-theme="dark"] .rx-ev-badge { color: #4ade80; }
+
+        .rx-charge-badge {
+          padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
+          background: rgba(245,158,11,0.15); color: #d97706;
+        }
+        [data-theme="dark"] .rx-charge-badge { color: #fbbf24; }
+
+        .rx-ev-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .rx-ev-btn {
+          padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 700;
+          background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2);
+          color: #22c55e; cursor: pointer; transition: all 0.2s;
+        }
+        .rx-ev-btn:hover { background: rgba(34,197,94,0.15); transform: translateY(-1px); }
+        .rx-ev-btn.active {
+          background: rgba(34,197,94,0.18); border-color: rgba(34,197,94,0.4);
+          box-shadow: 0 0 8px rgba(34,197,94,0.15);
+        }
+        [data-theme="dark"] .rx-ev-btn { color: #4ade80; }
+
+        .rx-ev-request {
+          padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 700;
+          background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2);
+          color: #f59e0b; cursor: pointer; transition: all 0.2s;
+        }
+        .rx-ev-request:hover { background: rgba(245,158,11,0.15); transform: translateY(-1px); }
+        .rx-ev-request.active {
+          background: rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.4);
+          box-shadow: 0 0 8px rgba(245,158,11,0.15);
+        }
+        [data-theme="dark"] .rx-ev-request { color: #fbbf24; }
 
         /* Actions */
         .card-actions { display: flex; gap: 10px; flex-wrap: wrap; }

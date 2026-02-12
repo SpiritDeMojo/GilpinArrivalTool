@@ -16,7 +16,7 @@ import HousekeepingDashboard from './HousekeepingDashboard';
 import MaintenanceDashboard from './MaintenanceDashboard';
 import ReceptionDashboard from './ReceptionDashboard';
 import TurndownDashboard from './TurndownDashboard';
-import InHouseDashboard from './NightManagerDashboard';
+import InHouseDashboard from './InRoomDashboard';
 const PackageGenerator = React.lazy(() => import('./PackageGenerator'));
 import { Guest, DashboardView } from '../types';
 
@@ -47,7 +47,7 @@ const TABS: TabConfig[] = [
     { key: 'housekeeping', emoji: '🧹', labelFull: 'Housekeeping', labelShort: 'HK', badgeColor: 'bg-green-500', departments: ['HK', 'REC'] },
     { key: 'maintenance', emoji: '🔧', labelFull: 'Maintenance', labelShort: 'Maint', badgeColor: 'bg-amber-500', departments: ['MAIN', 'REC'] },
     { key: 'frontofhouse', emoji: '🛎️', labelFull: 'Front of House', labelShort: 'FoH', badgeColor: 'bg-blue-500', departments: ['REC'] },
-    { key: 'inhouse', emoji: '🏠', labelFull: 'In House', labelShort: 'IH', badgeColor: 'bg-indigo-600', departments: ['REC'] },
+    { key: 'inhouse', emoji: '🏠', labelFull: 'In Room', labelShort: 'IR', badgeColor: 'bg-indigo-600', departments: ['REC'] },
 ];
 
 const ViewManager: React.FC = () => {
@@ -411,6 +411,7 @@ const ViewManager: React.FC = () => {
                                         onUpdateGuestStatus={handleUpdateGuestStatus}
                                         onUpdateInRoomDelivery={handleUpdateInRoomDelivery}
                                         onAddCourtesyNote={handleAddCourtesyNote}
+                                        onUpdateGuest={updateGuest}
                                         onViewAuditLog={(g: Guest) => setAuditLogGuest(g)}
                                     />
                                 </motion.div>

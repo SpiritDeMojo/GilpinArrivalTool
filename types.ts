@@ -103,6 +103,12 @@ export interface Guest {
   /** Timestamp when car was put on charge */
   carOnChargeAt?: number;
 
+  /** Whether the guest has requested EV charging (waiting queue) */
+  chargeRequested?: boolean;
+
+  /** Timestamp when charging was requested (used for FCFS ordering) */
+  chargeRequestedAt?: number;
+
   // ==========================================
   // AUDIT & TRACKING FIELDS
   // ==========================================

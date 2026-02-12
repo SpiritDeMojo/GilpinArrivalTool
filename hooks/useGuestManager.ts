@@ -656,8 +656,10 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       updateGuestFields(activeSessionId, id, finalUpdates)
         .catch(err => console.error('Atomic sync failed for guest', id, err))
         .finally(() => {
-          // Clear pending flag after write confirms (or fails)
-          pendingLocalUpdates.current.delete(id);
+          // Delay clearing the pending flag so the onValue listener
+          // (which fires asynchronously after the write) still sees
+          // this guest as "pending" and doesn't revert optimistic state
+          setTimeout(() => pendingLocalUpdates.current.delete(id), 1000);
         });
     }
   };
@@ -687,7 +689,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
       pendingLocalUpdates.current.add(guestId);
       updateGuestFields(sessionId, guestId, updates)
         .catch(err => console.error('Cross-session sync failed for guest', guestId, err))
-        .finally(() => pendingLocalUpdates.current.delete(guestId));
+        .finally(() => setTimeout(() => pendingLocalUpdates.current.delete(guestId), 1000));
     }
   };
 
