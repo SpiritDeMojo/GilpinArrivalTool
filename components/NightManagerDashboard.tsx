@@ -181,31 +181,70 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
     });
     return map;
   }, [todayGuests, stayovers]);
+  /**
+   * Helper: does this guest's package include breakfast?
+   * Room Only = no breakfast. Everything else (BB, DBB, Minimoon, etc.) = yes.
+   * Unknown/missing package is treated as breakfast (hotel default is B&B).
+   */
+  const includesBreakfast = useCallback((guest: Guest): boolean => {
+    const pkg = (guest.packageName || '').toLowerCase();
+    if (pkg.includes('room only')) return false;
+    return true; // B&B is the default
+  }, []);
 
-  // Stats
+  // ── Per-property base stats ──
   const mainRooms = ALL_ROOMS.filter(r => r.property === 'main');
   const lakeRooms = ALL_ROOMS.filter(r => r.property === 'lake');
   const mainOccupied = mainRooms.filter(r => occupancyMap.has(r.number)).length;
   const lakeOccupied = lakeRooms.filter(r => occupancyMap.has(r.number)).length;
-  const totalOccupied = mainOccupied + lakeOccupied;
-  const totalRooms = ALL_ROOMS.length;
-  const totalEmpty = totalRooms - totalOccupied;
-  const occupancyPct = Math.round((totalOccupied / totalRooms) * 100);
 
-  const totalPax = useMemo(() => {
-    let count = 0;
-    occupancyMap.forEach(({ guest }) => {
-      const ll = parseInt(guest.ll || '0', 10);
-      count += ll > 0 ? ll : 1;
+  /** Breakfast pax per property */
+  const { mainBreakfast, lakeBreakfast } = useMemo(() => {
+    let mainBf = 0, lakeBf = 0;
+    occupancyMap.forEach(({ guest }, roomNum) => {
+      if (!includesBreakfast(guest)) return;
+      const pax = parseInt(guest.ll || '0', 10) || 1;
+      const room = ALL_ROOMS.find(r => r.number === roomNum);
+      if (room?.property === 'lake') lakeBf += pax;
+      else mainBf += pax;
     });
-    return count;
+    return { mainBreakfast: mainBf, lakeBreakfast: lakeBf };
+  }, [occupancyMap, includesBreakfast]);
+
+  /** Per-property pax and car counts */
+  const { mainPax, lakePax, mainCars, lakeCars } = useMemo(() => {
+    let mPax = 0, lPax = 0, mCars = 0, lCars = 0;
+    occupancyMap.forEach(({ guest }, roomNum) => {
+      const pax = parseInt(guest.ll || '0', 10) || 1;
+      const room = ALL_ROOMS.find(r => r.number === roomNum);
+      if (room?.property === 'lake') {
+        lPax += pax;
+        if (guest.car?.trim()) lCars++;
+      } else {
+        mPax += pax;
+        if (guest.car?.trim()) mCars++;
+      }
+    });
+    return { mainPax: mPax, lakePax: lPax, mainCars: mCars, lakeCars: lCars };
   }, [occupancyMap]);
 
-  const carCount = useMemo(() => {
-    let count = 0;
-    occupancyMap.forEach(({ guest }) => { if (guest.car?.trim()) count++; });
-    return count;
-  }, [occupancyMap]);
+  /**
+   * Dynamic header stats — reactive to the property filter.
+   * When a specific property is selected, stats show only that property.
+   */
+  const displayStats = useMemo(() => {
+    if (propertyFilter === 'main') {
+      const rooms = mainRooms.length;
+      return { occupied: mainOccupied, empty: rooms - mainOccupied, pct: Math.round((mainOccupied / rooms) * 100), pax: mainPax, cars: mainCars, breakfast: mainBreakfast, total: rooms };
+    }
+    if (propertyFilter === 'lake') {
+      const rooms = lakeRooms.length;
+      return { occupied: lakeOccupied, empty: rooms - lakeOccupied, pct: Math.round((lakeOccupied / rooms) * 100), pax: lakePax, cars: lakeCars, breakfast: lakeBreakfast, total: rooms };
+    }
+    const allRooms = ALL_ROOMS.length;
+    const totalOcc = mainOccupied + lakeOccupied;
+    return { occupied: totalOcc, empty: allRooms - totalOcc, pct: Math.round((totalOcc / allRooms) * 100), pax: mainPax + lakePax, cars: mainCars + lakeCars, breakfast: mainBreakfast + lakeBreakfast, total: allRooms };
+  }, [propertyFilter, mainOccupied, lakeOccupied, mainRooms.length, lakeRooms.length, mainPax, lakePax, mainCars, lakeCars, mainBreakfast, lakeBreakfast]);
 
   const filteredRooms = useMemo(() =>
     propertyFilter === 'all' ? ALL_ROOMS : ALL_ROOMS.filter(r => r.property === propertyFilter),
@@ -359,18 +398,19 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="nm-header-content">
-          <div className="nm-header-icon">IH</div>
+          <div className="nm-header-icon">🏠</div>
           <div>
             <h1>In House</h1>
             <p>{dateStr}</p>
           </div>
         </div>
         <div className="nm-header-stats">
-          <div className="nm-stat occupied"><span className="nm-stat-number">{totalOccupied}</span><span className="nm-stat-label">Occupied</span></div>
-          <div className="nm-stat empty"><span className="nm-stat-number">{totalEmpty}</span><span className="nm-stat-label">Empty</span></div>
-          <div className="nm-stat pct"><span className="nm-stat-number">{occupancyPct}%</span><span className="nm-stat-label">Occupancy</span></div>
-          <div className="nm-stat pax"><span className="nm-stat-number">{totalPax}</span><span className="nm-stat-label">Guests</span></div>
-          <div className="nm-stat cars"><span className="nm-stat-number">{carCount}</span><span className="nm-stat-label">Cars</span></div>
+          <div className="nm-stat occupied"><span className="nm-stat-number">{displayStats.occupied}</span><span className="nm-stat-label">Occupied</span></div>
+          <div className="nm-stat empty"><span className="nm-stat-number">{displayStats.empty}</span><span className="nm-stat-label">Empty</span></div>
+          <div className="nm-stat pct"><span className="nm-stat-number">{displayStats.pct}%</span><span className="nm-stat-label">Occupancy</span></div>
+          <div className="nm-stat pax"><span className="nm-stat-number">{displayStats.pax}</span><span className="nm-stat-label">Guests</span></div>
+          <div className="nm-stat cars"><span className="nm-stat-number">{displayStats.cars}</span><span className="nm-stat-label">Cars</span></div>
+          <div className="nm-stat breakfast"><span className="nm-stat-number">{displayStats.breakfast}</span><span className="nm-stat-label">Breakfast</span></div>
         </div>
       </motion.header>
 
@@ -390,7 +430,7 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
         <button className="nm-print-btn" onClick={handlePrint}>🖨️ Print Report</button>
       </div>
 
-      {/* Property Breakdown */}
+      {/* Property Breakdown — with breakfast badge */}
       <div className="nm-property-row no-print">
         {(propertyFilter === 'all' || propertyFilter === 'main') && (
           <div className="nm-property-card">
@@ -399,6 +439,7 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
             <div className="nm-property-bar">
               <div className="nm-property-fill" style={{ width: `${(mainOccupied / mainRooms.length) * 100}%` }} />
             </div>
+            <span className="nm-breakfast-badge">🍳 {mainBreakfast} for breakfast</span>
           </div>
         )}
         {(propertyFilter === 'all' || propertyFilter === 'lake') && (
@@ -408,6 +449,7 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
             <div className="nm-property-bar">
               <div className="nm-property-fill" style={{ width: `${(lakeOccupied / lakeRooms.length) * 100}%` }} />
             </div>
+            <span className="nm-breakfast-badge">🍳 {lakeBreakfast} for breakfast</span>
           </div>
         )}
       </div>
@@ -451,7 +493,7 @@ const NightManagerDashboard: React.FC<NightManagerDashboardProps> = ({
             <p className="nm-print-date">{dateStr}</p>
           </div>
           <div className="nm-print-stats">
-            <span>{totalOccupied} Occupied</span> • <span>{totalEmpty} Empty</span> • <span>{occupancyPct}% Occ</span> • <span>{totalPax} Guests</span> • <span>{carCount} Cars</span>
+            <span>{mainOccupied + lakeOccupied} Occupied</span> • <span>{ALL_ROOMS.length - (mainOccupied + lakeOccupied)} Empty</span> • <span>{Math.round(((mainOccupied + lakeOccupied) / ALL_ROOMS.length) * 100)}% Occ</span> • <span>{mainPax + lakePax} Guests</span> • <span>{mainCars + lakeCars} Cars</span> • <span>{mainBreakfast + lakeBreakfast} Breakfast</span>
           </div>
         </div>
 
