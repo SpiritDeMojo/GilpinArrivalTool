@@ -4,7 +4,7 @@
 # 🏨 Gilpin Hotel — Arrival Intelligence Platform
 
 **Enterprise-grade, real-time arrival orchestration for luxury hospitality.  
-Purpose-built for multi-department coordination, AI-assisted guest preparation, and seamless cross-device synchronisation.**
+Purpose-built for six operational dashboards, AI-assisted guest preparation, and seamless cross-device synchronisation.**
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
@@ -19,7 +19,7 @@ Purpose-built for multi-department coordination, AI-assisted guest preparation, 
 
 ## Overview
 
-The Gilpin Arrival Tool transforms unstructured PMS arrival PDFs into a live, interactive intelligence platform. It enables **Reception**, **Housekeeping**, **Maintenance**, and **Management** to coordinate guest arrivals, room readiness, and operational workflows in real-time — across every device, every department, every arrival day.
+The Gilpin Arrival Tool transforms unstructured PMS arrival PDFs into a live, interactive intelligence platform. It enables **Reception**, **Housekeeping**, **Maintenance**, **Front of House**, **In House**, and **Turndown** teams to coordinate guest arrivals, room readiness, and operational workflows in real-time — across every device, every department, every arrival day.
 
 > **Production deployed at [Gilpin Hotel & Lake House](https://www.thegilpin.co.uk/)** — serving daily operations across multiple teams and devices.
 
@@ -34,6 +34,8 @@ Parses PMS arrival PDFs with high-fidelity extraction of guest data: room assign
 - **AI Audit** — Gemini 2.5 Flash refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes
 - **AI Live Assistant** — Conversational AI colleague powered by Gemini native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands in real-time
 - **AI Cleaning Priority** — Intelligent room preparation ordering based on ETA, guest type, and operational constraints
+- **AI Room Upgrades** — Analyses guest profiles against empty rooms and suggests strategic upgrades with deduplication (each room suggested at most once)
+- **AI Sentiment Analysis** — Generates actionable guest tags (Quiet Room, Allergy Alert, Anniversary) from notes and preferences
 - **AI Analytics** — Operational intelligence dashboards with arrival patterns, property breakdown, and guest profile analysis
 
 ### 📡 Fleet Sync Engine
@@ -43,12 +45,12 @@ Real-time multi-device synchronisation via Firebase Realtime Database. Upload mu
 
 | Dashboard | Purpose | Key Features |
 |-----------|---------|--------------|
-| **Reception** | Guest arrival workflow | ETA timeline, check-in flow, guest status management, courtesy call tracking |
-| **Housekeeping** | Room preparation & readiness | Room readiness status, turndown management, in-room delivery tracking, AI cleaning priority, cross-department notes |
+| **Arrivals** | Master guest manifest | Full booking data, PDF extraction, ETA timeline, car registrations, VIP/occasion flags |
+| **Housekeeping** | Room preparation & readiness | Room readiness status, in-room delivery tracking, AI cleaning priority, cross-department notes |
 | **Maintenance** | Room inspection & handoff | Independent maintenance status, cross-department room notes, priority tagging |
 | **Front of House** | Guest presence & service | On-site/off-site tracking, courtesy call logging, guest greeting intelligence |
-| **In House** | Overnight operations | 38-room grid (Main Hotel + Lake House), occupancy stats, room moves, stayover tracking, print reports |
-| **Analytics** | Operational overview | Arrival counts, property breakdown (Main Hotel / Lake House), allergy & VIP tracking |
+| **In House** | Overnight operations | 38-room grid (Main Hotel + Lake House), occupancy stats, room moves, EV charging, AI upgrades, stayover tracking, print reports |
+| **Turndown** | Evening service preparation | Turndown status tracking, dinner time/venue management, stayover + arrival coverage |
 
 ### 💬 Real-Time Messenger
 Tabbed chat panel with cross-department Team Chat and AI Live Assistant. Features messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime, and FAB pulse ring for unread messages.
@@ -117,7 +119,7 @@ The interface features a handcrafted animation system designed for a polished, p
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 19 · TypeScript 5.7 · Modular Vanilla CSS (9 files) |
+| **Frontend** | React 19 · TypeScript 5.7 · Modular Vanilla CSS (10 files) |
 | **Build** | Vite 6 |
 | **Animations** | Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes |
 | **Backend** | Vercel Serverless Functions (`/api/gemini-*`) |
@@ -133,7 +135,13 @@ The interface features a handcrafted animation system designed for a polished, p
 
 ## Additional Features
 
-- 🔀 **Dashboard Sorting** — Sort any dashboard by ETA (earliest first) or Room Number (ascending). Preferences persist per dashboard.
+- ⚡ **EV Charging Tracker** — Toggle cars on/off EV chargers from the In House dashboard. ⚡ badge on room cards, charging count in header stats, state syncs via Firebase
+- 🏠 **AI Room Upgrades** — In House dashboard suggests strategic room upgrades via Gemini AI. Server-side deduplication ensures each empty room is suggested at most once
+- 🌙 **Turndown Dashboard** — Dedicated tab for evening service: turndown status, dinner time/venue management, covers stayovers and same-day arrivals
+- 🎨 **Ivory / Obsidian Theming** — Dual premium themes with branded names. Toggle via hamburger menu. All dashboards, modals, forms, and badges adapt automatically
+- 🪟 **Full-Width Tab Layout** — Desktop tabs stretch edge-to-edge with even distribution. Mobile uses scroll-snap horizontal slider with abbreviated labels
+- 📡 **Sync Pill Indicator** — Polished pill button (SYNCED / CONNECTING / OFFLINE) next to hamburger menu with animated glow dot and colour-coded states
+- 🔀 **Dashboard Sorting** — Sort any dashboard by ETA (earliest first) or Room Number (ascending). Preferences persist per dashboard
 - 🧠 **AI Note Placement** — Notes auto-route to the correct column: Intelligence, Prefill Notes, HK (`[HK]`), or Maintenance (`[MAINT]`)
 - 📱 **Responsive Mobile UI** — Progressive breakpoints (1024 → 768 → 480 → 400px) with adaptive tab labels, scroll-snap horizontal tabs, and tighter density
 - 📱 **Mobile Debug Overlay** — Append `?debug=1` for on-screen console showing logs, connection state, and errors
@@ -144,8 +152,8 @@ The interface features a handcrafted animation system designed for a polished, p
 - 🛡️ **Defense-in-Depth Sanitisation** — All Firebase write paths sanitise `undefined → null` to prevent RTDB crashes
 - 🔄 **37 Rate Code Variants** — Parser recognises MINIMOON, DBB, BB_2, WIN codes, underscore variants, Lake House prefixes
 - 📦 **13 Package Mappings** — AI audit maps rate codes to human-readable names (Winter Offer, B&B, Room Only, etc.)
-- 🧱 **Modular CSS Architecture** — 9 specialised files (variables, base, animations, navbar, components, in-house, responsive, print, barrel) for maintainability
-- 🏠 **In House Dashboard** — Real-time 38-room occupancy grid with arrival/stayover detection, room moves (Firebase sync), car plate tracking, and print report
+- 🧱 **Modular CSS Architecture** — 10 specialised files (design-tokens, variables, base, animations, navbar, components, in-house, responsive, print, barrel) for maintainability
+- 🏠 **In House Dashboard** — Real-time 38-room occupancy grid with arrival/stayover detection, room moves (Firebase sync), car plate tracking, EV charging, and print report
 - 🏨 **Room 29 (Mint)** — Excluded from all room lists as it is not yet built / in use
 
 ---

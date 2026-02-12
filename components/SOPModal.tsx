@@ -7,9 +7,9 @@ interface SOPModalProps {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GILPIN ARRIVAL TOOL — OPERATIONAL HANDBOOK (SOP v19.0)
+   GILPIN ARRIVAL TOOL — OPERATIONAL HANDBOOK (SOP v21.0)
    ═══════════════════════════════════════════════════════════════
-   23 sections covering every feature — from sign-in to AI voice.
+   28 sections covering every feature — from sign-in to AI voice.
    Scrollable with jump-to-section table of contents.
    ═══════════════════════════════════════════════════════════════ */
 
@@ -39,6 +39,9 @@ const SECTIONS = [
   { id: 'theming', num: '22', icon: '🎨', title: 'Design & Theming' },
   { id: 'packages', num: '23', icon: '📦', title: 'Package Generator' },
   { id: 'nightmgr', num: '24', icon: '🌙', title: 'In House Dashboard' },
+  { id: 'evcharging', num: '25', icon: '⚡', title: 'EV Charging' },
+  { id: 'aiupgrades', num: '26', icon: '🏠', title: 'AI Room Upgrades' },
+  { id: 'turndown', num: '27', icon: '🌙', title: 'Turndown Dashboard' },
 ];
 
 /* ─── Reusable sub-components ─── */
@@ -120,7 +123,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   </h2>
                 </div>
                 <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-                  Standard Operating Procedures • <span className="text-[#c5a065]">v19.0</span>
+                  Standard Operating Procedures • <span className="text-[#c5a065]">v21.0</span>
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -234,12 +237,14 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                 {/* ════════════════════════════════════════════════ */}
                 <section id="sop-dashboards">
                   <Divider num="02" title="Departmental Dashboards" />
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6">
                     {[
                       { icon: '📋', name: 'Arrivals', desc: 'Master guest list with full booking data' },
                       { icon: '🧹', name: 'Housekeeping', desc: 'Room cleaning status and AI priority' },
                       { icon: '🔧', name: 'Maintenance', desc: 'Room checks, repairs, and issue log' },
-                      { icon: '🛎️', name: 'Reception', desc: 'Check-in tracking and courtesy calls' },
+                      { icon: '🛎️', name: 'Front of House', desc: 'Guest presence and greeting workflow' },
+                      { icon: '🏠', name: 'In House', desc: 'Room grid, occupancy stats, EV charging' },
+                      { icon: '🌙', name: 'Turndown', desc: 'Evening service and dinner management' },
                     ].map((d) => (
                       <div key={d.name} className="p-4 md:p-5 bg-white dark:bg-[#111] border border-slate-200 dark:border-[#222] rounded-[1.5rem] text-center hover:border-[#c5a065]/40 transition-all">
                         <div className="text-2xl mb-2">{d.icon}</div>
@@ -805,8 +810,8 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                       The Arrival Tool features a premium dual-theme design system with a handcrafted animation engine.
                     </p>
                     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-                      <MiniCard icon="🌙" label="Dark Mode" sub="Toggle via moon/sun icon in the navbar. All dashboards, modals, notes, and forms adapt automatically." />
-                      <MiniCard icon="☀️" label="Light Mode" sub="Warm ivory base theme with gold accents. Optimised for well-lit environments and printed output." />
+                      <MiniCard icon="🌙" label="Obsidian Mode" sub="Dark theme — gold accents, high contrast. Toggle via hamburger menu → Ivory/Obsidian." />
+                      <MiniCard icon="☀️" label="Ivory Mode" sub="Warm ivory base theme with gold accents. Optimised for well-lit environments and printed output." />
                       <MiniCard icon="✨" label="Animation Engine" sub="Spring-physics page transitions, 3D card entrances, whileTap/whileHover feedback, and Framer Motion orchestration." />
                       <MiniCard icon="🎯" label="Contrast" sub="Dark mode notes, badges, and form inputs use explicit contrast-safe colours to ensure readability." />
                     </div>
@@ -865,12 +870,61 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   </Card>
                 </section>
 
+                {/* ── 25 — EV CHARGING ── */}
+                <section id="evcharging">
+                  <Divider num="25" title="EV Charging" />
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      Track which guest cars are currently on EV chargers from the In House Dashboard. The feature is available when a room card is expanded.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="⚡" label="Plug In / Unplug" sub="Toggle via the ⚡ Plug In button in the expanded room card. State changes sync instantly to all devices via Firebase." />
+                      <MiniCard icon="🔋" label="EV Badge" sub="A ⚡ badge appears on room cards when a car is on charge. Visible at a glance across the room grid." />
+                      <MiniCard icon="📊" label="Charging Stats" sub="The header stat bar shows total cars currently on charge. Filtered by property (Main Hotel / Lake House)." />
+                    </div>
+                    <Tip>Night managers can use this to track EV bay usage and ensure cars are rotated overnight.</Tip>
+                  </Card>
+                </section>
+
+                {/* ── 26 — AI ROOM UPGRADES ── */}
+                <section id="aiupgrades">
+                  <Divider num="26" title="AI Room Upgrades" />
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      The AI analyses the current guest manifest and available empty rooms to suggest strategic upgrades. Access via the <strong>🤖 AI Upgrades</strong> button on the In House Dashboard.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="🧠" label="Smart Matching" sub="Gemini AI considers guest type, stay duration, loyalty history, room category, and empty room availability to suggest upgrades that make strategic sense." />
+                      <MiniCard icon="🔒" label="Deduplication" sub="Each empty room is suggested at most once — no duplicate recommendations. Server-side validation ensures consistency." />
+                      <MiniCard icon="✅" label="Accept / Dismiss" sub="Review each suggestion individually. Accept executes the room move automatically. Dismiss removes the suggestion from the list." />
+                    </div>
+                    <Tip>AI Upgrades require a Gemini API key. The feature is only available on the Vercel deployment.</Tip>
+                  </Card>
+                </section>
+
+                {/* ── 27 — TURNDOWN DASHBOARD ── */}
+                <section id="turndown">
+                  <Divider num="27" title="Turndown Dashboard" />
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      The Turndown Dashboard is a dedicated tab for managing evening turndown service. It covers both stayover guests and same-day arrivals, ensuring every occupied room receives attention.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="🌙" label="Turndown Status" sub="Track each room through: Pending → In Progress → Complete. Status syncs across all devices." />
+                      <MiniCard icon="🍽️" label="Dinner Management" sub="Set dinner times and venues per room. Override auto-detected values from booking data." />
+                      <MiniCard icon="📊" label="Coverage Stats" sub="Header shows turndown progress: total rooms, completed, remaining. Filter by Main Hotel or Lake House." />
+                      <MiniCard icon="📋" label="Guest Context" sub="Each room card shows guest name, stay duration, and package type — essential context for evening service preparation." />
+                    </div>
+                    <Tip>Turndown includes both stayovers and same-day arrivals, so no guest is missed for evening service.</Tip>
+                  </Card>
+                </section>
+
               </div>
 
               {/* ── FOOTER ── */}
               <div className="bg-slate-100 dark:bg-[#0a0a0a] p-6 md:p-8 text-center border-t border-slate-200 dark:border-[#222]">
                 <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-600 font-mono tracking-widest uppercase">
-                  Gilpin Hotel & Lake House • Standard Operating Procedures • v20.0 • Internal Use Only
+                  Gilpin Hotel & Lake House • Standard Operating Procedures • v21.0 • Internal Use Only
                 </p>
               </div>
             </div>
