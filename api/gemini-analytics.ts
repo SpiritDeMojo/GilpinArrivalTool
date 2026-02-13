@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const ai = new GoogleGenAI({ apiKey });
-        const modelName = 'gemini-3-flash';
+        const modelName = 'gemini-3-flash-preview';
 
         const systemInstruction = `**ROLE:** Gilpin Strategic Data Analyst.
 **MISSION:** Synthesize all arrival manifests into high-level business intelligence.
