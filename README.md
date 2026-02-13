@@ -9,7 +9,7 @@ Purpose-built for six operational dashboards, AI-assisted guest preparation, and
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-Realtime_DB-FFCA28?logo=firebase)](https://firebase.google.com/)
-[![Gemini AI](https://img.shields.io/badge/Gemini_AI-3_Flash-4285F4?logo=google)](https://ai.google.dev/)
+[![Gemini AI](https://img.shields.io/badge/Gemini_AI-2.5_Pro-4285F4?logo=google)](https://ai.google.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite)](https://vitejs.dev/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-000?logo=vercel)](https://vercel.com/)
 
@@ -31,8 +31,8 @@ The Gilpin Arrival Tool transforms unstructured PMS arrival PDFs into a live, in
 Column-aware PDF parser (1,200+ lines) that extracts 20+ fields per guest using X-coordinate spatial analysis. Extracts room assignments (31-room map with aliases), ETA windows (multi-format: am/pm, ranges, 3/4-digit), car registrations (multi-pattern UK plate matching with AI fallback, short-plate support), duration (first-line departure date calculation), facilities & dining (venue-tagged: Spice, Source, Lake House, ESPA — date-validated), allergies & dietary (UK Top 14 allergen scan), occasions, in-room items (28 keywords), loyalty history, rate codes (37 variants), booking source, pax (ACEB), unbooked request detection, **Previous Guest Issue (PGI) detection** with prominent warnings, and **dinner coverage checker** (flags unbooked dinner nights). Tested against 163 guests across 13 real PDFs with 0 extraction errors.
 
 ### 🤖 Gemini AI Integration
-- **AI Audit** — Gemini 3 Flash refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes. Anti-fabrication validation prevents hallucinated facilities and car registrations
-- **AI Live Assistant** — Conversational AI colleague powered by Gemini native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands in real-time. Includes **voice-to-text microphone** button in the chat input bar using the Web Speech API
+- **AI Audit** — Gemini 2.5 Pro refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes. Anti-fabrication validation prevents hallucinated facilities and car registrations
+- **AI Live Assistant** — Conversational AI colleague powered by Gemini 2.5 Flash Native Audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands in real-time. Includes **voice-to-text microphone** button in the chat input bar using the Web Speech API
 - **AI Cleaning Priority** — Intelligent room preparation ordering based on ETA, guest type, and operational constraints
 - **AI Room Upgrades** — Analyses guest profiles against empty rooms and suggests strategic upgrades with deduplication (each room suggested at most once)
 - **AI Sentiment Analysis** — Generates actionable guest tags (Quiet Room, Allergy Alert, Anniversary) from notes and preferences
@@ -130,7 +130,7 @@ The interface features a handcrafted animation system designed for a polished, p
 | **Animations** | Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes |
 | **Backend** | Vercel Serverless Functions (`/api/gemini-*`) |
 | **PDF Parsing** | pdfjs-dist (Mozilla PDF.js) |
-| **AI** | Google Gemini 3 Flash via `@google/genai` + Gemini Live API (native audio) |
+| **AI** | Google Gemini 2.5 Pro (audit/analytics) via `@google/genai` + Gemini 2.5 Flash Live API (native audio chatbot) |
 | **Audio** | AudioWorklet API (ScriptProcessorNode fallback) |
 | **Real-Time Sync** | Firebase Realtime Database (defense-in-depth sanitisation) |
 | **Weather** | Open-Meteo API (Windermere, no API key required) |

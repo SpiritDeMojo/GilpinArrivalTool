@@ -341,6 +341,7 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
                                 padding: '10px 14px',
                                 fontSize: '13px', lineHeight: 1.55, fontWeight: 450,
                                 wordBreak: 'break-word',
+                                whiteSpace: 'pre-wrap',
                                 borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                                 background: isUser
                                     ? 'linear-gradient(135deg, #5856d6, #4f46e5)'
@@ -388,6 +389,8 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
                             <div style={{
                                 padding: '10px 14px', fontSize: '13px', lineHeight: 1.55,
                                 fontStyle: 'italic',
+                                wordBreak: 'break-word',
+                                whiteSpace: 'pre-wrap',
                                 borderRadius: '18px 18px 18px 4px',
                                 background: 'var(--surface, rgba(229,229,234,0.4))',
                                 color: 'var(--text-muted, #8e8e93)',
