@@ -13,6 +13,9 @@ function isOriginAllowed(origin: string): boolean {
     return false;
 }
 
+// Extend serverless function timeout (Vercel default is 10s, AI audit can take 30-60s)
+export const config = { maxDuration: 60 };
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');

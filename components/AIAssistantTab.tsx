@@ -35,6 +35,7 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
 }) => {
     const [input, setInput] = useState('');
     const [isListening, setIsListening] = useState(false);
+    const [micError, setMicError] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
     const hasAutoStarted = useRef(false);
     const recognitionRef = useRef<any>(null);
@@ -64,7 +65,19 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
         };
 
         recognition.onend = () => setIsListening(false);
-        recognition.onerror = () => setIsListening(false);
+        recognition.onerror = (event: any) => {
+            setIsListening(false);
+            if (event.error === 'not-allowed') {
+                setMicError('🎙️ Mic access denied — allow in browser settings');
+            } else if (event.error === 'no-speech') {
+                // Normal — user didn't speak, just ignore
+            } else {
+                setMicError(`🎙️ Mic unavailable (${event.error})`);
+            }
+            if (micError) {
+                setTimeout(() => setMicError(''), 4000);
+            }
+        };
 
         recognitionRef.current = recognition;
 
@@ -73,12 +86,26 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
         };
     }, []);
 
+    // Auto-dismiss mic error
+    useEffect(() => {
+        if (micError) {
+            const timer = setTimeout(() => setMicError(''), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [micError]);
+
     const toggleListening = useCallback(() => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            setMicError('🎙️ Voice input not supported in this browser');
+            return;
+        }
         if (!recognitionRef.current) return;
         if (isListening) {
             recognitionRef.current.stop();
             setIsListening(false);
         } else {
+            setMicError('');
             try {
                 recognitionRef.current.start();
                 setIsListening(true);
@@ -200,6 +227,29 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
                     )}
                 </div>
             </div>
+
+            {/* ─── Mic Error Banner ─── */}
+            <AnimatePresence>
+                {micError && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={() => setMicError('')}
+                        style={{
+                            overflow: 'hidden', cursor: 'pointer',
+                            padding: '8px 14px',
+                            background: 'rgba(255,59,48,0.08)',
+                            borderBottom: '0.5px solid rgba(255,59,48,0.15)',
+                            fontSize: '12px', fontWeight: 500,
+                            color: '#ff3b30', textAlign: 'center',
+                        }}
+                    >
+                        {micError}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* ─── Error banner ─── */}
             <AnimatePresence>

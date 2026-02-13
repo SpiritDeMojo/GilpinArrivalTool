@@ -378,6 +378,66 @@ export const useNotifications = (guests: Guest[]) => {
                     });
                     if (!playedChime) { playTone('chime'); playedChime = true; }
                 }
+
+                // === Turndown Status Change ===
+                const oldTd = old.turndownStatus || 'not_started';
+                const newTd = guest.turndownStatus || 'not_started';
+                if (oldTd !== newTd && newTd !== 'not_started') {
+                    if (newTd === 'in_progress') {
+                        pushNotification({
+                            type: 'hk_status',
+                            department: 'housekeeping',
+                            room: guest.room,
+                            guestName: guest.name,
+                            message: `${rm} Turndown Started`,
+                            emoji: '🌙',
+                            color: '#f59e0b',
+                            badgeTabs: ['housekeeping'],
+                        });
+                        if (!playedChime) { playTone('chime'); playedChime = true; }
+                    } else if (newTd === 'complete') {
+                        pushNotification({
+                            type: 'hk_status',
+                            department: 'housekeeping',
+                            room: guest.room,
+                            guestName: guest.name,
+                            message: `${rm} Turndown Done ✓`,
+                            emoji: '✅',
+                            color: '#22c55e',
+                            badgeTabs: ['frontofhouse', 'housekeeping'],
+                        });
+                        if (!playedChime) { playTone('chime'); playedChime = true; }
+                    }
+                }
+
+                // === EV Car Charging Status Change ===
+                if (old.carOnCharge !== guest.carOnCharge) {
+                    if (guest.carOnCharge) {
+                        pushNotification({
+                            type: 'maint_status',
+                            department: 'maintenance',
+                            room: guest.room,
+                            guestName: guest.name,
+                            message: `${rm} Car Plugged In ⚡`,
+                            emoji: '🔌',
+                            color: '#22c55e',
+                            badgeTabs: ['maintenance', 'frontofhouse'],
+                        });
+                        if (!playedChime) { playTone('chime'); playedChime = true; }
+                    } else {
+                        pushNotification({
+                            type: 'maint_status',
+                            department: 'maintenance',
+                            room: guest.room,
+                            guestName: guest.name,
+                            message: `${rm} Car Unplugged`,
+                            emoji: '🔋',
+                            color: '#f59e0b',
+                            badgeTabs: ['maintenance', 'frontofhouse'],
+                        });
+                        if (!playedAlert) { playTone('alert'); playedAlert = true; }
+                    }
+                }
             }
 
             // Update ref

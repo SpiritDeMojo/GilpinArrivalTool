@@ -12,6 +12,8 @@ function isOriginAllowed(origin: string): boolean {
     return false;
 }
 
+export const config = { maxDuration: 60 };
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');

@@ -12,6 +12,9 @@ function isOriginAllowed(origin: string): boolean {
     return false;
 }
 
+// Extend serverless function timeout (Vercel default is 10s, analytics can take 30s+)
+export const config = { maxDuration: 60 };
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
