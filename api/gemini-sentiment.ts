@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         while (retries > 0) {
             try {
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-pro',
+                    model: 'gemini-2.5-flash',
                     contents: `Analyze these hotel guest notes and generate actionable tags for each:\n\n${guestData}`,
                     config: {
                         systemInstruction: `You are a luxury hotel intelligence system. Analyze each guest's notes and preferences. Generate 1-3 concise, actionable tags per guest from this list:
