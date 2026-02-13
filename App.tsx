@@ -56,9 +56,29 @@ const App: React.FC = () => {
   const chatInitializedRef = useRef(false);
   const deptMapped = department === 'HK' ? 'housekeeping' : department === 'MAIN' ? 'maintenance' : 'frontofhouse';
 
-  // Itinerary queue state (triggered after save session)
+  // Itinerary queue state (triggered after save session or AI audit)
   const [showItineraryQueue, setShowItineraryQueue] = useState(false);
+  const [packagePromptVisible, setPackagePromptVisible] = useState(false);
+  const [packagePromptMinimised, setPackagePromptMinimised] = useState(false);
   const activeSession = sessions?.find(s => s.id === activeSessionId) || null;
+  const prevAuditPhaseRef = useRef<string | undefined>(undefined);
+
+  // ── Post-audit package prompt: detect audit completion ──
+  useEffect(() => {
+    // Detect transition: auditPhase was 'complete' → now undefined (audit finished)
+    if (prevAuditPhaseRef.current === 'complete' && !auditPhase) {
+      const packageCodes = /^(MIN|MAG|LHMAG)/i;
+      const packageGuests = guests.filter(g =>
+        packageCodes.test(g.rateCode || '') ||
+        /minimoon|magical\s*escape/i.test(g.packageName || '')
+      );
+      if (packageGuests.length > 0) {
+        setPackagePromptVisible(true);
+        setPackagePromptMinimised(false);
+      }
+    }
+    prevAuditPhaseRef.current = auditPhase;
+  }, [auditPhase, guests]);
 
   useEffect(() => {
     if (!activeSessionId) return;
@@ -279,6 +299,45 @@ const App: React.FC = () => {
 
       {/* Mobile Debug Overlay  ?debug=1 or long-press connection dot */}
       <MobileDebugOverlay connectionStatus={connectionStatus} />
+
+      {/* Package Prompt — floating banner after AI audit detects package guests */}
+      {packagePromptVisible && !packagePromptMinimised && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[1100] animate-slide-up">
+          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border border-amber-400/30 backdrop-blur-xl"
+            style={{ background: 'linear-gradient(135deg, rgba(180,140,60,0.95), rgba(140,100,40,0.95))' }}>
+            <span className="text-2xl">📦</span>
+            <span className="text-white font-semibold text-sm">Minimoon / Magical Escape guests detected</span>
+            <button
+              onClick={() => {
+                setPackagePromptVisible(false);
+                setDashboardView('packages');
+                if (activeSessionId) navigate(`/session/${activeSessionId}/packages`, { replace: true });
+              }}
+              className="px-4 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-bold transition-all"
+            >
+              Open Generator
+            </button>
+            <button
+              onClick={() => setPackagePromptMinimised(true)}
+              className="px-2 py-1.5 text-white/70 hover:text-white text-xs transition-all"
+              title="Minimise"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Minimised package pill badge */}
+      {packagePromptVisible && packagePromptMinimised && (
+        <button
+          onClick={() => setPackagePromptMinimised(false)}
+          className="fixed bottom-20 right-4 z-[1100] w-11 h-11 rounded-full bg-amber-600 hover:bg-amber-500 shadow-xl flex items-center justify-center text-xl transition-all hover:scale-110 animate-bounce-once"
+          title="Package guests detected — click to open prompt"
+        >
+          📦
+        </button>
+      )}
 
       {/* Itinerary Queue Modal  triggered after save for package guests */}
       {showItineraryQueue && (

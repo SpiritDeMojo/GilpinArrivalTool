@@ -42,6 +42,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!guests || !Array.isArray(guests)) {
             return res.status(400).json({ error: 'Missing guests array in request body' });
         }
+        // ── Security: Payload size guard ──
+        if (guests.length > 50) {
+            return res.status(400).json({ error: 'Payload too large: max 50 guests per request' });
+        }
 
         const ai = new GoogleGenAI({ apiKey });
 

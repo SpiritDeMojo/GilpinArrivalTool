@@ -42,10 +42,14 @@ const ConflictDetector: React.FC<ConflictDetectorProps> = ({ guests, onDismiss }
         // Check for missing ETAs
         const missingETA = guests.filter(g => !g.eta || g.eta === 'N/A' || g.eta.trim() === '');
         if (missingETA.length > 0) {
+            const roomList = missingETA.slice(0, 5).map(g => {
+                const roomNum = g.room?.split(' ')[0];
+                return roomNum ? `Room ${roomNum} (${g.name})` : g.name;
+            }).join(', ');
             issues.push({
                 type: 'missing_eta',
                 severity: 'warning',
-                message: `${missingETA.length} guest${missingETA.length > 1 ? 's' : ''} missing ETA: ${missingETA.slice(0, 3).map(g => g.name).join(', ')}${missingETA.length > 3 ? ` +${missingETA.length - 3} more` : ''}`,
+                message: `${missingETA.length} guest${missingETA.length > 1 ? 's' : ''} missing ETA: ${roomList}${missingETA.length > 5 ? ` +${missingETA.length - 5} more` : ''}`,
                 guestIds: missingETA.map(g => g.id)
             });
         }
@@ -53,10 +57,11 @@ const ConflictDetector: React.FC<ConflictDetectorProps> = ({ guests, onDismiss }
         // Check for unassigned rooms
         const unassignedRoom = guests.filter(g => !g.room || g.room === 'TBD' || g.room === 'Unassigned');
         if (unassignedRoom.length > 0) {
+            const nameList = unassignedRoom.slice(0, 5).map(g => g.name).join(', ');
             issues.push({
                 type: 'missing_room',
                 severity: 'warning',
-                message: `${unassignedRoom.length} guest${unassignedRoom.length > 1 ? 's' : ''} need room assignment`,
+                message: `${unassignedRoom.length} guest${unassignedRoom.length > 1 ? 's' : ''} need room assignment: ${nameList}${unassignedRoom.length > 5 ? ` +${unassignedRoom.length - 5} more` : ''}`,
                 guestIds: unassignedRoom.map(g => g.id)
             });
         }

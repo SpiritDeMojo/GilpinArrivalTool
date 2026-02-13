@@ -1,8 +1,8 @@
 # 🔐 Security Policy
 
 **Last Audit:** 13 February 2026  
-**Version:** 2.3.0  
-**Status:** ✅ Secure — Full audit passed, all controls verified
+**Version:** 2.4.0  
+**Status:** ✅ Secure — Full audit passed, all controls verified, hardening applied
 
 ---
 
@@ -41,6 +41,7 @@ Firebase API keys are **project identifiers**, not secrets. They identify which 
 - GET-only method enforcement
 - Key never baked into the JS bundle
 - Response is ephemeral — used once per session to establish the WebSocket
+- **No-cache headers** (`Cache-Control: no-store, private`, `Pragma: no-cache`, `Expires: 0`) prevent proxy/CDN caching of the token
 
 ### Source Code Audit (11 Feb 2026)
 
@@ -53,20 +54,22 @@ Firebase API keys are **project identifiers**, not secrets. They identify which 
 
 All 6 Vercel serverless functions in `/api/` implement consistent security via **inline origin guards** (each route is self-contained for Vercel's independent bundling):
 
-| Route | Guard | Method | Input Validation |
-|-------|-------|--------|------------------|
-| `gemini-refine.ts` | ✅ Inline guard | POST | `guests` array required |
-| `gemini-analytics.ts` | ✅ Inline guard | POST | `sessions` array required |
-| `gemini-sentiment.ts` | ✅ Inline guard | POST | `guests` array required |
-| `gemini-cleaning-order.ts` | ✅ Inline guard | POST | `guests` array required |
-| `live-token.ts` | ✅ Inline guard | GET | N/A |
-| `pms-proxy.ts` | ✅ Inline guard | POST | `action` + `date` required |
+| Route | Guard | Method | Input Validation | Size Limit |
+|-------|-------|--------|------------------|------------|
+| `gemini-refine.ts` | ✅ Inline guard | POST | `guests` array required | 50 guests |
+| `gemini-analytics.ts` | ✅ Inline guard | POST | `sessions` array required | 20 sessions |
+| `gemini-sentiment.ts` | ✅ Inline guard | POST | `guests` array required | 50 guests |
+| `gemini-cleaning-order.ts` | ✅ Inline guard | POST | `guests` array required | 50 guests |
+| `gemini-upgrade.ts` | ✅ Inline guard | POST | `guests` + `emptyRooms` arrays | 50 items/array |
+| `live-token.ts` | ✅ Inline guard | GET | N/A | N/A |
+| `pms-proxy.ts` | ✅ Inline guard | POST | `action` + `date` required | — |
 
 **Every route enforces (via inline guard):**
 - **Origin validation** — only `gilpinarrivaltool*.vercel.app`, `localhost`, and `127.0.0.1` accepted
 - **Method guards** — rejects unexpected HTTP methods with 405
 - **CORS preflight** — proper OPTIONS handling with 24h cache (`Access-Control-Max-Age: 86400`)
 - **Error boundaries** — structured error responses (400/403/405/500/502)
+- **Payload size guards** — all POST routes enforce array length limits to prevent memory exhaustion
 - **Retry logic** — AI routes implement exponential backoff (3 retries, 2s → 4s → 8s) for transient 429/503 errors
 
 ### Origin Guard Design Notes
@@ -89,6 +92,8 @@ Defined as a **single source of truth** in `vercel.json` HTTP headers (no `<meta
 | `X-Content-Type-Options` | `nosniff` |
 | `X-Frame-Options` | `DENY` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` (HSTS) |
+| `Permissions-Policy` | `camera=(self), microphone=(self), geolocation=(), payment=()` |
 
 **CSP directive breakdown:**
 
@@ -230,6 +235,8 @@ All are **transitive dependencies** with no direct fix available. None are explo
 | `X-Frame-Options: DENY` | ✅ | Prevents clickjacking |
 | `X-Content-Type-Options: nosniff` | ✅ | Prevents MIME type sniffing |
 | `Referrer-Policy` | ✅ | `strict-origin-when-cross-origin` |
+| `Strict-Transport-Security` | ✅ | HSTS — 1 year max-age with subdomains |
+| `Permissions-Policy` | ✅ | Camera + mic self-only; geolocation + payment denied |
 | SPA rewrites | ✅ | `/((?!api/).*)` → `/index.html` (API routes excluded) |
 
 ---
@@ -286,4 +293,4 @@ If you discover a security issue, please contact the repository owner directly.
 
 ---
 
-*Last full audit: 13 February 2026 — v2.3.0*
+*Last full audit: 13 February 2026 — v2.4.0*

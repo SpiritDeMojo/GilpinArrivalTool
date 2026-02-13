@@ -685,3 +685,31 @@ select:hover {
                 0 1px 0 rgba(197, 160, 101, 0.2);
     transition: box-shadow 0.3s ease;
 }
+
+/* --- Package Prompt Slide Up --- */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.animate-slide-up {
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* --- Single Bounce (for minimised pill) --- */
+@keyframes bounceOnce {
+    0%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+    50% { transform: translateY(2px); }
+    70% { transform: translateY(-2px); }
+}
+
+.animate-bounce-once {
+    animation: bounceOnce 0.5s ease-out;
+}

@@ -457,9 +457,13 @@ You operate on a strict hierarchy to ensure the team can trust the edited data:
      Confirm, then output: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"Guest has nut allergy","field":"notes"}
      This adds the note to the Notes column on the arrivals table.
    - **If the user says "Housekeeping" or "HK" or "3":**
-     Confirm, then output: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"[HK] Guest has nut allergy","field":"notes"}
+     Confirm, then output: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"[HK] Extra towels requested","field":"notes"}
+     Housekeeping notes do NOT appear on the Maintenance dashboard — they are HK-only.
    - **If the user says "Maintenance" or "4":**
-     Confirm, then output: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"[MAINT] Radiator needs checking","field":"notes"}
+     Confirm, then output TWO actions — maintenance issues must also be visible to Housekeeping:
+     [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"[MAINT] Radiator needs checking","field":"notes"}
+     [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"[HK] ⚠️ Maintenance raised: Radiator needs checking — awaiting repair","field":"notes"}
+     This ensures HK staff are aware of room issues that may affect cleaning or guest comfort.
    - **If the user doesn't specify or says "just add it":**
      Default to Intelligence: [ACTION:ADD_ARRIVAL_NOTE]{"room":"5","message":"...","field":"intelligence"}
    - IMPORTANT: Always include the action block so the system can automatically create the note and sync it across all devices.

@@ -933,6 +933,30 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                     stayHistory: existing.stayHistory,
                     stayHistoryCount: existing.stayHistoryCount,
                   };
+
+                  // ── Post-audit dog false-positive cleanup ──
+                  // If AI-refined notes no longer mention a dog/pet but the parser had
+                  // injected 🐕 flags, strip them to prevent In House false positives.
+                  const refinedHaystack = [
+                    updatedGuests[gIndex].prefillNotes,
+                    updatedGuests[gIndex].hkNotes,
+                    updatedGuests[gIndex].preferences,
+                  ].filter(Boolean).join(' ').toLowerCase();
+                  const dogStillPresent = /\b(dog|pet friendly|puppy|canine|cockapoo|labrador|spaniel|terrier|poodle|retriever|greyhound|whippet|lurcher|collie|staffie|beagle|cocker|springer|dachshund)\b/i.test(refinedHaystack)
+                    || /🐕|🐶|🐾/.test(refinedHaystack);
+                  if (!dogStillPresent && updatedGuests[gIndex].inRoomItems) {
+                    const cleaned = updatedGuests[gIndex].inRoomItems
+                      .replace(/\s*•?\s*🐕\s*Dog in room\s*/gi, '')
+                      .replace(/\s*•?\s*Dog Bed\s*/gi, '')
+                      .replace(/\s*•?\s*Dog Bowls?\s*/gi, '')
+                      .replace(/^\s*•\s*/, '')  // Clean leading separator
+                      .replace(/\s*•\s*$/, '')  // Clean trailing separator
+                      .trim();
+                    if (cleaned !== updatedGuests[gIndex].inRoomItems) {
+                      console.log(`[AI Audit] Stripped stale dog flags from inRoomItems for ${original.name}`);
+                      updatedGuests[gIndex] = { ...updatedGuests[gIndex], inRoomItems: cleaned };
+                    }
+                  }
                 }
               } else {
                 console.warn('[AI Audit] No refinement for guest', original.name, 'at index', idx);

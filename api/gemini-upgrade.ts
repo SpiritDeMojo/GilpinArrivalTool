@@ -42,6 +42,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!guests || !Array.isArray(guests)) {
             return res.status(400).json({ error: 'Missing guests array in request body' });
         }
+        // ── Security: Payload size guard ──
+        if (guests.length > 50 || (emptyRooms && emptyRooms.length > 50)) {
+            return res.status(400).json({ error: 'Payload too large: max 50 items per array' });
+        }
 
         const ai = new GoogleGenAI({ apiKey });
         const modelName = 'gemini-2.5-flash';
@@ -71,6 +75,7 @@ LAKE HOUSE:
 3. **VIP guests** — important, high-profile, or special guests
 4. **Long stays** (3+ nights) — reward commitment
 5. **High pax in small room** — practical upgrade for comfort
+6. **Guest requests** — notes or preferences mentioning "best room", "upgrade", "make it special", "something special", "surprise", "wow", "top room", "best you have" — indicates the guest or booker has explicitly requested an elevated experience
 
 **IMPORTANT:** Each guest entry includes their current room type. Each empty room entry includes its room type. Only suggest moves where the empty room is EXACTLY one tier above the guest's current room type.
 
@@ -78,7 +83,7 @@ LAKE HOUSE:
 
         const guestsPayload = guests.map((g: any) => {
             const type = g.roomType || 'Unknown';
-            return `Room ${g.room} (Type: ${type}) | ${g.name} | L&L: ${g.ll} | Duration: ${g.duration} | Notes: ${g.notes || 'None'} | Preferences: ${g.preferences || 'None'}`;
+            return `Room ${g.room} (Type: ${type}) | ${g.name} | L&L: ${g.ll} | Duration: ${g.duration} | Notes: ${g.notes || 'None'} | Preferences: ${g.preferences || 'None'} | InRoom: ${g.inRoomItems || 'None'}`;
         }).join('\n');
 
         const emptyPayload = emptyRooms.map((r: any) => {

@@ -1021,8 +1021,10 @@ export class PDFService {
     // --- Dog/Pet detection: ensure routing to In-Room + notes ---
     // Tightened detection to avoid false positives: bare "pet" is too broad (matches
     // "Rose Petal", "Competition", etc). Use explicit pet-context phrases instead.
+    // Primary regex: explicit pet-context phrases + breed names. No fallback for bare "Dog"
+    // near PMS headers — this caused false positives (e.g. "Dog: No" in Booking Notes).
     const hasPet = /\b(?:dog\s+(?:bed|bowl|friendly|in\s+room|welcome)|pet\s+(?:friendly|welcome|fee|policy|request|supplies|dog)|bringing\s+(?:a\s+)?dog|puppy|canine|dog\s+bed|dog\s+bowls?)\b/i.test(singleLineText)
-      || /\bDog\b/.test(singleLineText) && /\b(?:In\s+Room|HK\s+Notes|Guest\s+Notes|Booking\s+Notes)\b/i.test(singleLineText.substring(Math.max(0, singleLineText.search(/\bDog\b/) - 150), singleLineText.search(/\bDog\b/) + 150));
+      || /\b(?:cockapoo|labrador|retriever|spaniel|terrier|poodle|dachshund|collie|whippet|lurcher|staffie|beagle|cocker|springer|greyhound)\b/i.test(singleLineText);
     const petInRoom = ["Dog Bed", "Dog Bowls"].filter(item =>
       !inRoomItemsText.toLowerCase().includes(item.toLowerCase())
     );

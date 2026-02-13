@@ -36,5 +36,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Return the API key for Live API WebSocket connection
     // This is served at runtime (not baked into the JS bundle)
+    // ── Security: Prevent proxy/CDN caching of sensitive token ──
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     return res.status(200).json({ apiKey });
 }

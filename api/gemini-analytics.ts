@@ -43,6 +43,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!sessions || !Array.isArray(sessions)) {
             return res.status(400).json({ error: 'Missing sessions array in request body' });
         }
+        // ── Security: Payload size guard ──
+        if (sessions.length > 20) {
+            return res.status(400).json({ error: 'Payload too large: max 20 sessions per request' });
+        }
 
         const ai = new GoogleGenAI({ apiKey });
         const modelName = 'gemini-2.5-flash';
