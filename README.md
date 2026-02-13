@@ -106,7 +106,7 @@ The interface features a handcrafted animation system designed for a polished, p
                             │                     │
                      ┌──────▼───────┐              │
                      │  Gemini AI   │
-                     │  (3 Flash)   │
+                     │(2.5 Pro/Flash)│
                      └──────────────┘              │
                                                   │
                      ┌──────────────┐              │
@@ -130,7 +130,7 @@ The interface features a handcrafted animation system designed for a polished, p
 | **Animations** | Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes |
 | **Backend** | Vercel Serverless Functions (`/api/gemini-*`) |
 | **PDF Parsing** | pdfjs-dist (Mozilla PDF.js) |
-| **AI** | Google Gemini 2.5 Pro (audit/analytics) via `@google/genai` + Gemini 2.5 Flash Live API (native audio chatbot) |
+| **AI** | Google Gemini 2.5 Pro (audit) · Gemini 2.5 Flash (analytics, sentiment, cleaning, upgrades) via `@google/genai` + Gemini 2.5 Flash Native Audio (live assistant) |
 | **Audio** | AudioWorklet API (ScriptProcessorNode fallback) |
 | **Real-Time Sync** | Firebase Realtime Database (defense-in-depth sanitisation) |
 | **Weather** | Open-Meteo API (Windermere, no API key required) |

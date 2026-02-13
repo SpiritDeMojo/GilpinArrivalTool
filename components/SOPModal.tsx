@@ -125,7 +125,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   </h2>
                 </div>
                 <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-                  Standard Operating Procedures • <span className="text-[#c5a065]">v21.0</span>
+                  Standard Operating Procedures • <span className="text-[#c5a065]">v23.0</span>
                 </p>
               </div>
               <div className="flex items-center gap-2">

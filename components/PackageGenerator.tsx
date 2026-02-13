@@ -16,27 +16,27 @@ const PRESETS: Record<string, PackagePreset> = {
   magic: {
     name: 'Magical Escapes Package',
     left: [
-      { day: 'Day 1', label: 'Arrival', events: [['On Arrival', 'Bottle of Champagne in room.'], ['8.00pm', 'Dinner at Gilpin Spice.']] },
-      { day: 'Day 2', label: 'Relax', events: [['Morning', 'Breakfast.'], ['11.00am', 'Spa Treatment.'], ['12.30pm', 'Bento Box lunch.']] },
+      { day: 'Day 1', label: 'Arrive & Settle', events: [['On Arrival', 'A chilled bottle of Champagne awaits you in your room.'], ['7.30pm', 'Dinner at Gilpin Spice, our Pan-Asian fusion restaurant.']] },
+      { day: 'Day 2', label: 'Indulge & Unwind', events: [['Morning', 'A leisurely breakfast at your table.'], ['11.00am', 'Your bespoke spa treatment at the Jetty Spa.'], ['12.30pm', 'A Bento Box lunch served to your suite.']] },
     ],
     right: [
-      { day: 'Day 3', label: 'Departure', events: [['Morning', 'Breakfast & Check out.']] },
+      { day: 'Day 3', label: 'Farewell', events: [['Morning', 'Enjoy a final breakfast before departure.']] },
     ],
   },
   moon: {
-    name: 'The Gilpinmoon Package',
+    name: 'The Gilpinmoon Experience',
     left: [
-      { day: 'Day 1', label: 'Arrival', events: [['On Arrival', 'Champagne served in your room.'], ['6.00pm', 'Dinner at Gilpin Spice.']] },
-      { day: 'Day 2', label: 'Relax', events: [['Morning', 'Leisurely breakfast.'], ['11.15am', 'Spa Experience begins.'], ['1.30pm', 'Bento box served in Spa.']] },
+      { day: 'Day 1', label: 'Arrive & Settle', events: [['On Arrival', 'Champagne and a handwritten welcome note in your room.'], ['7.30pm', 'An intimate dinner at Gilpin Spice.']] },
+      { day: 'Day 2', label: 'Restore & Revive', events: [['Morning', 'A leisurely breakfast at your table.'], ['11.15am', 'Your Jetty Spa experience begins.'], ['1.30pm', 'A freshly prepared Bento Box served in the spa.']] },
     ],
     right: [
-      { day: 'Day 3', label: 'Explore', events: [['Morning', 'Breakfast.'], ['Daytime', 'Windermere Lake Cruise.'], ['6.00pm', 'Dinner at Source.']] },
-      { day: 'Day 4', label: 'Departure', events: [['Morning', 'Breakfast before departure.']] },
+      { day: 'Day 3', label: 'Discover & Savour', events: [['Morning', 'Breakfast at your leisure.'], ['Daytime', 'A private Windermere Lake Cruise.'], ['7.30pm', 'Dinner at Source, our Michelin-starred restaurant.']] },
+      { day: 'Day 4', label: 'Farewell', events: [['Morning', 'Enjoy a final breakfast before departure.']] },
     ],
   },
   blank: {
-    name: 'Your Custom Itinerary',
-    left: [{ day: 'Day 1', label: 'Start', events: [['14:00', 'Check-in']] }],
+    name: 'Bespoke Guest Itinerary',
+    left: [{ day: 'Day 1', label: 'Arrival', events: [['3:00pm', 'Welcome and check-in.']] }],
     right: [],
   },
 };
@@ -88,25 +88,28 @@ export interface PackageGeneratorProps {
 
 /* ────────────── Venue Description Mappings ────────────── */
 const VENUE_DESCRIPTIONS: Record<string, string> = {
-  'Source': 'Dinner in our Michelin-starred restaurant, Source.',
-  'Spice': 'Dinner in our Pan-Asian fusion restaurant, Gilpin Spice.',
-  'Gilpin Spice': 'Dinner in our Pan-Asian fusion restaurant, Gilpin Spice.',
-  'Lake House': 'Afternoon Tea at The Lake House.',
-  'Afternoon Tea': 'Afternoon Tea served in the Drawing Room.',
-  'Bento': 'Bento Box lunch delivered to your room.',
-  'Spa': 'Relaxation time at the Jetty Spa.',
-  'Spa Use': 'Complimentary use of the Jetty Spa facilities.',
-  'Massage': 'Your spa massage treatment.',
-  'Aromatherapy': 'Aromatherapy massage at the Jetty Spa.',
-  'Treatments': 'Spa treatment at the Jetty Spa.',
-  'GH Pure': 'GH Pure facial treatment at the Jetty Spa.',
-  'Pure Lakes': 'Pure Lakes treatment at the Jetty Spa.',
-  'Pure Couples': 'Couples\' Pure treatment at the Jetty Spa.',
-  'Spa Hamper': 'In-room Spa Hamper awaits your arrival.',
-  'In-Room Hamper': 'In-room Spa Hamper awaits your arrival.',
-  'Hamper': 'Complimentary hamper in your room.',
-  'Dinner': 'Dinner at Gilpin Hotel.',
-  'Lunch': 'Lunch at Gilpin Hotel.',
+  'Source': 'Dinner at Source, our Michelin-starred restaurant — a celebration of Cumbrian produce and seasonal flavours.',
+  'Spice': 'Dinner at Gilpin Spice, our acclaimed Pan-Asian fusion restaurant set within the heart of the Lake District.',
+  'Gilpin Spice': 'Dinner at Gilpin Spice, our acclaimed Pan-Asian fusion restaurant set within the heart of the Lake District.',
+  'Lake House': 'Afternoon Tea at The Lake House — delicate finger sandwiches, freshly baked scones, and artisan patisserie.',
+  'Afternoon Tea': 'Afternoon Tea served in the Drawing Room — a quintessential Gilpin tradition.',
+  'Bento': 'A freshly prepared Bento Box lunch served to your room or the Jetty Spa.',
+  'Spa': 'Your spa experience at the Jetty Spa — our lakeside sanctuary of calm.',
+  'Spa Use': 'Complimentary use of the Jetty Spa facilities, including the infinity pool, hot tub, and relaxation rooms.',
+  'Massage': 'A restorative massage treatment at the Jetty Spa.',
+  'Aromatherapy': 'An aromatherapy massage at the Jetty Spa — a deeply restorative experience tailored to your needs.',
+  'Treatments': 'A bespoke spa treatment at the Jetty Spa.',
+  'GH Pure': 'A GH Pure facial at the Jetty Spa — advanced skincare with visible results.',
+  'Pure Lakes': 'A Pure Lakes treatment at the Jetty Spa — harnessing the finest Cumbrian natural botanicals.',
+  'Pure Couples': 'A Pure Couples\' treatment at the Jetty Spa — a shared experience of relaxation and rejuvenation.',
+  'ESPA': 'An ESPA treatment at the Jetty Spa — luxury skincare and holistic wellbeing.',
+  'Facial': 'A bespoke facial treatment at the Jetty Spa, tailored to your skin.',
+  'Hot Stone': 'A Hot Stone massage at the Jetty Spa — warm Cumbrian stones ease tension and restore balance.',
+  'Spa Hamper': 'A curated Spa Hamper, hand-prepared and placed in your room on arrival.',
+  'In-Room Hamper': 'A curated Spa Hamper, hand-prepared and placed in your room on arrival.',
+  'Hamper': 'A hand-prepared hamper awaiting you in your room.',
+  'Dinner': 'Dinner at Gilpin Hotel — your table has been reserved.',
+  'Lunch': 'Lunch at Gilpin Hotel — a seasonal menu showcasing the best of the Lake District.',
 };
 
 /* ────────────── Parsed Facility Item ────────────── */
@@ -182,13 +185,17 @@ const buildDescription = (item: ParsedFacility): string => {
   if (key) {
     let desc = VENUE_DESCRIPTIONS[key];
     // Personalize with count for treatments
-    if (item.count > 1 && /spa|massage|aromatherapy|treatment|pure/i.test(item.type)) {
-      desc = `Your spa experience begins with ${item.count} ${item.type} treatments.`;
+    if (item.count > 1 && /spa|massage|aromatherapy|treatment|pure|espa|facial|hot.?stone/i.test(item.type)) {
+      desc = `Your spa experience includes ${item.count} bespoke ${item.type} treatments at the Jetty Spa.`;
+    }
+    // Add pax context for dining
+    if (item.pax && item.pax > 1 && /dinner|source|spice|lunch/i.test(item.type)) {
+      desc = desc.replace(/\.$/, ` for ${item.pax} guests.`);
     }
     return desc;
   }
-  // Fallback: use raw type with emoji
-  return `${item.emoji} ${item.type}${item.count > 1 ? ` (x${item.count})` : ''}.`;
+  // Fallback: use raw type with refined phrasing
+  return `${item.type}${item.count > 1 ? ` (×${item.count})` : ''} — arranged for your enjoyment.`;
 };
 
 /* ────────────── Build Day Blocks from Guest Data ────────────── */
@@ -236,10 +243,10 @@ const buildItineraryFromGuest = (
     dayOffset = Math.max(0, Math.min(dayOffset, totalDays - 1));
 
     const timeStr = item.time || (
-      /dinner|spice|source|supper/i.test(item.type) ? '7:00pm' :
+      /dinner|spice|source|supper/i.test(item.type) ? '7:30pm' :
         /lunch|bento/i.test(item.type) ? '12:30pm' :
           /tea|lake house/i.test(item.type) ? '3:00pm' :
-            /spa|massage|aromatherapy|treatment|pure/i.test(item.type) ? '10:00am' :
+            /spa|massage|aromatherapy|treatment|pure|espa|facial|hot.?stone/i.test(item.type) ? '10:30am' :
               /hamper/i.test(item.type) ? 'On Arrival' :
                 'TBC'
     );
@@ -274,22 +281,22 @@ const buildItineraryFromGuest = (
 
     // Add breakfast (not on arrival day)
     if (d > 0 && d < totalDays - 1) {
-      events.unshift({ time: 'Morning', activity: 'Full English or Continental breakfast.' });
+      events.unshift({ time: 'Morning', activity: 'A leisurely breakfast at your table — Full English, Continental, or lighter options.' });
     }
 
     // Add check-in on arrival day
     if (d === 0) {
-      events.unshift({ time: '3:00pm', activity: 'Check-in and welcome to Gilpin.' });
+      events.unshift({ time: '3:00pm', activity: 'Welcome and check-in at Gilpin Hotel & Lake House.' });
       // Add champagne for special packages
       if (/moon|magic/i.test(presetKey)) {
-        events.splice(1, 0, { time: 'On Arrival', activity: 'Bottle of Champagne awaiting you in your room.' });
+        events.splice(1, 0, { time: 'On Arrival', activity: 'A chilled bottle of Champagne awaiting you in your room.' });
       }
     }
 
     // Add departure on last day
     if (d === totalDays - 1) {
-      events.unshift({ time: 'Morning', activity: 'Full English or Continental breakfast.' });
-      events.push({ time: '11:00am', activity: 'Check-out. We look forward to welcoming you back.' });
+      events.unshift({ time: 'Morning', activity: 'Enjoy a final breakfast before departure.' });
+      events.push({ time: '11:00am', activity: 'Check-out. Thank you for staying with us — we look forward to welcoming you back.' });
     }
 
     // Sort events by time within the day
