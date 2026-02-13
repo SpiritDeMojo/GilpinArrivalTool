@@ -248,10 +248,24 @@ ROOM: ${g.room}
 LOCATION: ${location}
 NAME: ${g.name}
 ETA: ${g.eta}
-CAR: ${g.car}
+CAR: ${g.car || 'Not set'}
 DURATION: ${g.duration} nights
+ROOM_TYPE: ${g.roomType || 'Unknown'}
+ADULTS: ${(g as any).adults || '?'} CHILDREN: ${(g as any).children || 0} INFANTS: ${(g as any).infants || 0}
 NOTES: ${g.prefillNotes}
 STRATEGY: ${g.preferences}
+FACILITIES: ${g.facilities || 'None'}
+PACKAGE: ${(g as any).package || 'None'}
+IN_ROOM_ITEMS: ${(g as any).inRoomItems || 'None'}
+HK_NOTES: ${(g as any).hkNotes || 'None'}
+FLAGS: ${(g as any).flags?.map((f: any) => f.name).join(', ') || 'None'}
+HK_STATUS: ${g.hkStatus || 'pending'}
+GUEST_STATUS: ${g.guestStatus || 'pre_arrival'}
+MAINT_STATUS: ${g.maintenanceStatus || 'not_started'}
+TURNDOWN: ${(g as any).turndownStatus || 'pending'}
+DINNER_TIME: ${(g as any).dinnerTime || 'Not set'}
+DINNER_VENUE: ${(g as any).dinnerVenue || 'Not set'}
+IN_ROOM_DELIVERED: ${g.inRoomDelivered ? 'Yes' : 'No'}
 
 [RAW_STREAM_DATA]
 ${g.rawHtml}
@@ -463,6 +477,8 @@ ${guestsBrief}
    - Confirm conversationally (e.g., "Noted, I've marked the guest in Room 3 as on site.")
    - Then at the END of your response, output: [ACTION:UPDATE_GUEST]{"room":"3","field":"guestStatus","value":"on_site"}
    - Valid guestStatus values: "pre_arrival", "on_site", "off_site", "awaiting_room", "room_ready_notified", "checked_in", "courtesy_call_due", "call_complete", "checked_out", "no_show", "cancelled"
+   - You can also update these fields: "car" (vehicle registration), "facilities", "roomType", "inRoomItems" (gifts/amenities to place in room), "hkNotes" (housekeeping instructions), "preferences" (tactical strategy notes), "prefillNotes" (intelligence column notes).
+   - Example: User says "Room 5 car registration is AB12 CDE" → output [ACTION:UPDATE_GUEST]{"room":"5","field":"car","value":"AB12 CDE"}
 
 **7. Room Upgrade Awareness**
    The system has an AI-powered room upgrade feature accessible from the In House dashboard ("AI Upgrades" button).

@@ -155,10 +155,7 @@ const ViewManager: React.FC = () => {
                                         {tab.key === 'arrivals' ? (
                                             <>{tab.labelFull} ({guests.length})</>
                                         ) : (
-                                            <>
-                                                <span className="tab-label-full">{tab.labelFull}</span>
-                                                <span className="tab-label-short">{tab.labelShort}</span>
-                                            </>
+                                            tab.labelFull
                                         )}
                                     </span>
 
@@ -464,27 +461,6 @@ const ViewManager: React.FC = () => {
             flex: 1;
             justify-content: center;
             text-align: center;
-          }
-        }
-
-        /* Tablet/Mobile (< 1024px): horizontal scroll slider */
-        @media (max-width: 1023px) {
-          .view-tabs-container {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-            scroll-snap-type: x mandatory;
-            scroll-behavior: smooth;
-            padding: 2px 4px;
-            mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent);
-            -webkit-mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent);
-          }
-          .view-tabs-container::-webkit-scrollbar {
-            display: none;
-          }
-          .view-tabs-container .view-tab {
-            flex-shrink: 0;
-            scroll-snap-align: center;
           }
         }
 

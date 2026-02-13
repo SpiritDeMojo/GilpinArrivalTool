@@ -333,18 +333,9 @@
   .nm-controls-bar { flex-direction: column; align-items: stretch; }
   .nm-print-btn    { text-align: center; }
 
-  .desktop-grid { display: none !important; }
-  .mobile-slider {
-    display: flex; overflow-x: auto; gap: 12px;
-    padding: 4px 0 20px;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; margin-bottom: 24px;
-  }
-  .mobile-slider::-webkit-scrollbar { display: none; }
-  .mobile-slider .nm-room {
-    flex: 0 0 75vw; max-width: 300px; scroll-snap-align: start;
-  }
+  /* Mobile: show grid as single column instead of horizontal slider */
+  .desktop-grid { grid-template-columns: 1fr !important; }
+  .mobile-slider { display: none !important; }
   .nm-room        { padding: 14px; }
   .nm-room-number { font-size: 20px; }
   .nm-guest-name  { font-size: 14px; }

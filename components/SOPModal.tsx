@@ -7,9 +7,9 @@ interface SOPModalProps {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GILPIN ARRIVAL TOOL — OPERATIONAL HANDBOOK (SOP v21.0)
+   GILPIN ARRIVAL TOOL — OPERATIONAL HANDBOOK (SOP v23.0)
    ═══════════════════════════════════════════════════════════════
-   28 sections covering every feature — from sign-in to AI voice.
+   30 sections covering every feature — from sign-in to AI voice.
    Scrollable with jump-to-section table of contents.
    ═══════════════════════════════════════════════════════════════ */
 
@@ -42,6 +42,8 @@ const SECTIONS = [
   { id: 'evcharging', num: '25', icon: '⚡', title: 'EV Charging' },
   { id: 'aiupgrades', num: '26', icon: '🏠', title: 'AI Room Upgrades' },
   { id: 'turndown', num: '27', icon: '🌙', title: 'Turndown Dashboard' },
+  { id: 'bookingstream', num: '28', icon: '📖', title: 'Booking Stream' },
+  { id: 'itineraryqueue', num: '29', icon: '📋', title: 'Itinerary Queue' },
 ];
 
 /* ─── Reusable sub-components ─── */
@@ -602,22 +604,17 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                 {/* ════════════════════════════════════════════════ */}
                 <section id="sop-data">
                   <Divider num="14" title="Data Sourcing" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    <Card className="hover:border-[#c5a065]/40 transition-all">
-                      <div className="text-3xl mb-4">📂</div>
-                      <h4 className="font-black text-sm text-slate-900 dark:text-white uppercase mb-2">PDF Mode</h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Traditional manual upload for local manifest copies. Upload via the <strong>📂 Upload</strong> button in the navigation bar. The parser extracts guest data automatically.
-                      </p>
-                    </Card>
-                    <Card className="hover:border-[#c5a065]/40 transition-all">
-                      <div className="text-3xl mb-4">⚡</div>
-                      <h4 className="font-black text-sm text-slate-900 dark:text-white uppercase mb-2">PMS Mode</h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Live integration for real-time guest status directly from the hotel property management system. Available when configured by the administrator.
-                      </p>
-                    </Card>
-                  </div>
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      Guest data is sourced from PDF arrival lists exported from the hotel property management system. Upload via the <strong>📂 Upload</strong> button in the navigation bar.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="📂" label="PDF Upload" sub="Upload arrival list PDFs. The parser automatically extracts guest names, rooms, facilities, dietary requirements, car registrations, and more." />
+                      <MiniCard icon="🔍" label="Column-Aware Parsing" sub="The parser uses X-coordinate analysis to separate confirmed facility bookings (right column) from guest requests and notes (left column)." />
+                      <MiniCard icon="⚠️" label="Unbooked Alerts" sub="If a guest has requested a booking (traces) but no matching confirmed facility exists, the system flags it as UNBOOKED for follow-up." />
+                    </div>
+                    <Tip>Each PDF upload creates a new session. Historical sessions are accessible via the Session Browser in the hamburger menu.</Tip>
+                  </Card>
                 </section>
 
 
@@ -930,12 +927,44 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   </Card>
                 </section>
 
+                {/* ── 28 — BOOKING STREAM ── */}
+                <section id="bookingstream">
+                  <Divider num="28" title="Booking Stream" />
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      The Booking Stream provides a detailed, per-guest view of all raw booking data extracted from the PDF. Access it by clicking <strong>📖 Booking Stream</strong> on any guest card.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="📖" label="Structured View" sub="Raw PDF data is formatted into clear sections: Header, Booking Notes, Traces, Facility Bookings, Previous Stays, and Billing." />
+                      <MiniCard icon="🎨" label="Venue Highlighting" sub="Facility bookings are colour-coded by venue: Spice (red), Source (green), Lake House (blue), ESPA (purple). Hover to see details." />
+                      <MiniCard icon="📋" label="Quick Copy" sub="Click the copy button to copy formatted booking data to clipboard — useful for sharing with reservations or management." />
+                    </div>
+                    <Tip>Booking Stream data is preserved across sessions and syncs to all devices via Firebase.</Tip>
+                  </Card>
+                </section>
+
+                {/* ── 29 — ITINERARY QUEUE ── */}
+                <section id="itineraryqueue">
+                  <Divider num="29" title="Itinerary Queue" />
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      The Itinerary Queue connects the arrival list to the Package Generator. Guests with facility bookings can be sent directly to the Package Generator for bespoke itinerary creation.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="📦" label="Send to Package" sub="From any guest card, click 📦 Send to Package. Guest name, room, duration, facilities, and dinner details are pre-filled automatically." />
+                      <MiniCard icon="✨" label="Auto-Population" sub="Facilities are parsed with date awareness — each activity is placed on the correct day of the itinerary based on its booking date." />
+                      <MiniCard icon="🖨️" label="Print Ready" sub="The generated itinerary is formatted as an A4 landscape document, ready for printing and placing in the guest room." />
+                    </div>
+                    <Tip>The Package Generator supports direct text editing — click any text on the preview to customise it before printing.</Tip>
+                  </Card>
+                </section>
+
               </div>
 
               {/* ── FOOTER ── */}
               <div className="bg-slate-100 dark:bg-[#0a0a0a] p-6 md:p-8 text-center border-t border-slate-200 dark:border-[#222]">
                 <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-600 font-mono tracking-widest uppercase">
-                  Gilpin Hotel &amp; Lake House &bull; Standard Operating Procedures &bull; v22.0 &bull; Internal Use Only
+                  Gilpin Hotel &amp; Lake House &bull; Standard Operating Procedures &bull; v23.0 &bull; Internal Use Only
                 </p>
               </div>
             </div>

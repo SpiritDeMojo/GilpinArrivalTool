@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Guest } from '../types';
-import BookingStream from './BookingStream';
+import BookingStream, { highlightText } from './BookingStream';
 
 interface GuestRowProps {
   guest: Guest;
@@ -213,7 +213,42 @@ const GuestRow: React.FC<GuestRowProps> = ({
           <ResizableTextArea field="ll" value={guest.ll} center onUpdate={onUpdate} className={isReturn ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''} />
         </td>
         <td className="p-1 align-top">
-          <ResizableTextArea field="facilities" value={guest.facilities} onUpdate={onUpdate} />
+          {guest.facilitiesRaw ? (() => {
+            // Split raw facility text into individual venue entries (dining/spa/treatments ONLY)
+            const venueRe = /(?=\/(?:Spice|Source|The Lake House|GH\s*(?:Pure|ESPA)|LH\s*(?:Pure|ESPA|Natural)|Pure\s*Lakes?|Pure|ESPA|Spa|Bento|Afternoon|Couples|Steam|Mud|Hot|Facial|Massage|Tea|Dinner))/i;
+            const segments = guest.facilitiesRaw.split(venueRe).filter((s: string) => s.trim());
+            // Emoji lookup for venue/treatment names
+            const emojiMap: [RegExp, string][] = [
+              [/^\/Spice/i, '🌶️'],
+              [/^\/Source/i, '🍽️'],
+              [/^\/(?:The )?Lake House/i, '🍰'],
+              [/^\/(?:GH|LH)\s*(?:Pure|ESPA)|^\/Pure\s*Lakes?|^\/ESPA|^\/(?:Facial|Massage|Aromatherapy)/i, '💆'],
+              [/^\/(?:Steam|Hot\s*(?:tub|Stone)|Couples\s*Spa|Mud|Spa)/i, '♨️'],
+              [/^\/Bento/i, '🍱'],
+              [/^\/Afternoon|^\/Tea/i, '🍰'],
+              [/^\/Dinner/i, '🍽️'],
+            ];
+            return (
+              <div className="text-xs leading-relaxed facility-col-highlights">
+                {segments.map((seg: string, i: number) => {
+                  const trimmed = seg.trim();
+                  if (!trimmed) return null;
+                  let emoji = '🔹';
+                  for (const [re, em] of emojiMap) {
+                    if (re.test(trimmed)) { emoji = em; break; }
+                  }
+                  return (
+                    <div key={i} className="mb-0.5">
+                      <span className="mr-0.5">{emoji}</span>
+                      {highlightText(trimmed)}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })() : (
+            <ResizableTextArea field="facilities" value={guest.facilities} onUpdate={onUpdate} />
+          )}
         </td>
         <td className="p-1 align-top text-center">
           <ResizableTextArea field="eta" value={guest.eta} center onUpdate={onUpdate} className="font-bold" />

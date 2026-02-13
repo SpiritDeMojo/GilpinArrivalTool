@@ -74,7 +74,7 @@ Each guest may include pre-parsed structured fields alongside rawHtml. USE THESE
 ### 1. 🛡️ REVENUE & SECURITY GUARD
 * **APR / LHAPR:** IF RateCode has 'APR'/'ADV' -> Start 'notes' with: "✅ PAID IN FULL (Extras Only)".
 * **Billing Alerts:** IF text has "Voucher", "Deposit Taken", "Balance Due" -> Add "💰 [Details]" to 'notes'.
-* **Silent Upgrades:** IF text has "Guest Unaware"/"Secret" -> Add "🤫 COMP UPGRADE (Silent)" to 'notes'.
+* **Silent Upgrades:** IF text has "Guest Unaware"/"Secret"/"Comp Upgrade" -> Add "🤫 COMP UPGRADE (Silent) — room freed for availability" to 'notes'. CONTEXT: The hotel upgrades a guest to a superior room (guest is unaware) specifically to free their originally-booked lower-value room for last-minute bookings. This is a revenue management tactic, not a reward.
 
 ### 2. 🎁 PACKAGE & AMENITY AUDIT
 * **MINIMOON:** Audit for: Champagne, Itinerary, Cruise Tickets.
@@ -82,12 +82,17 @@ Each guest may include pre-parsed structured fields alongside rawHtml. USE THESE
 * **CEL:** Audit for: Champagne, Balloons.
 * **RULE:** If a package *requires* an item but it is NOT in the raw text, add: "⚠️ MISSING: [Item]" to 'inRoomItems' AND 'notes'.
 
+### 2.1 💰 BILLING → IN-ROOM CROSS-REFERENCE
+* **RULE:** If the raw text mentions physical items in billing/charges (Champagne, Flowers, Chocolates, Wine, Prosecco, Spa Hamper, Birthday Cake) but they are NOT in the 'inRoomItems' list, add: "⚠️ CHECK: [Item] on bill but not in In-Room list" to 'notes' AND add the item to 'inRoomItems'.
+* **CONTEXT:** Billing items often indicate physical deliveries to the room. If they appear on the bill but not in the In-Room section, reception must verify whether the item has been ordered and arranged.
+
 ### 3. 📝 FIELD GENERATION RULES
 
 **A. facilities (The Itinerary)**
 * **FORMAT:** \`{Icon} {Name}: {Count} ({Date} @ {Time})\`
-* **ICONS:** 🌶️ Spice, 🍽️ Source, 🍰 Tea/Lake House, 🍱 Bento, 💆 Spa/Massage.
+* **ICONS:** 🌶️ Spice, 🍽️ Source, 🍰 Tea/Lake House, 🍱 Bento, 💆 Spa/Massage, ♨️ Spa Hamper/In-Room Hamper, 🎁 Hamper.
 * **LOGIC:** Merge duplicates. Keep specific notes (e.g. "Couples Massage").
+* **REPAIR:** If the parser's PARSER_FACILITIES field looks garbled (fragmented numbers like "06 • + 02 • + 26", orphaned digits, broken date fragments), reconstruct the facility from the RAW text. Look for patterns like "Spa In-Room Hamper on DD/MM/YY" or "Dinner for N on DD/MM at HH:MM in Venue" and rebuild the formatted version. Dates MUST be preserved as DD/MM or DD/MM/YY.
 
 **B. notes (The "Intelligence String")**
 * **CRITICAL:** Preserve specific details (Names, severity, specific requests).
@@ -116,9 +121,24 @@ Each guest may include pre-parsed structured fields alongside rawHtml. USE THESE
 * **RULE:** If an allergy/dietary item appears in 'notes', it MUST also appear in 'hkNotes'.
 * **RULE:** If children > 0, include child-related setup notes.
 
-**D. preferences (Greeting Strategy)**
-* **STYLE:** Short, punchy, imperative instructions. (e.g. "Wish Happy Birthday to Rob. Check Voucher.")
+**D. preferences (Greeting Strategy & Check-In Intelligence)**
+* **STYLE:** Short, punchy, imperative instructions for front desk staff. Max 3-4 bullet points.
 * **RULE:** If preRegistered, add "Pre-registered — fast check-in."
+* **RETURNING GUEST:** If history shows previous stays ("Been Before", "_Stayed", stayHistory), add: "Welcome back! [Xth] visit." Include last visit dates if available.
+* **OCCASIONS:** If birthday/anniversary/honeymoon detected: "Wish Happy [Occasion] to [Name]." Include specific details (age, names).
+* **VIP / DIRECTOR:** "VIP arrival — escort to room, offer lounge/refreshment."
+* **PETS:** If pet in room: "Dog supplies confirmed in room. Offer garden walk directions."
+* **ALLERGIES:** If any allergy or dietary restriction: "Confirm dietary requirements are noted with kitchen."
+* **CHILDREN / INFANTS:** If children > 0: "Family arriving — confirm cot/extra bed ready. Mention kids' amenities."
+* **LATE ARRIVAL (ETA after 18:00):** "Late arrival — expedite check-in, light refreshment ready."
+* **PACKAGE CONTEXT:**
+    * MINIMOON/MAGESC: "Welcome to your Magical Escape/Mini Moon — mention itinerary highlights."
+    * DBB: "Dinner included tonight — confirm restaurant and time."
+    * RO: "Room Only — offer dinner reservation if not already booked."
+    * COMP: "Complimentary stay — VIP treatment, discretion on billing."
+* **ROOM FEATURES:** If specific room requested (e.g. "Cat Bells", "Knipe Tarn"): "Requested room confirmed."
+* **OTA GUESTS:** If source is Booking.com/Expedia: "OTA booking — warm welcome, encourage direct booking next time."
+* **EXAMPLE:** "Welcome back! 3rd visit. Wish Happy 50th Birthday to Rob. Nut allergy confirmed with kitchen. Pre-registered — fast check-in. Dinner at Spice 19:30 tonight."
 
 **E. packages (Human Readable)**
 * **CRITICAL:** Match the exact RateCode format. Underscores matter!
@@ -137,6 +157,24 @@ Each guest may include pre-parsed structured fields alongside rawHtml. USE THESE
     * APR / ADV / ADVANCE / LHAPR -> "💳 Advanced Purchase"
 * **IMPORTANT:** "BB_2" is NOT "Winter Offer". Only codes containing "WIN" in the name are Winter Offers.
 * **DEFAULT:** Use Rate Description if no code matches.
+
+**E1. roomType (Room Category)**
+* **MAPPINGS:** Translate 2-letter PDF codes to human-readable names:
+    * CR -> "Classic Room"
+    * MR -> "Master Room"
+    * JS -> "Junior Suite"
+    * GR -> "Garden Room"
+    * GS -> "Garden Suite"
+    * SL -> "Spa Lodge"
+    * SS -> "Spa Suite"
+    * MAG -> "Maglona Suite"
+    * MOT -> "Motor Lodge"
+    * LHC -> "Lake House Classic"
+    * LHM -> "Lake House Master"
+    * LHS -> "Lake House Suite"
+    * LHSS -> "Lake House Spa Suite"
+* **RULE:** If roomType is already human-readable, keep it. Only translate if it's a raw code.
+* **ACCESSIBILITY:** If a guest has limited mobility (♿ in notes), note in preferences: "♿ Accessibility needs — confirm room suitability."
 
 **F. history (Loyalty Tracker)**
 * **FORMAT:** "Yes (x[Count])", "Yes", or "No".
@@ -167,6 +205,7 @@ Each guest may include pre-parsed structured fields alongside rawHtml. USE THESE
             if (g.inRoomItems) structured += `\nIN-ROOM ITEMS (Parser): ${g.inRoomItems}`;
             if (g.car) structured += `\nPARSER_CAR: ${g.car}`;
             if (g.facilities) structured += `\nPARSER_FACILITIES: ${g.facilities}`;
+            if (g.facilitiesRaw) structured += `\nPARSER_FACILITIES_RAW: ${g.facilitiesRaw}`;
             if (g.dinnerTime) structured += `\nPARSER_DINNER_TIME: ${g.dinnerTime}`;
             if (g.dinnerVenue) structured += `\nPARSER_DINNER_VENUE: ${g.dinnerVenue}`;
             structured += `\nRAW: ${g.rawHtml}`;

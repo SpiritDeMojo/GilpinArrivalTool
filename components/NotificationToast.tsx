@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { AppNotification } from '../hooks/useNotifications';
 import { DashboardView } from '../types';
 
@@ -27,7 +27,7 @@ const DEPT_CONFIG: Record<AppNotification['department'], { label: string; iconCo
 };
 
 /* ── Toast animation variants ── */
-const toastVariants = {
+const toastVariants: Variants = {
     initial: { opacity: 0, x: 80, scale: 0.85, filter: 'blur(6px)' },
     animate: {
         opacity: 1, x: 0, scale: 1, filter: 'blur(0px)',
@@ -39,7 +39,7 @@ const toastVariants = {
     },
 };
 
-const clearAllVariants = {
+const clearAllVariants: Variants = {
     initial: { opacity: 0, y: -10 },
     animate: { opacity: 1, y: 0, transition: { delay: 0.1 } },
     exit: { opacity: 0, y: -10, transition: { duration: 0.15 } },

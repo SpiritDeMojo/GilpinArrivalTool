@@ -76,15 +76,6 @@
         display: none;
     }
 
-    /* Swap full labels for short labels on mobile */
-    .tab-label-full {
-        display: none !important;
-    }
-
-    .tab-label-short {
-        display: inline !important;
-    }
-
     .nav-logo-wrapper {
         width: 56px;
         height: 56px;

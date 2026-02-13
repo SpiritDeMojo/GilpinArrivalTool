@@ -9,6 +9,7 @@ import { ViewProvider } from './contexts/ViewProvider';
 import { HotkeysProvider } from './contexts/HotkeysProvider';
 import { UserProvider } from './contexts/UserProvider';
 import { GuestProvider } from './contexts/GuestProvider';
+import { ToastProvider } from './components/ToastProvider';
 import './styles/design-tokens.css';
 
 // ── Legacy query-param redirect ────────────────────────────────────────────
@@ -39,14 +40,16 @@ root.render(
       <ThemeProvider>
         <ViewProvider>
           <HotkeysProvider>
-            <GuestProvider>
-              <Routes>
-                <Route path="/" element={<LegacyRedirect />} />
-                <Route path="/session/:sessionId" element={<App />} />
-                <Route path="/session/:sessionId/:tab" element={<App />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </GuestProvider>
+            <ToastProvider>
+              <GuestProvider>
+                <Routes>
+                  <Route path="/" element={<LegacyRedirect />} />
+                  <Route path="/session/:sessionId" element={<App />} />
+                  <Route path="/session/:sessionId/:tab" element={<App />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </GuestProvider>
+            </ToastProvider>
           </HotkeysProvider>
         </ViewProvider>
       </ThemeProvider>

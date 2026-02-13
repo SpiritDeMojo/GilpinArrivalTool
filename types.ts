@@ -34,10 +34,16 @@ export interface Guest {
   eta: string;
   duration: string;
   facilities: string;
+  /** Raw facility text with /Venue: patterns for venue-colored highlighting */
+  facilitiesRaw?: string;
   prefillNotes: string;
   inRoomItems: string;
   preferences: string;
   rawHtml: string;
+  /** Raw booking text from PDF, reconstructed with columns properly separated */
+  bookingStream?: string;
+  /** Structured booking stream lines with X/Y positions for PDF-faithful rendering */
+  bookingStreamStructured?: { text: string; x: number; y: number }[];
   rateCode?: string;
   packageName?: string;
   stayHistoryCount?: number;
@@ -155,6 +161,9 @@ export interface Guest {
 
   /** Previous stay history */
   stayHistory?: { arrival: string; departure: string; room: string }[];
+
+  /** Guest-requested bookings (from traces/notes) — may not be confirmed */
+  requestedBookings?: string[];
 }
 
 export interface ArrivalSession {

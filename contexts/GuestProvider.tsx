@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { useUser } from './UserProvider';
 import { useView } from './ViewProvider';
 import { useHotkeys } from './HotkeysProvider';
+import { useToast } from '../components/ToastProvider';
 import {
     Guest, Flag, FilterType, ArrivalSession, PropertyFilter,
     HKStatus, MaintenanceStatus, GuestStatus, TurndownStatus,
@@ -79,6 +80,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const { userName, department, location } = useUser();
     const { dashboardView, setDashboardView } = useView();
     const { registerActions } = useHotkeys();
+    const { showToast } = useToast();
     const isRec = department === 'REC';
 
     // ── Core data hook ──────────────────────────────────────────────────────
@@ -159,6 +161,29 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         auditedUpdate(guestId, updates, updatedBy);
     }, [isSessionLocked, auditedUpdate, lockSession]);
 
+    // ── Room label helper ────────────────────────────────────────────────────
+    const roomLabel = useCallback((guestId: string) => {
+        const g = guests.find(g => g.id === guestId);
+        return g ? `Room ${g.room.split(' ')[0]}` : 'Guest';
+    }, [guests]);
+
+    // ── HK status labels ─────────────────────────────────────────────────────
+    const HK_LABELS: Record<string, string> = {
+        pending: '⏳ Pending', in_progress: '🔄 In Progress',
+        cleaned: '✅ Cleaned', inspected: '🔍 Inspected', complete: '🏁 Complete',
+    };
+    const MAINT_LABELS: Record<string, string> = {
+        not_started: '⏳ Not Started', in_progress: '🔄 In Progress',
+        complete: '✅ Complete', deferred: '⏸️ Deferred',
+    };
+    const GUEST_LABELS: Record<string, string> = {
+        pre_arrival: '📋 Pre-Arrival', on_site: '🟢 On Site', off_site: '🔴 Off Site',
+        awaiting_room: '⏳ Awaiting Room', room_ready_notified: '📱 Room Ready',
+        checked_in: '✅ Checked In', courtesy_call_due: '📞 Call Due',
+        call_complete: '✅ Call Complete', checked_out: '👋 Checked Out',
+        no_show: '❌ No Show', cancelled: '🚫 Cancelled',
+    };
+
     // ── Status handlers ─────────────────────────────────────────────────────
     const handleUpdateHKStatus = useCallback((guestId: string, status: HKStatus) => {
         guardedUpdate(guestId, {
@@ -166,7 +191,8 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: 'User'
         } as Partial<Guest>, 'User');
-    }, [guardedUpdate]);
+        showToast(`${roomLabel(guestId)} → ${HK_LABELS[status] || status}`, 'success');
+    }, [guardedUpdate, showToast, roomLabel]);
 
     const handleUpdateMaintenanceStatus = useCallback((guestId: string, status: MaintenanceStatus) => {
         guardedUpdate(guestId, {
@@ -174,7 +200,8 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: 'User'
         } as Partial<Guest>, 'User');
-    }, [guardedUpdate]);
+        showToast(`${roomLabel(guestId)} maintenance → ${MAINT_LABELS[status] || status}`, 'success');
+    }, [guardedUpdate, showToast, roomLabel]);
 
     const handleUpdateGuestStatus = useCallback((guestId: string, status: GuestStatus) => {
         guardedUpdate(guestId, {
@@ -182,7 +209,8 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: 'User'
         } as Partial<Guest>, 'User');
-    }, [guardedUpdate]);
+        showToast(`${roomLabel(guestId)} → ${GUEST_LABELS[status] || status}`, 'success');
+    }, [guardedUpdate, showToast, roomLabel]);
 
     const handleUpdateInRoomDelivery = useCallback((guestId: string, delivered: boolean) => {
         guardedUpdate(guestId, {
@@ -190,7 +218,8 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             inRoomDeliveredAt: delivered ? Date.now() : undefined,
             inRoomDeliveredBy: delivered ? userName || 'Unknown' : undefined
         } as Partial<Guest>, userName || 'Unknown');
-    }, [guardedUpdate, userName]);
+        showToast(`${roomLabel(guestId)} in-room ${delivered ? '✅ delivered' : '↩️ undelivered'}`, delivered ? 'success' : 'info');
+    }, [guardedUpdate, userName, showToast, roomLabel]);
 
     // ── Note handlers ───────────────────────────────────────────────────────
     const handleAddRoomNote = useCallback((guestId: string, note: Omit<RoomNote, 'id' | 'timestamp'>) => {
@@ -209,7 +238,8 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: note.author
         } as Partial<Guest>);
-    }, [guests, updateGuest]);
+        showToast(`📝 Note added for ${roomLabel(guestId)}`, 'info');
+    }, [guests, updateGuest, showToast, roomLabel]);
 
     const handleResolveNote = useCallback((guestId: string, noteId: string, resolvedBy: string) => {
         const guest = guests.find(g => g.id === guestId);
@@ -226,7 +256,8 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: resolvedBy
         } as Partial<Guest>);
-    }, [guests, updateGuest]);
+        showToast(`✅ Note resolved for ${roomLabel(guestId)}`, 'success');
+    }, [guests, updateGuest, showToast, roomLabel]);
 
     const handleAddCourtesyNote = useCallback((guestId: string, note: Omit<CourtesyCallNote, 'id' | 'timestamp'>) => {
         const guest = guests.find(g => g.id === guestId);
@@ -245,7 +276,8 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: note.author
         } as Partial<Guest>);
-    }, [guests, updateGuest]);
+        showToast(`📞 Courtesy call logged for ${roomLabel(guestId)}`, 'success');
+    }, [guests, updateGuest, showToast, roomLabel]);
     // ── Turndown handlers (cross-session) ────────────────────────────────────
     const handleUpdateTurndownStatus = useCallback((guestId: string, status: TurndownStatus, originSessionId: string) => {
         updateGuestInSession(originSessionId, guestId, {
@@ -253,7 +285,8 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: userName || 'User'
         } as Partial<Guest>);
-    }, [updateGuestInSession, userName]);
+        showToast(`🌙 ${roomLabel(guestId)} turndown → ${status}`, 'success');
+    }, [updateGuestInSession, userName, showToast, roomLabel]);
 
     const handleUpdateDinnerTime = useCallback((guestId: string, dinnerTime: string, originSessionId: string) => {
         updateGuestInSession(originSessionId, guestId, {
@@ -261,7 +294,8 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: userName || 'User'
         } as Partial<Guest>);
-    }, [updateGuestInSession, userName]);
+        showToast(`🍽️ ${roomLabel(guestId)} dinner at ${dinnerTime}`, 'info');
+    }, [updateGuestInSession, userName, showToast, roomLabel]);
 
     const handleUpdateDinnerVenue = useCallback((guestId: string, venue: string, originSessionId: string) => {
         updateGuestInSession(originSessionId, guestId, {
@@ -269,7 +303,8 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             lastStatusUpdate: Date.now(),
             lastStatusUpdatedBy: userName || 'User'
         } as Partial<Guest>);
-    }, [updateGuestInSession, userName]);
+        showToast(`🍽️ ${roomLabel(guestId)} venue → ${venue}`, 'info');
+    }, [updateGuestInSession, userName, showToast, roomLabel]);
 
     // ── AI guest update handler ─────────────────────────────────────────────
     const handleAIUpdateGuest = useCallback((guestId: string, updates: Partial<Guest>) => {

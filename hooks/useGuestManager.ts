@@ -25,17 +25,9 @@ import {
   resetNuclearAttempts,
   getNuclearAttempts
 } from '../services/firebaseService';
-import {
-  isPMSConfigured,
-  getArrivals as getPMSArrivals,
-  getRefreshInterval
-} from '../services/pmsService';
 
 // Connection status type
 export type ConnectionStatus = 'connected' | 'connecting' | 'offline';
-
-// Data source type
-export type DataSource = 'pdf' | 'pms';
 
 // Helper to get session ID from URL path (/session/:sessionId or legacy ?session=id)
 const getSessionIdFromURL = (): string | null => {
@@ -69,14 +61,21 @@ const updateURLWithSession = (sessionId: string) => {
 function mergeRemoteSessions(
   localSessions: ArrivalSession[],
   remoteSessions: ArrivalSession[],
-  pendingIds: Set<string>
+  pendingIds: Set<string>,
+  pendingDeletedSessionIds?: Set<string>
 ): ArrivalSession[] {
-  if (pendingIds.size === 0) {
-    // No pending writes — remote wins entirely (fast path)
-    return remoteSessions;
+  // Filter out sessions that are being deleted locally (race condition guard)
+  let effectiveRemote = remoteSessions;
+  if (pendingDeletedSessionIds && pendingDeletedSessionIds.size > 0) {
+    effectiveRemote = remoteSessions.filter(s => !pendingDeletedSessionIds.has(s.id));
   }
 
-  return remoteSessions.map(remoteSession => {
+  if (pendingIds.size === 0) {
+    // No pending writes — remote wins entirely (fast path)
+    return effectiveRemote;
+  }
+
+  return effectiveRemote.map(remoteSession => {
     const localSession = localSessions.find(s => s.id === remoteSession.id);
     if (!localSession) return remoteSession; // new session from another device
 
@@ -125,8 +124,9 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   const keepaliveCleanupRef = useRef<(() => void) | null>(null);
   const connectionCleanupRef = useRef<(() => void) | null>(null);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Track guest IDs with in-flight local writes to avoid clobbering them with remote data
   const pendingLocalUpdates = useRef<Set<string>>(new Set());
+  // Track session IDs being deleted — prevents Firebase listener from re-adding them
+  const pendingDeletedSessions = useRef<Set<string>>(new Set());
   // Generation counter: bumped on every remote update. Persistence effect
   // checks this to skip localStorage writes triggered by remote data.
   const remoteUpdateGen = useRef(0);
@@ -140,11 +140,6 @@ export const useGuestManager = (initialFlags: Flag[]) => {
   // Reconnect debounce ref (shared between auto and manual)
   const lastReconnectTsRef = useRef(0);
 
-  // PMS state
-  const [dataSource, setDataSource] = useState<DataSource>(() => {
-    const saved = localStorage.getItem('gilpin_data_source');
-    return (saved === 'pms' && isPMSConfigured()) ? 'pms' : 'pdf';
-  });
   // 2. Computed
   const activeSession = useMemo(() =>
     sessions.find(s => s.id === activeSessionId) || (sessions.length > 0 ? sessions[0] : null)
@@ -279,7 +274,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
           lastRemoteDataTs.current = Date.now();
           remoteUpdateGen.current += 1;
-          setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
+          setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current, pendingDeletedSessions.current));
           setActiveSessionId(prev => {
             if (remoteSessions.length === 0) return '';
             if (prev && remoteSessions.some(s => s.id === prev)) return prev;
@@ -371,7 +366,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
       // Smart merge: remote data is source of truth, but protect guests with
       // pending local writes (their atomic update hasn't round-tripped yet)
-      setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
+      setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current, pendingDeletedSessions.current));
 
       // Auto-set active session, or clear if all deleted
       setActiveSessionId(prev => {
@@ -494,9 +489,17 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
     // Also delete from Firebase so other devices see the removal
     if (firebaseEnabled) {
-      deleteSessionFromFirebase(idToDelete).catch(err => {
-        console.error('Firebase delete failed (local already removed):', err);
-      });
+      // Mark as pending-delete so the real-time listener won't re-add it
+      pendingDeletedSessions.current.add(idToDelete);
+      deleteSessionFromFirebase(idToDelete)
+        .catch(err => {
+          console.error('Firebase delete failed (local already removed):', err);
+        })
+        .finally(() => {
+          // Clear pending flag after Firebase confirms (or fails) — timeout
+          // gives the real-time listener time to process the removal event
+          setTimeout(() => pendingDeletedSessions.current.delete(idToDelete), 3000);
+        });
     }
   };
 
@@ -512,61 +515,6 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     setSessions(prev => [...prev, newSession]);
     setActiveSessionId(id);
     syncInitialUpload(newSession, true); // New session — always force write
-  };
-
-  // Load arrivals from PMS API
-  const loadFromPMS = async (date?: Date) => {
-    const targetDate = date || new Date();
-    setIsProcessing(true);
-    setProgressMsg('Fetching arrivals from PMS...');
-
-    try {
-      const pmsGuests = await getPMSArrivals(targetDate, !isPMSConfigured());
-
-      if (pmsGuests.length > 0) {
-        const id = `PMS-${targetDate.toISOString().split('T')[0]}`;
-        const label = targetDate.toLocaleDateString('en-GB', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        });
-
-        // Check if session already exists for this date
-        const existingSession = sessions.find(s => s.id === id);
-
-        const pmsSession: ArrivalSession = {
-          id,
-          label,
-          dateObj: targetDate.toISOString(),
-          guests: pmsGuests,
-          lastModified: Date.now()
-        };
-
-        if (existingSession) {
-          setSessions(prev => prev.map(s => s.id === id ? pmsSession : s));
-        } else {
-          setSessions(prev => [...prev, pmsSession]);
-        }
-
-        setActiveSessionId(id);
-        syncInitialUpload(pmsSession, true); // PMS import — always force write
-        setProgressMsg(`Loaded ${pmsGuests.length} arrivals from PMS`);
-      } else {
-        setProgressMsg('No arrivals found for this date');
-      }
-    } catch (error) {
-      console.error('PMS load error:', error);
-      setProgressMsg('Failed to load from PMS. Check console for details.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Toggle data source
-  const toggleDataSource = (source: DataSource) => {
-    setDataSource(source);
-    localStorage.setItem('gilpin_data_source', source);
   };
 
   const handleFileUpload = async (file: File) => {
@@ -697,10 +645,13 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     const newGuests = guests.filter(g => g.id !== id);
     updateActiveSessionGuests(newGuests);
     // Structural change (removal) — sync full active session
+    // IMPORTANT: Build the session payload using `newGuests` directly, NOT
+    // from `sessions.find(...)`, because setSessions hasn't committed yet
+    // and the closure still has the stale guest list.
     if (firebaseEnabled && activeSessionId) {
       const session = sessions.find(s => s.id === activeSessionId);
       if (session) {
-        syncInitialUpload({ ...session, guests: newGuests, lastModified: Date.now() });
+        syncInitialUpload({ ...session, guests: newGuests, lastModified: Date.now() }, true);
       }
     }
   };
@@ -935,10 +886,25 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                   }
 
                   const existing = updatedGuests[gIndex];
+
+                  // ── Garbled facilities failsafe ──
+                  // Detect fragmented dates (e.g. "Hamper on 06 • + 02 • + 26" from broken parser output)
+                  // Pattern: orphaned 1-2 digit numbers separated by bullet/plus — indicates date was split
+                  const isGarbled = (s: string) => /\b\d{1,2}\s*[•·+]\s*\d{1,2}\s*[•·+]\s*\d{1,2}\b/.test(s);
+                  let bestFacilities = ref.facilities || existing.facilities;
+                  if (ref.facilities && isGarbled(ref.facilities)) {
+                    console.warn('[AI Audit] Garbled AI facilities detected, falling back to parser:', ref.facilities);
+                    bestFacilities = existing.facilities || ref.facilities;
+                  }
+                  if (existing.facilities && isGarbled(existing.facilities) && ref.facilities && !isGarbled(ref.facilities)) {
+                    console.log('[AI Audit] Parser facilities garbled, using AI-repaired version');
+                    bestFacilities = ref.facilities;
+                  }
+
                   updatedGuests[gIndex] = {
                     ...existing,
                     prefillNotes: ref.notes || existing.prefillNotes,
-                    facilities: ref.facilities || existing.facilities,
+                    facilities: bestFacilities,
                     inRoomItems: ref.inRoomItems || existing.inRoomItems,
                     preferences: ref.preferences || existing.preferences,
                     packageName: correctedPackage || existing.packageName,
@@ -1188,7 +1154,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     unsubscribeRef.current = subscribeToAllSessions((remoteSessions) => {
       lastRemoteDataTs.current = Date.now();
       remoteUpdateGen.current += 1;
-      setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current));
+      setSessions(prev => mergeRemoteSessions(prev, remoteSessions, pendingLocalUpdates.current, pendingDeletedSessions.current));
       setActiveSessionId(prev => {
         if (remoteSessions.length === 0) return '';
         if (prev && remoteSessions.some(s => s.id === prev)) return prev;
@@ -1239,10 +1205,5 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     verifyTurndown,
     // Manual reconnect
     manualReconnect,
-    // PMS integration
-    dataSource,
-    toggleDataSource,
-    loadFromPMS,
-    isPMSConfigured: isPMSConfigured()
   };
 };

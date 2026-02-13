@@ -159,14 +159,14 @@ describe('AI Audit Data Integrity', () => {
 
     describe('Result count mismatch detection', () => {
         it('should detect when AI returns fewer results than guests sent', () => {
-            const guestCount = 18;
-            const resultCount = 17;
+            let guestCount = 18;
+            let resultCount = 17;
             expect(resultCount !== guestCount).toBe(true);
         });
 
         it('should detect when AI returns more results than guests sent', () => {
-            const guestCount = 5;
-            const resultCount = 6;
+            let guestCount = 5;
+            let resultCount = 6;
             expect(resultCount !== guestCount).toBe(true);
         });
 

@@ -58,31 +58,33 @@
 .view-tabs-container {
     display: flex;
     gap: 6px;
+    padding: 2px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Each tab — no forced shrink on desktop */
+.view-tab {
+    flex-shrink: 0;
+}
+
+
+/* ── Mobile: horizontal scroll slider ── */
+@media (max-width: 768px) {
+  .view-tabs-container {
+    flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding: 2px;
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
-}
-
-.view-tabs-container::-webkit-scrollbar {
+  }
+  .view-tabs-container::-webkit-scrollbar {
     display: none;
-}
-
-/* Responsive label swap — full names on desktop, abbreviations on mobile */
-.tab-label-short {
-    display: none;
-}
-
-.tab-label-full {
-    display: inline;
-}
-
-/* Each tab snaps into view when scrolling */
-.view-tab {
+  }
+  .view-tab {
     scroll-snap-align: center;
-    flex-shrink: 0;
+  }
 }
 
 /* Scroll-hint fade on edges when tabs overflow */
@@ -677,3 +679,413 @@
     animation: chatFabPulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     pointer-events: none;
 }
+
+/* ==============================================
+   BOOKING STREAM — PDF-FAITHFUL LAYOUT
+   ============================================== */
+
+.bsh-root {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: #6aadff;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(197, 160, 101, 0.25);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ── HEADER BAR — guest identification row ── */
+.bsh-header {
+    background: linear-gradient(135deg, #2d2a26 0%, #3a3530 100%);
+    padding: 10px 16px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: #6aadff;
+    border-bottom: 2px solid rgba(197, 160, 101, 0.35);
+    letter-spacing: 0.015em;
+    word-spacing: 1.5px;
+    position: relative;
+}
+
+.bsh-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #c5a065, #8b6c3f);
+    border-radius: 0 2px 2px 0;
+}
+
+.bsh-header-text {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    align-items: baseline;
+}
+
+/* ── TWO-COLUMN BODY ── */
+.bsh-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 50px;
+}
+
+.bsh-col {
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bsh-col-left {
+    border-right: 1px solid rgba(197, 160, 101, 0.15);
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.bsh-col-right {
+    background: rgba(59, 130, 246, 0.02);
+    padding: 10px 14px;
+}
+
+/* ── BOTTOM DETAILS ── */
+.bsh-details {
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-top: 1px solid rgba(197, 160, 101, 0.12);
+    background: rgba(0, 0, 0, 0.015);
+}
+
+/* ── LINES ── */
+.bsh-line {
+    padding: 1.5px 0;
+    word-break: break-word;
+    color: #6aadff;
+}
+
+/* Default text spans */
+.bsh-text {
+    color: inherit;
+}
+
+/* Section headers */
+.bsh-section-head {
+    font-weight: 800;
+    color: #9a8c7c;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 6px;
+    margin-bottom: 2px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid rgba(197, 160, 101, 0.12);
+}
+
+.bsh-section-head:first-child {
+    margin-top: 0;
+}
+
+/* Empty column placeholder */
+.bsh-empty {
+    color: rgba(197, 160, 101, 0.2);
+    font-style: italic;
+    font-size: 10px;
+    padding: 4px 0;
+}
+
+/* ═══════════════════════════════════
+   HIGHLIGHT CLASSES
+   ═══════════════════════════════════ */
+
+/* Facility bookings — generic fallback (blue) */
+.bsh-facility {
+    background: rgba(59, 130, 246, 0.14);
+    border-bottom: 2px solid rgba(59, 130, 246, 0.6);
+    color: #60a5fa;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* ── VENUE-SPECIFIC FACILITY COLORS ── */
+
+/* Spice — warm amber */
+.bsh-fac-spice {
+    background: rgba(245, 158, 11, 0.14);
+    border-bottom: 2px solid rgba(245, 158, 11, 0.65);
+    color: #fbbf24;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Source — emerald green */
+.bsh-fac-source {
+    background: rgba(16, 185, 129, 0.14);
+    border-bottom: 2px solid rgba(16, 185, 129, 0.6);
+    color: #34d399;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* The Lake House — sky blue */
+.bsh-fac-lakehouse {
+    background: rgba(56, 189, 248, 0.14);
+    border-bottom: 2px solid rgba(56, 189, 248, 0.55);
+    color: #7dd3fc;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Spa / ESPA / Pure / Massage / Facial — soft violet */
+.bsh-fac-spa {
+    background: rgba(167, 139, 250, 0.12);
+    border-bottom: 2px solid rgba(167, 139, 250, 0.5);
+    color: #c4b5fd;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Dining — Bento, Afternoon Tea, etc — warm gold */
+.bsh-fac-dining {
+    background: rgba(197, 160, 101, 0.15);
+    border-bottom: 2px solid rgba(197, 160, 101, 0.6);
+    color: #c5a065;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+
+/* Dinner — warm gold accent */
+.bsh-dinner {
+    background: rgba(197, 160, 101, 0.18);
+    border-bottom: 2px solid rgba(197, 160, 101, 0.7);
+    color: #c5a065;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Allergy — red alert with subtle pulse */
+.bsh-allergy {
+    background: rgba(239, 68, 68, 0.18);
+    border-bottom: 2px solid rgba(239, 68, 68, 0.6);
+    color: #f87171;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 700;
+    animation: bshAllergyPulse 3s ease-in-out infinite;
+}
+
+@keyframes bshAllergyPulse {
+    0%, 100% { background: rgba(239, 68, 68, 0.18); }
+    50% { background: rgba(239, 68, 68, 0.3); }
+}
+
+/* VIP — regal purple */
+.bsh-vip {
+    background: rgba(168, 85, 247, 0.18);
+    border-bottom: 2px solid rgba(168, 85, 247, 0.6);
+    color: #c084fc;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 700;
+}
+
+/* Purchases / line items — orange */
+.bsh-lineitem {
+    background: rgba(251, 146, 60, 0.14);
+    border-bottom: 2px solid rgba(251, 146, 60, 0.5);
+    color: #fb923c;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Car reg — teal badge */
+.bsh-car {
+    background: rgba(20, 184, 166, 0.18);
+    border: 1px solid rgba(20, 184, 166, 0.35);
+    color: #2dd4bf;
+    padding: 0 5px;
+    border-radius: 4px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+/* Room number — warm amber badge */
+.bsh-room {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #fbbf24;
+    padding: 0 4px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+/* ETA — cyan accent */
+.bsh-eta {
+    background: rgba(34, 211, 238, 0.12);
+    border-bottom: 2px solid rgba(34, 211, 238, 0.5);
+    color: #67e8f9;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Special Occasion — pink/rose */
+.bsh-occasion {
+    background: rgba(236, 72, 153, 0.12);
+    border-bottom: 2px solid rgba(236, 72, 153, 0.45);
+    color: #f472b6;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Been Before — soft teal */
+.bsh-beenbefore {
+    background: rgba(45, 212, 191, 0.10);
+    border-bottom: 1px solid rgba(45, 212, 191, 0.3);
+    color: #5eead4;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* In Room on Arrival — emerald green */
+.bsh-inroom {
+    background: rgba(34, 197, 94, 0.12);
+    border-bottom: 2px solid rgba(34, 197, 94, 0.5);
+    color: #4ade80;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Rate codes — subtle badge */
+.bsh-rate {
+    background: rgba(139, 92, 246, 0.10);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    color: #a78bfa;
+    padding: 0 4px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 10px;
+}
+
+/* Dates — subtle underline */
+.bsh-date {
+    color: #93c5fd;
+    border-bottom: 1px dotted rgba(147, 197, 253, 0.4);
+}
+
+/* Times — subtle underline */
+.bsh-time {
+    color: #93c5fd;
+    font-weight: 600;
+}
+
+/* Prices — green-tinted */
+.bsh-price {
+    color: #86efac;
+    font-weight: 600;
+}
+
+/* Comp Upgrade — rose/pink badge */
+.bsh-upgrade {
+    background: rgba(244, 63, 94, 0.18);
+    border-bottom: 2px solid rgba(244, 63, 94, 0.6);
+    color: #fb7185;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 700;
+}
+
+/* Pet/Dog — warm amber */
+.bsh-pet {
+    background: rgba(245, 158, 11, 0.14);
+    border-bottom: 2px solid rgba(245, 158, 11, 0.5);
+    color: #fbbf24;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Pre-registration — green badge */
+.bsh-prereg {
+    background: rgba(34, 197, 94, 0.12);
+    border-bottom: 1px solid rgba(34, 197, 94, 0.4);
+    color: #4ade80;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* Billing — subtle orange accent */
+.bsh-billing {
+    background: rgba(251, 146, 60, 0.08);
+    border-bottom: 1px solid rgba(251, 146, 60, 0.3);
+    color: #fdba74;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 640px) {
+    .bsh-columns {
+        grid-template-columns: 1fr;
+    }
+    .bsh-col-left {
+        border-right: none;
+        border-bottom: 1px solid rgba(197, 160, 101, 0.15);
+    }
+    .bsh-root {
+        font-size: 10.5px;
+    }
+}
+
+/* ── LIGHT MODE OVERRIDES ── */
+[data-theme="light"] .bsh-root { color: #1a4b8c; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); border-color: #d4c9b8; }
+[data-theme="light"] .bsh-header { background: linear-gradient(135deg, #f5f0e8, #ebe4d8); color: #1a4b8c; border-bottom-color: #d4c9b8; }
+[data-theme="light"] .bsh-header::before { background: linear-gradient(180deg, #c5a065, #a08050); }
+[data-theme="light"] .bsh-line,
+[data-theme="light"] .bsh-text { color: #1a4b8c; }
+[data-theme="light"] .bsh-section-head { color: #6b5b4f; }
+[data-theme="light"] .bsh-col-left { background: rgba(245, 240, 232, 0.5); }
+[data-theme="light"] .bsh-col-right { background: rgba(239, 246, 255, 0.4); }
+[data-theme="light"] .bsh-details { background: rgba(245, 240, 232, 0.3); }
+[data-theme="light"] .bsh-facility { color: #2563eb; background: rgba(59, 130, 246, 0.08); }
+[data-theme="light"] .bsh-fac-spice { color: #b45309; background: rgba(245, 158, 11, 0.1); }
+[data-theme="light"] .bsh-fac-source { color: #047857; background: rgba(16, 185, 129, 0.1); }
+[data-theme="light"] .bsh-fac-lakehouse { color: #0284c7; background: rgba(56, 189, 248, 0.08); }
+[data-theme="light"] .bsh-fac-spa { color: #7c3aed; background: rgba(167, 139, 250, 0.08); }
+[data-theme="light"] .bsh-fac-dining { color: #92400e; background: rgba(197, 160, 101, 0.1); }
+
+[data-theme="light"] .bsh-dinner { color: #92400e; background: rgba(197, 160, 101, 0.1); }
+[data-theme="light"] .bsh-allergy { color: #dc2626; background: rgba(239, 68, 68, 0.1); }
+[data-theme="light"] .bsh-vip { color: #9333ea; background: rgba(168, 85, 247, 0.08); }
+[data-theme="light"] .bsh-lineitem { color: #ea580c; background: rgba(251, 146, 60, 0.08); }
+[data-theme="light"] .bsh-car { color: #0d9488; background: rgba(20, 184, 166, 0.08); }
+[data-theme="light"] .bsh-room { color: #b45309; background: rgba(245, 158, 11, 0.08); }
+[data-theme="light"] .bsh-eta { color: #0891b2; background: rgba(34, 211, 238, 0.06); }
+[data-theme="light"] .bsh-occasion { color: #db2777; background: rgba(236, 72, 153, 0.08); }
+[data-theme="light"] .bsh-beenbefore { color: #0d9488; }
+[data-theme="light"] .bsh-inroom { color: #16a34a; background: rgba(34, 197, 94, 0.08); }
+[data-theme="light"] .bsh-rate { color: #7c3aed; background: rgba(139, 92, 246, 0.06); }
+[data-theme="light"] .bsh-date { color: #2563eb; }
+[data-theme="light"] .bsh-time { color: #2563eb; }
+[data-theme="light"] .bsh-price { color: #16a34a; }
+[data-theme="light"] .bsh-upgrade { color: #e11d48; background: rgba(244, 63, 94, 0.08); }
+[data-theme="light"] .bsh-pet { color: #b45309; background: rgba(245, 158, 11, 0.08); }
+[data-theme="light"] .bsh-prereg { color: #16a34a; background: rgba(34, 197, 94, 0.06); }
+[data-theme="light"] .bsh-billing { color: #ea580c; background: rgba(251, 146, 60, 0.06); }
+

@@ -28,7 +28,7 @@ The Gilpin Arrival Tool transforms unstructured PMS arrival PDFs into a live, in
 ## Core Capabilities
 
 ### 📄 Intelligent PDF Extraction
-Parses PMS arrival PDFs with high-fidelity extraction of guest data: room assignments, ETA windows, car registrations (multi-pattern UK plate matching with AI fallback), facilities & dining, allergies & dietary requirements, occasions, in-room items (28 keywords), loyalty history, and multi-section notes.
+Column-aware PDF parser (1,150+ lines) that extracts 20+ fields per guest using X-coordinate spatial analysis. Extracts room assignments (31-room map with aliases), ETA windows (multi-format: am/pm, ranges, 3/4-digit), car registrations (multi-pattern UK plate matching with AI fallback), duration (first-line departure date calculation), facilities & dining (venue-tagged: Spice, Source, Lake House, ESPA), allergies & dietary (UK Top 14 allergen scan), occasions, in-room items (28 keywords), loyalty history, rate codes (37 variants), booking source, pax (ACEB), and unbooked request detection. Tested against 163 guests across 10 real PDFs with 0 extraction errors.
 
 ### 🤖 Gemini AI Integration
 - **AI Audit** — Gemini 2.5 Flash refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes. Anti-fabrication validation prevents hallucinated facilities and car registrations
@@ -51,6 +51,9 @@ Real-time multi-device synchronisation via Firebase Realtime Database. Upload mu
 | **Front of House** | Guest presence & service | On-site/off-site tracking, courtesy call logging, guest greeting intelligence |
 | **In House** | Overnight operations | 38-room grid (Main Hotel + Lake House), occupancy stats, room moves, EV charging, AI upgrades, stayover tracking, print reports |
 | **Turndown** | Evening service preparation | Turndown status tracking, dinner time/venue management, stayover + arrival coverage |
+
+### 📋 Booking Stream & SOP
+Per-guest raw data view that structures the original PMS text into readable sections (mirroring the PDF layout). Built-in SOP modal (v23.0, 30 sections) covering every operational workflow from PDF upload to itinerary generation.
 
 ### 💬 Real-Time Messenger
 Tabbed chat panel with cross-department Team Chat and AI Live Assistant. Features messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime, and FAB pulse ring for unread messages.

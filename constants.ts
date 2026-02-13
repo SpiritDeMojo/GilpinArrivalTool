@@ -39,6 +39,26 @@ export const ROOM_TYPES: Record<number, RoomType> = {
 };
 
 /**
+ * PDF Room Type Codes → human-readable names.
+ * These appear in the arrivals summary line after the departure date.
+ */
+export const ROOM_TYPE_CODES: Record<string, string> = {
+  'CR': 'Classic Room',
+  'MR': 'Master Room',
+  'JS': 'Junior Suite',
+  'GR': 'Garden Room',
+  'SL': 'Spa Lodge',
+  'SS': 'Spa Suite',
+  'GS': 'Garden Suite',
+  'MAG': 'Maglona Suite',
+  'MOT': 'Motor Lodge',
+  'LHC': 'Lake House Classic',
+  'LHM': 'Lake House Master',
+  'LHS': 'Lake House Suite',
+  'LHSS': 'Lake House Spa Suite',
+};
+
+/**
  * Valid upgrade paths — one category up only.
  * Strategic purpose: free the cheaper room for last-minute bookings.
  */
@@ -70,7 +90,8 @@ export const DEFAULT_FLAGS: Flag[] = [
   { id: 9, name: "Comp stay", emoji: "🟢", keys: ["comp stay", "complimentary", "upgrade", "unaware"] },
   { id: 10, name: "Prev Issue", emoji: "🚩", keys: ["complaint", "PGI", "dissatisfied", "previous problem", "previous issue", "guest issue", "raised a concern"], wordBoundary: true },
   { id: 11, name: "Occasion", emoji: "🎉", keys: ["birthday", "anniversary", "honeymoon", "proposal", "engagement", "babymoon"] },
-  { id: 12, name: "Voucher", emoji: "🎫", keys: ["voucher"] }
+  { id: 12, name: "Voucher", emoji: "🎫", keys: ["voucher"] },
+  { id: 13, name: "Limited Mobility", emoji: "♿", keys: ["limited mobility", "wheelchair", "disabled", "disability", "accessible room", "accessibility", "walking difficulty", "walking difficulties", "mobility issue", "mobility issues", "mobility impair", "reduced mobility", "step free", "ground floor", "cannot climb stairs", "can't climb stairs", "stair lift", "walking aid", "walking frame", "zimmer", "crutches", "mobility scooter", "electric wheelchair"] }
 ];
 
 // UI Layout Constants

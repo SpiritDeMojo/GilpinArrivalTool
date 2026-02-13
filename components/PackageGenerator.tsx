@@ -86,20 +86,257 @@ export interface PackageGeneratorProps {
   stripEmojis?: boolean;
 }
 
-/* ────────────── Helpers: Parse AI audit data into events ────────────── */
-const parseFacilities = (facilities: string): EventItem[] => {
-  if (!facilities.trim()) return [];
-  const items = facilities.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
-  return items.map(item => {
-    // Try to extract time from item (e.g. "Spa 2pm", "Pool 10:00am")
-    const timeMatch = item.match(/(\d{1,2}[:.:]?\d{0,2}\s*(?:am|pm|AM|PM)?)/);
-    if (timeMatch) {
-      const time = timeMatch[1].trim();
-      const activity = item.replace(timeMatch[0], '').trim() || item.trim();
-      return { time, activity: activity || 'Activity' };
+/* ────────────── Venue Description Mappings ────────────── */
+const VENUE_DESCRIPTIONS: Record<string, string> = {
+  'Source': 'Dinner in our Michelin-starred restaurant, Source.',
+  'Spice': 'Dinner in our Pan-Asian fusion restaurant, Gilpin Spice.',
+  'Gilpin Spice': 'Dinner in our Pan-Asian fusion restaurant, Gilpin Spice.',
+  'Lake House': 'Afternoon Tea at The Lake House.',
+  'Afternoon Tea': 'Afternoon Tea served in the Drawing Room.',
+  'Bento': 'Bento Box lunch delivered to your room.',
+  'Spa': 'Relaxation time at the Jetty Spa.',
+  'Spa Use': 'Complimentary use of the Jetty Spa facilities.',
+  'Massage': 'Your spa massage treatment.',
+  'Aromatherapy': 'Aromatherapy massage at the Jetty Spa.',
+  'Treatments': 'Spa treatment at the Jetty Spa.',
+  'GH Pure': 'GH Pure facial treatment at the Jetty Spa.',
+  'Pure Lakes': 'Pure Lakes treatment at the Jetty Spa.',
+  'Pure Couples': 'Couples\' Pure treatment at the Jetty Spa.',
+  'Spa Hamper': 'In-room Spa Hamper awaits your arrival.',
+  'In-Room Hamper': 'In-room Spa Hamper awaits your arrival.',
+  'Hamper': 'Complimentary hamper in your room.',
+  'Dinner': 'Dinner at Gilpin Hotel.',
+  'Lunch': 'Lunch at Gilpin Hotel.',
+};
+
+/* ────────────── Parsed Facility Item ────────────── */
+interface ParsedFacility {
+  emoji: string;
+  type: string;         // e.g. "Source", "Spice", "Aromatherapy"
+  dateStr: string;      // e.g. "06/02" or "06/02/26"
+  time: string | null;  // e.g. "19:30" or null
+  count: number;        // e.g. 2 for "2x Aromatherapy"
+  pax: number | null;   // e.g. 2 for "Dinner for 2"
+  raw: string;          // original segment
+}
+
+/* ────────────── Parse Facilities String into Structured Items ────────────── */
+const parseFacilitiesWithDates = (facilities: string): ParsedFacility[] => {
+  if (!facilities?.trim()) return [];
+  const parts = facilities.split(' • ').map(s => s.trim()).filter(Boolean);
+  const results: ParsedFacility[] = [];
+
+  for (const part of parts) {
+    // Extract emoji prefix (first emoji character(s))
+    const emojiMatch = part.match(/^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}♨️🌶️🍽️💆🍰🍱🎁🔹]+)\s*/u);
+    const emoji = emojiMatch ? emojiMatch[1].trim() : '🔹';
+    let rest = emojiMatch ? part.slice(emojiMatch[0].length) : part;
+
+    // Extract date: (DD/MM @ HH:MM) or (DD/MM/YY @ HH:MM) or (DD/MM)
+    const dateTimeMatch = rest.match(/\((\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s*(?:@\s*(\d{1,2}:\d{2}))?\)/);
+    const dateStr = dateTimeMatch ? dateTimeMatch[1] : '';
+    const time = dateTimeMatch ? (dateTimeMatch[2] || null) : null;
+
+    // Remove the date portion from rest to get the type
+    let typePart = rest.replace(/\(.*?\)/, '').trim();
+
+    // Extract count: "2x Aromatherapy" or "2 x Aromatherapy"
+    const countMatch = typePart.match(/^(\d+)\s*x\s*/i);
+    const count = countMatch ? parseInt(countMatch[1]) : 1;
+    if (countMatch) typePart = typePart.slice(countMatch[0].length).trim();
+
+    // Extract pax: "Dinner for 2"
+    const paxMatch = typePart.match(/for\s+(\d+)/i);
+    const pax = paxMatch ? parseInt(paxMatch[1]) : null;
+
+    // Clean type — remove "for N", trailing/leading punctuation
+    let type = typePart
+      .replace(/for\s+\d+/i, '')
+      .replace(/\(T-\d+\)/i, '')
+      .replace(/^[\s,\-:]+|[\s,\-:]+$/g, '')
+      .trim();
+
+    // If type is empty, infer from emoji
+    if (!type) {
+      if (emoji.includes('🌶') || emoji.includes('🌶️')) type = 'Spice';
+      else if (emoji.includes('🍽') || emoji.includes('🍽️')) type = 'Dinner';
+      else if (emoji.includes('💆')) type = 'Spa';
+      else if (emoji.includes('♨')) type = 'Spa Hamper';
+      else if (emoji.includes('🍰')) type = 'Afternoon Tea';
+      else if (emoji.includes('🍱')) type = 'Bento';
+      else type = 'Activity';
     }
-    return { time: 'TBC', activity: item };
-  });
+
+    results.push({ emoji, type, dateStr, time, count, pax, raw: part });
+  }
+
+  return results;
+};
+
+/* ────────────── Build Rich Description for a Facility ────────────── */
+const buildDescription = (item: ParsedFacility): string => {
+  // Check venue descriptions map (case-insensitive key match)
+  const key = Object.keys(VENUE_DESCRIPTIONS).find(
+    k => k.toLowerCase() === item.type.toLowerCase()
+  );
+  if (key) {
+    let desc = VENUE_DESCRIPTIONS[key];
+    // Personalize with count for treatments
+    if (item.count > 1 && /spa|massage|aromatherapy|treatment|pure/i.test(item.type)) {
+      desc = `Your spa experience begins with ${item.count} ${item.type} treatments.`;
+    }
+    return desc;
+  }
+  // Fallback: use raw type with emoji
+  return `${item.emoji} ${item.type}${item.count > 1 ? ` (x${item.count})` : ''}.`;
+};
+
+/* ────────────── Build Day Blocks from Guest Data ────────────── */
+const buildItineraryFromGuest = (
+  facilities: string,
+  arrivalDateStr: string,
+  duration: string,
+  dinnerTime: string,
+  dinnerVenue: string,
+  presetKey: string,
+): { left: DayBlock[]; right: DayBlock[] } => {
+  const totalNights = Math.max(parseInt(duration) || 2, 1);
+  const totalDays = totalNights + 1; // include departure day
+  const arrivalDate = arrivalDateStr ? new Date(arrivalDateStr) : null;
+
+  // Parse facilities into structured items
+  const items = parseFacilitiesWithDates(facilities);
+
+  // Create day-indexed buckets
+  const dayBuckets: Map<number, EventItem[]> = new Map();
+  for (let d = 0; d < totalDays; d++) {
+    dayBuckets.set(d, []);
+  }
+
+  // Assign each facility to the correct day
+  for (const item of items) {
+    let dayOffset = 0; // default to Day 1
+
+    if (item.dateStr && arrivalDate) {
+      // Parse the facility date
+      const dateParts = item.dateStr.split('/');
+      const fDay = parseInt(dateParts[0]);
+      const fMonth = parseInt(dateParts[1]) - 1; // 0-indexed
+      const fYear = dateParts[2]
+        ? (dateParts[2].length === 2 ? 2000 + parseInt(dateParts[2]) : parseInt(dateParts[2]))
+        : arrivalDate.getFullYear();
+      const facilityDate = new Date(fYear, fMonth, fDay);
+      facilityDate.setHours(0, 0, 0, 0);
+      const arrival = new Date(arrivalDate);
+      arrival.setHours(0, 0, 0, 0);
+      dayOffset = Math.round((facilityDate.getTime() - arrival.getTime()) / (86400000));
+    }
+
+    // Clamp to valid range
+    dayOffset = Math.max(0, Math.min(dayOffset, totalDays - 1));
+
+    const timeStr = item.time || (
+      /dinner|spice|source|supper/i.test(item.type) ? '7:00pm' :
+        /lunch|bento/i.test(item.type) ? '12:30pm' :
+          /tea|lake house/i.test(item.type) ? '3:00pm' :
+            /spa|massage|aromatherapy|treatment|pure/i.test(item.type) ? '10:00am' :
+              /hamper/i.test(item.type) ? 'On Arrival' :
+                'TBC'
+    );
+
+    const description = buildDescription(item);
+
+    dayBuckets.get(dayOffset)?.push({
+      time: timeStr,
+      activity: description,
+    });
+  }
+
+  // If dinnerTime/dinnerVenue provided and no dinner on Day 1, add it
+  const day0Events = dayBuckets.get(0) || [];
+  const hasDinner0 = day0Events.some(e => /dinner|source|spice/i.test(e.activity));
+  if (!hasDinner0 && (dinnerTime || dinnerVenue)) {
+    const venue = dinnerVenue || 'Restaurant';
+    const venueDesc = VENUE_DESCRIPTIONS[venue] || `Dinner at ${venue}.`;
+    day0Events.push({
+      time: dinnerTime || '7:00pm',
+      activity: venueDesc,
+    });
+  }
+
+  // Add standard events to each day
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const allDays: DayBlock[] = [];
+  for (let d = 0; d < totalDays; d++) {
+    const events = dayBuckets.get(d) || [];
+
+    // Add breakfast (not on arrival day)
+    if (d > 0 && d < totalDays - 1) {
+      events.unshift({ time: 'Morning', activity: 'Full English or Continental breakfast.' });
+    }
+
+    // Add check-in on arrival day
+    if (d === 0) {
+      events.unshift({ time: '3:00pm', activity: 'Check-in and welcome to Gilpin.' });
+      // Add champagne for special packages
+      if (/moon|magic/i.test(presetKey)) {
+        events.splice(1, 0, { time: 'On Arrival', activity: 'Bottle of Champagne awaiting you in your room.' });
+      }
+    }
+
+    // Add departure on last day
+    if (d === totalDays - 1) {
+      events.unshift({ time: 'Morning', activity: 'Full English or Continental breakfast.' });
+      events.push({ time: '11:00am', activity: 'Check-out. We look forward to welcoming you back.' });
+    }
+
+    // Sort events by time within the day
+    events.sort((a, b) => {
+      const timeOrder = (t: string): number => {
+        if (/on arrival/i.test(t)) return 0;
+        if (/morning/i.test(t)) return 1;
+        if (t === 'TBC') return 50;
+        // Parse HH:MM or HH:MMam/pm
+        const match = t.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/i);
+        if (!match) return 25;
+        let h = parseInt(match[1]);
+        const m = parseInt(match[2] || '0');
+        const ampm = (match[3] || '').toLowerCase();
+        if (ampm === 'pm' && h < 12) h += 12;
+        if (ampm === 'am' && h === 12) h = 0;
+        return h * 60 + m;
+      };
+      return timeOrder(a.time) - timeOrder(b.time);
+    });
+
+    // Build title
+    let title = `Day ${d + 1}`;
+    let subtitle = d === 0 ? 'Arrival' : d === totalDays - 1 ? 'Departure' : 'Relax & Explore';
+    if (arrivalDate && !isNaN(arrivalDate.getTime())) {
+      const current = new Date(arrivalDate);
+      current.setDate(arrivalDate.getDate() + d);
+      const suffixes = ['th', 'st', 'nd', 'rd'];
+      const v = current.getDate() % 100;
+      const ord = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
+      title = `${dayNames[current.getDay()]}, ${current.getDate()}${ord} ${monthNames[current.getMonth()]}`;
+    }
+
+    allDays.push({
+      id: uid(),
+      title,
+      subtitle,
+      events,
+    });
+  }
+
+  // Split into left/right: first half left, second half right
+  const splitAt = Math.ceil(allDays.length / 2);
+  return {
+    left: allDays.slice(0, splitAt),
+    right: allDays.slice(splitAt),
+  };
 };
 
 const parseDuration = (dur: string): number => {
@@ -265,90 +502,47 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
     setRightDays(applyToArr(rightDays));
   };
 
-  /* ── Auto-apply dates on init when pre-filled ── */
-  useEffect(() => {
-    if (initialStartDate && startDate) {
-      // Trigger date application on first render
-      const dateObj = new Date(startDate);
-      if (!isNaN(dateObj.getTime())) {
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        let idx = 0;
-        const applyToArr = (days: DayBlock[]): DayBlock[] =>
-          days.map(d => {
-            const current = new Date(dateObj);
-            current.setDate(dateObj.getDate() + idx);
-            idx++;
-            const suffixes = ['th', 'st', 'nd', 'rd'];
-            const v = current.getDate() % 100;
-            const ord = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
-            return { ...d, title: `${dayNames[current.getDay()]}, ${current.getDate()}${ord} ${monthNames[current.getMonth()]}` };
-          });
-        setLeftDays(prev => applyToArr(prev));
-        idx = leftDays.length;
-        setRightDays(prev => applyToArr(prev));
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only on mount
-
-  /* ── Auto-populate from AI audit data (facilities, dinner, activities) ── */
+  /* ── Auto-build itinerary from guest data on mount ── */
   useEffect(() => {
     const hasFacilities = initialFacilities?.trim();
     const hasDinner = initialDinnerTime?.trim() || initialDinnerVenue?.trim();
-    if (!hasFacilities && !hasDinner) return;
-
-    // --- Inject dinner into Day 1 arrival events ---
-    if (hasDinner) {
-      setLeftDays(prev => {
-        if (prev.length === 0) return prev;
-        const day1 = { ...prev[0] };
-        const dinnerTime = initialDinnerTime?.trim() || '7:00pm';
-        const dinnerVenue = initialDinnerVenue?.trim() || 'Restaurant';
-        // Check if there's already a dinner event on Day 1
-        const dinnerIdx = day1.events.findIndex(e =>
-          e.activity.toLowerCase().includes('dinner')
-        );
-        if (dinnerIdx >= 0) {
-          // Update existing dinner event
-          const updated = [...day1.events];
-          updated[dinnerIdx] = { time: dinnerTime, activity: `Dinner at ${dinnerVenue}.` };
-          day1.events = updated;
-        } else {
-          // Add dinner event at end of Day 1
-          day1.events = [...day1.events, { time: dinnerTime, activity: `Dinner at ${dinnerVenue}.` }];
-        }
-        return [day1, ...prev.slice(1)];
-      });
-    }
-
-    // --- Inject facilities into Day 2 (or create one if needed) ---
-    if (hasFacilities) {
-      const facilityEvents = parseFacilities(initialFacilities!);
-      if (facilityEvents.length > 0) {
-        setLeftDays(prev => {
-          if (prev.length >= 2) {
-            // Inject into Day 2, replacing/augmenting spa/treatment events
-            const day2 = { ...prev[1] };
-            const existingNonSpa = day2.events.filter(e => {
-              const lower = e.activity.toLowerCase();
-              return !lower.includes('spa') && !lower.includes('treatment') && !lower.includes('pool');
+    if (!hasFacilities && !hasDinner) {
+      // No guest data — just apply dates to preset if available
+      if (initialStartDate && startDate) {
+        const dateObj = new Date(startDate);
+        if (!isNaN(dateObj.getTime())) {
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          let idx = 0;
+          const applyToArr = (days: DayBlock[]): DayBlock[] =>
+            days.map(d => {
+              const current = new Date(dateObj);
+              current.setDate(dateObj.getDate() + idx);
+              idx++;
+              const suffixes = ['th', 'st', 'nd', 'rd'];
+              const v = current.getDate() % 100;
+              const ord = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
+              return { ...d, title: `${dayNames[current.getDay()]}, ${current.getDate()}${ord} ${monthNames[current.getMonth()]}` };
             });
-            day2.events = [...existingNonSpa, ...facilityEvents];
-            return [prev[0], day2, ...prev.slice(2)];
-          } else {
-            // Only 1 day, add a new day for facilities
-            const newDay: DayBlock = {
-              id: uid(),
-              title: 'Day 2',
-              subtitle: 'Relax & Explore',
-              events: [{ time: 'Morning', activity: 'Breakfast.' }, ...facilityEvents],
-            };
-            return [...prev, newDay];
-          }
-        });
+          setLeftDays(prev => applyToArr(prev));
+          idx = leftDays.length;
+          setRightDays(prev => applyToArr(prev));
+        }
       }
+      return;
     }
+
+    // Build complete itinerary from guest data
+    const result = buildItineraryFromGuest(
+      initialFacilities || '',
+      startDate || '',
+      initialDuration || '2',
+      initialDinnerTime || '',
+      initialDinnerVenue || '',
+      selectedPreset,
+    );
+    setLeftDays(result.left);
+    setRightDays(result.right);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount
 

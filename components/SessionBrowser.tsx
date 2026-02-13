@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { subscribeToSessionList, SessionSummary, isFirebaseEnabled, initializeFirebase, fetchSession, deleteSessionFromFirebase, subscribeToPresence } from '../services/firebaseService';
 import { ArrivalSession } from '../types';
 
 /* ── Stagger animation variants ── */
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.08, delayChildren: 0.2 } },
 };
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 30, scale: 0.95, filter: 'blur(6px)' },
   visible: {
     opacity: 1, y: 0, scale: 1, filter: 'blur(0px)',
@@ -21,12 +21,12 @@ const cardVariants = {
   },
 };
 
-const headerVariants = {
+const headerVariants: Variants = {
   hidden: { opacity: 0, y: -20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
 };
 
-const actionVariants = {
+const actionVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { delay: 0.5, duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
 };

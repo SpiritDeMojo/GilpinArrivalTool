@@ -67,6 +67,7 @@ export class GeminiService {
             // Parser-extracted fields — AI uses these as baseline, not guessing
             car: g.car || '',
             facilities: g.facilities || '',
+            facilitiesRaw: g.facilitiesRaw || '',
             dinnerTime: (g as any).dinnerTime || '',
             dinnerVenue: (g as any).dinnerVenue || '',
           }))
