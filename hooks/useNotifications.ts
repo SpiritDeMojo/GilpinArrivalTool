@@ -253,7 +253,7 @@ export const useNotifications = (guests: Guest[]) => {
                 if (old.guestStatus !== guest.guestStatus && guest.guestStatus) {
                     const info = GUEST_STATUS_INFO[guest.guestStatus];
                     if (info) {
-                        // Guest arrived on-site
+                        // Determine sound and badge based on status
                         if (guest.guestStatus === 'on_site') {
                             pushNotification({
                                 type: 'guest_status',
@@ -263,7 +263,7 @@ export const useNotifications = (guests: Guest[]) => {
                                 message: `${rm} Guest Arrived`,
                                 emoji: '🚗',
                                 color: '#3b82f6',
-                                badgeTabs: ['frontofhouse'],
+                                badgeTabs: ['frontofhouse', 'housekeeping'],
                             });
                             if (!playedDoorbell) { playTone('doorbell'); playedDoorbell = true; }
                         } else if (guest.guestStatus === 'checked_in') {
@@ -276,6 +276,54 @@ export const useNotifications = (guests: Guest[]) => {
                                 emoji: '🔑',
                                 color: '#22c55e',
                                 badgeTabs: ['frontofhouse'],
+                            });
+                            if (!playedChime) { playTone('chime'); playedChime = true; }
+                        } else if (guest.guestStatus === 'awaiting_room') {
+                            pushNotification({
+                                type: 'guest_status',
+                                department: 'frontofhouse',
+                                room: guest.room,
+                                guestName: guest.name,
+                                message: `${rm} Guest Awaiting Room`,
+                                emoji: '⏳',
+                                color: '#f59e0b',
+                                badgeTabs: ['frontofhouse', 'housekeeping'],
+                            });
+                            if (!playedAlert) { playTone('alert'); playedAlert = true; }
+                        } else if (guest.guestStatus === 'courtesy_call_due') {
+                            pushNotification({
+                                type: 'guest_status',
+                                department: 'frontofhouse',
+                                room: guest.room,
+                                guestName: guest.name,
+                                message: `${rm} Courtesy Call Due`,
+                                emoji: '📞',
+                                color: '#ef4444',
+                                badgeTabs: ['frontofhouse'],
+                            });
+                            if (!playedAlert) { playTone('alert'); playedAlert = true; }
+                        } else if (guest.guestStatus === 'no_show') {
+                            pushNotification({
+                                type: 'guest_status',
+                                department: 'frontofhouse',
+                                room: guest.room,
+                                guestName: guest.name,
+                                message: `${rm} No Show`,
+                                emoji: '❌',
+                                color: '#dc2626',
+                                badgeTabs: ['frontofhouse', 'housekeeping', 'maintenance'],
+                            });
+                            if (!playedAlert) { playTone('alert'); playedAlert = true; }
+                        } else if (guest.guestStatus === 'checked_out') {
+                            pushNotification({
+                                type: 'guest_status',
+                                department: 'frontofhouse',
+                                room: guest.room,
+                                guestName: guest.name,
+                                message: `${rm} Checked Out`,
+                                emoji: '🚪',
+                                color: '#64748b',
+                                badgeTabs: ['frontofhouse', 'housekeeping'],
                             });
                             if (!playedChime) { playTone('chime'); playedChime = true; }
                         }
@@ -312,6 +360,23 @@ export const useNotifications = (guests: Guest[]) => {
                         badgeTabs: ['maintenance', 'housekeeping'],
                     });
                     if (!playedAlert) { playTone('alert'); playedAlert = true; }
+                }
+
+                // === Room Note Resolved ===
+                const oldResolved = (old.roomNotes || []).filter(n => n.resolved).length;
+                const newResolved = (guest.roomNotes || []).filter(n => n.resolved).length;
+                if (newResolved > oldResolved && oldResolved < (old.roomNotes || []).length) {
+                    pushNotification({
+                        type: 'room_note',
+                        department: 'maintenance',
+                        room: guest.room,
+                        guestName: guest.name,
+                        message: `${rm} Note Resolved ✓`,
+                        emoji: '✅',
+                        color: '#10b981',
+                        badgeTabs: ['maintenance'],
+                    });
+                    if (!playedChime) { playTone('chime'); playedChime = true; }
                 }
             }
 

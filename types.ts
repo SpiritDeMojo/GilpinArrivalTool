@@ -191,6 +191,7 @@ export interface GlobalAnalyticsData {
   strategicInsights: string;
   loyaltyRate: number;
   vipIntensity: number;
+  averageOccupancy?: number;
   lastUpdated: number;
 }
 

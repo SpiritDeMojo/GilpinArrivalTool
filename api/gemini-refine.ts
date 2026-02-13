@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const ai = new GoogleGenAI({ apiKey });
-        const modelName = 'gemini-2.0-flash';
+        const modelName = 'gemini-3-flash';
 
         const systemInstruction = `**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v9.0).
 

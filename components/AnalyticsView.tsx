@@ -228,9 +228,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
 
       {data && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
               { label: 'Arrival Volume', val: filteredSessions.reduce((acc, s) => acc + s.guests.length, 0), icon: '🌍', color: 'text-slate-900 dark:text-white' },
+              { label: 'Avg Occupancy', val: `${data.averageOccupancy ?? Math.round(filteredSessions.reduce((acc, s) => acc + s.guests.length, 0) / 39 * 100)}%`, icon: '🏨', color: 'text-amber-500' },
               { label: 'VIP Intensity', val: `${data.vipIntensity}%`, icon: '💎', color: 'text-[#c5a065]' },
               { label: 'Loyalty Impact', val: `${data.loyaltyRate}%`, icon: '🔄', color: 'text-indigo-500' },
               { label: 'Target Growth', val: `${100 - data.loyaltyRate}%`, icon: '🌱', color: 'text-emerald-500' },

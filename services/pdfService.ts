@@ -437,8 +437,16 @@ export class PDFService {
         nameRaw += " " + str;
       }
     }
+    // --- Detect guest status labels before cleaning name ---
+    const hasPGI = /_Previous\s+Guest\s+Issue/i.test(nameRaw);
+    const hasStayedBefore = /_Stayed\s+Before/i.test(nameRaw);
+    const isRegularGuest = /_Regular\s+Guest/i.test(nameRaw);
+
     let name = nameRaw.trim()
       .replace(/^_Regular.*?(?=\w)/i, "")
+      .replace(/_Previous\s+Guest\s+Issue/gi, "")
+      .replace(/_Stayed\s+Before/gi, "")
+      .replace(/_Regular\s+Guest\s*-?\s*\d*\+?\s*stays?/gi, "")
       .replace(/VIP\s*-\s*\w+/gi, "")
       .replace(/(\s(Mr|Mrs|Miss|Ms|Dr|\&|Sir|Lady|\+)+)+[*]*$/i, "")
       .trim();
@@ -478,7 +486,9 @@ export class PDFService {
     for (const m of fullFacilityMatches) {
       if (!allVenueSet.has(m)) allVenueSet.add(m);
     }
-    const facilityMatches = [...allVenueSet];
+    // Post-filter: facility entries MUST contain a date (DD/MM) to be real bookings.
+    // Standalone venue labels like "/GH Pure", "/Steam Room" are noise without dates.
+    const facilityMatches = [...allVenueSet].filter(m => /\d{1,2}\/\d{1,2}/.test(m));
 
     const standaloneInRoomFromBooking: string[] = [];
     // --- CONFIRMED FACILITY BOOKINGS (from RIGHT COLUMN booking stream ONLY, x >= 400) ---
@@ -491,8 +501,8 @@ export class PDFService {
       // Venue-prefix dinner: "Gilpin Spice Dinner for 2 on DD/MM/YY at HH:MM"
       const prefixDinnerMatch = line.match(/(?:Gilpin\s+Spice|SOURCE)\s+Dinner\s+for\s+\d+\s+on\s+[\d/]+\s+at\s+[\d:.]+/i);
       if (prefixDinnerMatch) confirmedStandalone.push(prefixDinnerMatch[0].trim());
-      // Lunch: "Lunch for 2 on DD/MM/YY at HH:MM in VENUE"
-      const lunchMatch = line.match(/Lunch\s+for\s+\d+\s+on\s+[\d/]+\s+at\s+[\d:.]+\s+in\s+.+/i);
+      // Lunch: "Lunch for N on DD/MM/YY at HH:MM in VENUE" or "Bento Box Lunch DD/MM/YY at HH:MM"
+      const lunchMatch = line.match(/(?:Bento\s+Box\s+)?Lunch\s+(?:for\s+\d+\s+)?(?:on\s+)?[\d/]+\s+(?:at|@)\s+[\d:.]+(?:\s+in\s+.+)?/i);
       if (lunchMatch) confirmedStandalone.push(lunchMatch[0].trim());
       // ESPA standalone treatments
       const espaMatch = line.match(/(?:ESPA|Pure\s+Lakes?)\s+[\w\s]+(?:Facial|Massage|Treatment|Reviver|Calm)\s+for\s+\d+\s+on\s+[\d/]+\s+at\s+[\d:.]+/i);
@@ -500,6 +510,12 @@ export class PDFService {
       // Afternoon Tea
       const teaMatch = line.match(/Afternoon\s+Tea\s+for\s+\d+\s+on\s+[\d/]+\s+at\s+[\d:.]+(?:\s+in\s+.+)?/i);
       if (teaMatch) confirmedStandalone.push(teaMatch[0].trim());
+      // Steam Room, Couples Spa Hot Tub standalone with date
+      const spaFacMatch = line.match(/(?:Steam\s+Room|Couples\s+Spa\s+Hot\s+[Tt]ub|Hot\s+[Tt]ub)\s+(?:for\s+\d+\s+)?(?:on\s+)?[\d/]+\s+(?:at|@)\s+[\d:.]+/i);
+      if (spaFacMatch) confirmedStandalone.push(spaFacMatch[0].trim());
+      // Bento Box standalone
+      const bentoMatch = line.match(/Bento\s+Box\s+(?:for\s+\d+\s+)?(?:on\s+)?[\d/]+\s+(?:at|@)\s+[\d:.]+/i);
+      if (bentoMatch) confirmedStandalone.push(bentoMatch[0].trim());
     }
 
     // In-room items scan all lines (both columns may mention physical items)
@@ -627,6 +643,7 @@ export class PDFService {
       /\b[A-Z]\d{1,3}\s[A-Z]{3}\b/i,            // Prefix with space: M88 HCT, A123 BCD
       /\b\d{1,4}\s[A-Z]{2,3}\b/i,               // Numeric prefix: 30 BHJ
       /\b[A-Z]{2}\d{2,4}\b/i,                    // Short: LN75, AB1234
+      /\b[A-Z]\d[A-Z]{3}\b/i,                    // Very short personal: J1BLP
     ];
     const monthFilter = /^(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)$/i;
     const carExclusions = /^(BB\d|APR|RO|COMP|GS|JS|GR|MR|CR|SL|SS|LH|MAG|RATE|ID|PAGE|DATE|ROOM|UNIT|TOKEN|TOTAL|DEPOSIT|NET|VAT|GBP|MAN|UA|AD|CH|GRP|DEF|CHI|VAC|MOT|NDR|POB|MIN|CEL|MCT)$/i;
@@ -635,6 +652,9 @@ export class PDFService {
     // Determine the x-range to search for car reg items
     const carXMin = carRegColumnX ? carRegColumnX.min : 480;
     const carXMax = carRegColumnX ? carRegColumnX.max : Infinity;
+
+    // Room type codes that should be stripped from car reg scanning
+    const roomTypeCodes = /^(MR|CR|JS|GR|GS|SL|SS|MAG|MOT|LHC|LHM|LHS|LHSS|LH|LHB|LHBB)$/i;
 
     // Only scan the FIRST LINE (header row) — car reg column is always there
     const firstLineItems = block.lines[0]?.items || [];
@@ -649,7 +669,8 @@ export class PDFService {
         const lastItems = rightItems.slice(-windowSize);
         const combinedText = lastItems
           .map((i: any) => i.str.trim().replace(/^\*+/, ''))
-          .filter((s: string) => s.length > 0 && !contentFilter.test(s))
+          // Pre-filter: strip room type codes and bare "0" tokens (pax count remnants)
+          .filter((s: string) => s.length > 0 && !contentFilter.test(s) && !roomTypeCodes.test(s) && s !== '0')
           .join(' ')
           .toUpperCase()
           .trim();
@@ -680,7 +701,8 @@ export class PDFService {
         const lastItems = broadRightItems.slice(-windowSize);
         const combinedText = lastItems
           .map((i: any) => i.str.trim().replace(/^\*+/, ''))
-          .filter((s: string) => s.length > 0 && !contentFilter.test(s))
+          // Pre-filter: strip room type codes and bare "0" tokens (pax count remnants)
+          .filter((s: string) => s.length > 0 && !contentFilter.test(s) && !roomTypeCodes.test(s) && s !== '0')
           .join(' ')
           .toUpperCase()
           .trim();
@@ -1046,6 +1068,11 @@ export class PDFService {
       consolidatedNotes.push(`🤫 COMP UPGRADE (Silent) — room freed for availability`);
     }
 
+    // PGI (Previous Guest Issue) — critical alert for reception
+    if (hasPGI) {
+      consolidatedNotes.unshift(`⚠️🔴 PREVIOUS GUEST ISSUE — review notes and handle with care`);
+    }
+
     // Pet/Dog note — ensure visibility for reception and housekeeping
     if (hasPet) {
       consolidatedNotes.push(`🐕 Dog in room`);
@@ -1120,6 +1147,63 @@ export class PDFService {
 
     if (unbookedRequests.length > 0) {
       consolidatedNotes.unshift(`⚠️ UNBOOKED: ${unbookedRequests.join(' / ')} — check with reservations`);
+    }
+
+    // --- DINNER COVERAGE CHECK ---
+    // For multi-night stays, check if dinner is booked for every night.
+    // If not, flag the missing date(s) so reception can offer a reservation.
+    const durationNum = parseInt(duration) || 1;
+    if (arrivalDate && durationNum > 0) {
+      // Collect all confirmed dinner dates (DD/MM or DD/MM/YY format)
+      const allDinnerDates: string[] = [];
+      const dinnerDateRegex = /(?:Dinner|dinner)\s+for\s+\d+\s+(?:on\s+)?(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/gi;
+      const allBookingText = [...rightColLines, ...bookingStreamLines].join(' ');
+      let dm;
+      while ((dm = dinnerDateRegex.exec(allBookingText)) !== null) {
+        allDinnerDates.push(dm[1]);
+      }
+      // Also capture venue-prefix dinners: "Gilpin Spice Dinner for 2 on DD/MM/YY"
+      const prefixDinnerDateRegex = /(?:Spice|SOURCE)\s+Dinner\s+for\s+\d+\s+(?:on\s+)?(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/gi;
+      while ((dm = prefixDinnerDateRegex.exec(allBookingText)) !== null) {
+        allDinnerDates.push(dm[1]);
+      }
+
+      // Check for external dinner mentions in notes
+      const externalDinnerPhrases = /(?:dining?\s+(?:out|external|elsewhere)|eating\s+(?:out|external)|external\s+dinner|dinner\s+(?:outside|elsewhere|external)|own\s+dinner\s+arrangement|already\s+booked\s+dinner\s+externally|dinner\s+at\s+(?:another|different)\s+(?:restaurant|venue))/i;
+      const hasExternalDinner = externalDinnerPhrases.test(singleLineText);
+
+      // Check for "Room Only" or "Bed & Breakfast" rate codes — dinner not included, don't flag
+      const isDinnerIncluded = /^(DBB|MINIMOON|MINI_MOON|MAGESC|MAG_ESC|CEL|COMP)/i.test(rateCode);
+
+      // Build list of uncovered dinner nights
+      const uncoveredNights: string[] = [];
+      for (let nightIdx = 0; nightIdx < durationNum; nightIdx++) {
+        const nightDate = new Date(arrivalDate.getTime() + nightIdx * 86400000);
+        const nightDD = String(nightDate.getDate()).padStart(2, '0');
+        const nightMM = String(nightDate.getMonth() + 1).padStart(2, '0');
+        const nightYY = String(nightDate.getFullYear()).slice(-2);
+        const shortDate = `${nightDD}/${nightMM}`;
+        const fullDate = `${nightDD}/${nightMM}/${nightYY}`;
+        const fullDate4 = `${nightDD}/${nightMM}/${nightDate.getFullYear()}`;
+
+        const hasDinner = allDinnerDates.some(d =>
+          d === shortDate || d === fullDate || d === fullDate4 ||
+          d.startsWith(shortDate)
+        );
+
+        if (!hasDinner) {
+          uncoveredNights.push(shortDate);
+        }
+      }
+
+      if (uncoveredNights.length > 0 && uncoveredNights.length < durationNum) {
+        // Only flag if SOME nights are missing (if ALL are missing, dinner is clearly not part of the plan)
+        consolidatedNotes.push(`🍽️ No dinner booked: ${uncoveredNights.join(', ')}`);
+      }
+
+      if (hasExternalDinner) {
+        consolidatedNotes.push(`🍴 External dinner mentioned in notes`);
+      }
     }
 
     // Enrich roomType with human-readable name from constants

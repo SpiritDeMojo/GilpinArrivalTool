@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Transcription } from '../hooks/useLiveAssistant';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -34,8 +34,59 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
     isVisible,
 }) => {
     const [input, setInput] = useState('');
+    const [isListening, setIsListening] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const hasAutoStarted = useRef(false);
+    const recognitionRef = useRef<any>(null);
+
+    /* ─── Speech Recognition setup ─── */
+    useEffect(() => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) return;
+
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = 'en-GB';
+
+        recognition.onresult = (event: any) => {
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                transcript += event.results[i][0].transcript;
+            }
+            setInput(prev => {
+                // If final result, append with space
+                if (event.results[event.results.length - 1].isFinal) {
+                    return (prev ? prev + ' ' : '') + transcript.trim();
+                }
+                return transcript;
+            });
+        };
+
+        recognition.onend = () => setIsListening(false);
+        recognition.onerror = () => setIsListening(false);
+
+        recognitionRef.current = recognition;
+
+        return () => {
+            recognition.abort();
+        };
+    }, []);
+
+    const toggleListening = useCallback(() => {
+        if (!recognitionRef.current) return;
+        if (isListening) {
+            recognitionRef.current.stop();
+            setIsListening(false);
+        } else {
+            try {
+                recognitionRef.current.start();
+                setIsListening(true);
+            } catch (e) {
+                // Already started
+            }
+        }
+    }, [isListening]);
 
     /* ─── Auto-start session on visibility ─── */
     useEffect(() => {
@@ -372,6 +423,37 @@ const AIAssistantTab: React.FC<AIAssistantTabProps> = ({
                             <polyline points="5 12 12 5 19 12" />
                         </svg>
                     </motion.button>
+                    {/* Microphone button — shows when input is empty */}
+                    {!input.trim() && isLiveActive && (
+                        <motion.button
+                            whileTap={{ scale: 0.8 }}
+                            onClick={toggleListening}
+                            animate={isListening ? {
+                                scale: [1, 1.1, 1],
+                                transition: { duration: 1.5, repeat: Infinity },
+                            } : { scale: 1 }}
+                            style={{
+                                width: '30px', height: '30px', borderRadius: '15px',
+                                background: isListening
+                                    ? '#ff3b30'
+                                    : 'var(--surface, rgba(120,120,128,0.12))',
+                                color: isListening ? 'white' : 'var(--text-muted, #8e8e93)',
+                                border: 'none', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0,
+                                boxShadow: isListening ? '0 0 12px rgba(255,59,48,0.4)' : 'none',
+                                transition: 'background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
+                            }}
+                            aria-label={isListening ? 'Stop listening' : 'Voice input'}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                <line x1="12" y1="19" x2="12" y2="23" />
+                                <line x1="8" y1="23" x2="16" y2="23" />
+                            </svg>
+                        </motion.button>
+                    )}
                 </div>
             </div>
         </div>

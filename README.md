@@ -9,7 +9,7 @@ Purpose-built for six operational dashboards, AI-assisted guest preparation, and
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-Realtime_DB-FFCA28?logo=firebase)](https://firebase.google.com/)
-[![Gemini AI](https://img.shields.io/badge/Gemini_AI-2.5_Flash-4285F4?logo=google)](https://ai.google.dev/)
+[![Gemini AI](https://img.shields.io/badge/Gemini_AI-3_Flash-4285F4?logo=google)](https://ai.google.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite)](https://vitejs.dev/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-000?logo=vercel)](https://vercel.com/)
 
@@ -28,15 +28,15 @@ The Gilpin Arrival Tool transforms unstructured PMS arrival PDFs into a live, in
 ## Core Capabilities
 
 ### 📄 Intelligent PDF Extraction
-Column-aware PDF parser (1,150+ lines) that extracts 20+ fields per guest using X-coordinate spatial analysis. Extracts room assignments (31-room map with aliases), ETA windows (multi-format: am/pm, ranges, 3/4-digit), car registrations (multi-pattern UK plate matching with AI fallback), duration (first-line departure date calculation), facilities & dining (venue-tagged: Spice, Source, Lake House, ESPA), allergies & dietary (UK Top 14 allergen scan), occasions, in-room items (28 keywords), loyalty history, rate codes (37 variants), booking source, pax (ACEB), and unbooked request detection. Tested against 163 guests across 10 real PDFs with 0 extraction errors.
+Column-aware PDF parser (1,200+ lines) that extracts 20+ fields per guest using X-coordinate spatial analysis. Extracts room assignments (31-room map with aliases), ETA windows (multi-format: am/pm, ranges, 3/4-digit), car registrations (multi-pattern UK plate matching with AI fallback, short-plate support), duration (first-line departure date calculation), facilities & dining (venue-tagged: Spice, Source, Lake House, ESPA — date-validated), allergies & dietary (UK Top 14 allergen scan), occasions, in-room items (28 keywords), loyalty history, rate codes (37 variants), booking source, pax (ACEB), unbooked request detection, **Previous Guest Issue (PGI) detection** with prominent warnings, and **dinner coverage checker** (flags unbooked dinner nights). Tested against 163 guests across 13 real PDFs with 0 extraction errors.
 
 ### 🤖 Gemini AI Integration
-- **AI Audit** — Gemini 2.5 Flash refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes. Anti-fabrication validation prevents hallucinated facilities and car registrations
-- **AI Live Assistant** — Conversational AI colleague powered by Gemini native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands in real-time
+- **AI Audit** — Gemini 3 Flash refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes. Anti-fabrication validation prevents hallucinated facilities and car registrations
+- **AI Live Assistant** — Conversational AI colleague powered by Gemini native audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands in real-time. Includes **voice-to-text microphone** button in the chat input bar using the Web Speech API
 - **AI Cleaning Priority** — Intelligent room preparation ordering based on ETA, guest type, and operational constraints
 - **AI Room Upgrades** — Analyses guest profiles against empty rooms and suggests strategic upgrades with deduplication (each room suggested at most once)
 - **AI Sentiment Analysis** — Generates actionable guest tags (Quiet Room, Allergy Alert, Anniversary) from notes and preferences
-- **AI Analytics** — Operational intelligence dashboards with arrival patterns, property breakdown, and guest profile analysis
+- **AI Analytics** — Operational intelligence dashboards with arrival patterns, property breakdown, guest profile analysis, and **average occupancy** calculation (arrivals vs. 39-room capacity)
 
 ### 📡 Fleet Sync Engine
 Real-time multi-device synchronisation via Firebase Realtime Database. Upload multiple arrival PDFs on one device — all connected devices update instantly with every day visible as session tabs. Status changes, notes, and deletions propagate across the fleet in milliseconds.
@@ -56,7 +56,10 @@ Real-time multi-device synchronisation via Firebase Realtime Database. Upload mu
 Per-guest raw data view that structures the original PMS text into readable sections (mirroring the PDF layout). Built-in SOP modal (v23.0, 30 sections) covering every operational workflow from PDF upload to itinerary generation.
 
 ### 💬 Real-Time Messenger
-Tabbed chat panel with cross-department Team Chat and AI Live Assistant. Features messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime, and FAB pulse ring for unread messages.
+Tabbed chat panel with cross-department Team Chat and AI Live Assistant. Features messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime, FAB pulse ring for unread messages, and **voice-to-text microphone** button (Web Speech API dictation).
+
+### 🔔 Smart Notifications
+Cross-device notification system with distinct audio tones (chime, alert, doorbell). Triggers on: HK status changes, maintenance status changes, guest arrivals, check-ins, check-outs, guest awaiting room, courtesy call due, no-shows, room ready, urgent room notes, room note resolved, and team chat messages. Department-specific badge counters with mute toggle.
 
 ### 🖨️ Smart Print Layouts
 Three optimised print modes — **Master**, **Greeter**, and **Delivery** — with auto-sizing columns and dense formatting that maximises paper utilisation in landscape orientation. Plus dedicated **In House Report** and **Turndown List** print layouts.
@@ -102,8 +105,8 @@ The interface features a handcrafted animation system designed for a polished, p
                      └──────┬───────┘              │
                             │                     │
                      ┌──────▼───────┐              │
-                     │  Gemini AI   │              │
-                     │  (2.5 Flash) │              │
+                     │  Gemini AI   │
+                     │  (3 Flash)   │
                      └──────────────┘              │
                                                   │
                      ┌──────────────┐              │
@@ -127,7 +130,7 @@ The interface features a handcrafted animation system designed for a polished, p
 | **Animations** | Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes |
 | **Backend** | Vercel Serverless Functions (`/api/gemini-*`) |
 | **PDF Parsing** | pdfjs-dist (Mozilla PDF.js) |
-| **AI** | Google Gemini 2.5 Flash via `@google/genai` + Gemini Live API (native audio) |
+| **AI** | Google Gemini 3 Flash via `@google/genai` + Gemini Live API (native audio) |
 | **Audio** | AudioWorklet API (ScriptProcessorNode fallback) |
 | **Real-Time Sync** | Firebase Realtime Database (defense-in-depth sanitisation) |
 | **Weather** | Open-Meteo API (Windermere, no API key required) |

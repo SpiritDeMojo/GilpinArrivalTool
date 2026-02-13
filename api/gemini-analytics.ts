@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const ai = new GoogleGenAI({ apiKey });
-        const modelName = 'gemini-2.0-flash';
+        const modelName = 'gemini-3-flash';
 
         const systemInstruction = `**ROLE:** Gilpin Strategic Data Analyst.
 **MISSION:** Synthesize all arrival manifests into high-level business intelligence.
@@ -58,6 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 4. **propertyBreakdown**: Object with mainCount (rooms 1-31), lakeCount (rooms 51-58).
 5. **breakfastTotal**: Total guests who have breakfast packages (BB, DBB, HB — NOT 'RO' or 'Room Only').
 6. **upgradeOpportunities**: Count of returning guests (L&L=Yes) who could benefit from a comp upgrade.
+7. **averageOccupancy**: Integer percentage — (total arriving guests ÷ 39 rooms) × 100. The property has 39 bookable rooms total (31 Main Hotel rooms 1-31, 8 Lake House rooms 51-58). If multiple manifests are provided, average the daily occupancy rates.
 
 **METRICS:**
 - loyaltyRate: Integer percentage of guests with "Yes" in L&L.
@@ -122,9 +123,10 @@ ${s.guests.map((g: any) => `- ${g.name} | Rm: ${g.room} | LL: ${g.ll} | Nts: ${g
                                     required: ["mainCount", "lakeCount"]
                                 },
                                 breakfastTotal: { type: Type.NUMBER },
-                                upgradeOpportunities: { type: Type.NUMBER }
+                                upgradeOpportunities: { type: Type.NUMBER },
+                                averageOccupancy: { type: Type.NUMBER }
                             },
-                            required: ["strategicMix", "occupancyPulse", "riskAnalysis", "strategicInsights", "loyaltyRate", "vipIntensity", "propertyBreakdown", "breakfastTotal", "upgradeOpportunities"]
+                            required: ["strategicMix", "occupancyPulse", "riskAnalysis", "strategicInsights", "loyaltyRate", "vipIntensity", "propertyBreakdown", "breakfastTotal", "upgradeOpportunities", "averageOccupancy"]
                         }
                     }
                 });
