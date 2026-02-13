@@ -28,7 +28,7 @@ The Gilpin Arrival Tool transforms unstructured PMS arrival PDFs into a live, in
 ## Core Capabilities
 
 ### 📄 Intelligent PDF Extraction
-Column-aware PDF parser (1,200+ lines) that extracts 20+ fields per guest using X-coordinate spatial analysis. Extracts room assignments (31-room map with aliases), ETA windows (multi-format: am/pm, ranges, 3/4-digit), car registrations (multi-pattern UK plate matching with AI fallback, short-plate support), duration (first-line departure date calculation), facilities & dining (venue-tagged: Spice, Source, Lake House, ESPA — date-validated), allergies & dietary (UK Top 14 allergen scan), occasions, in-room items (28 keywords), loyalty history, rate codes (37 variants), booking source, pax (ACEB), unbooked request detection, **Previous Guest Issue (PGI) detection** with prominent warnings, and **dinner coverage checker** (flags unbooked dinner nights). Tested against 163 guests across 13 real PDFs with 0 extraction errors.
+Column-aware PDF parser (1,200+ lines) that extracts 20+ fields per guest using X-coordinate spatial analysis. Extracts room assignments (38-room map with full-name aliases — Knipe Suite, Tarn Suite, Sergeant Man, St Sunday Crag, Dollywagon Pike, Cat Bells, Crinkle Crags), ETA windows (multi-format: am/pm, ranges, 3/4-digit), car registrations (multi-pattern UK plate matching with AI fallback, short-plate support), duration (first-line departure date calculation), facilities & dining (venue-tagged: Spice, Source, Lake House, ESPA — date-validated), allergies & dietary (UK Top 14 allergen scan), occasions, in-room items (28 keywords), loyalty history, rate codes (37 variants), booking source, pax (ACEB), unbooked request detection, **Previous Guest Issue (PGI) detection** with prominent warnings, and **dinner coverage checker** (flags unbooked dinner nights). Tested against 12+ real PDFs with 0 extraction errors.
 
 ### 🤖 Gemini AI Integration
 - **AI Audit** — Gemini 2.5 Pro refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes. Anti-fabrication validation prevents hallucinated facilities and car registrations
@@ -49,11 +49,11 @@ Real-time multi-device synchronisation via Firebase Realtime Database. Upload mu
 | **Housekeeping** | Room preparation & readiness | Room readiness status, in-room delivery tracking, AI cleaning priority, cross-department notes |
 | **Maintenance** | Room inspection & handoff | Independent maintenance status, cross-department room notes, priority tagging |
 | **Front of House** | Guest presence & service | On-site/off-site tracking, courtesy call logging, guest greeting intelligence |
-| **In House** | Overnight operations | 38-room grid (Main Hotel + Lake House), occupancy stats, room moves, EV charging, AI upgrades, stayover tracking, print reports |
+| **In House** | Overnight operations | 38-room grid (30 Main Hotel + 8 Lake House), occupancy stats, room moves, EV charging, AI upgrades, stayover tracking, print reports |
 | **Turndown** | Evening service preparation | Turndown status tracking, dinner time/venue management, stayover + arrival coverage |
 
 ### 📋 Booking Stream & SOP
-Per-guest raw data view that structures the original PMS text into readable sections (mirroring the PDF layout). Built-in SOP modal (v23.0, 30 sections) covering every operational workflow from PDF upload to itinerary generation.
+Per-guest raw data view that structures the original PMS text into readable sections (mirroring the PDF layout). Built-in SOP modal (v23.0, 30 sections) covering every operational workflow from PDF upload to itinerary generation. Facilities column is always editable via inline textarea with dual-field sync (`facilitiesRaw` + `facilities`).
 
 ### 💬 Real-Time Messenger
 Tabbed chat panel with cross-department Team Chat and AI Live Assistant. Features messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime, FAB pulse ring for unread messages, and **voice-to-text microphone** button (Web Speech API dictation).
@@ -159,8 +159,8 @@ The interface features a handcrafted animation system designed for a polished, p
 - 🔄 **37 Rate Code Variants** — Parser recognises MINIMOON, DBB, BB_2, WIN codes, underscore variants, Lake House prefixes
 - 📦 **13 Package Mappings** — AI audit maps rate codes to human-readable names (Winter Offer, B&B, Room Only, etc.)
 - 🧱 **Modular CSS Architecture** — 10 specialised files (design-tokens, variables, base, animations, navbar, components, in-house, responsive, print, barrel) for maintainability
-- 🏠 **In House Dashboard** — Real-time 38-room occupancy grid with arrival/stayover detection, room moves (Firebase sync), car plate tracking, EV charging, and print report
-- 🐕 **Dogs In House** — Breed-specific pet detection (cockapoo, labrador, spaniel + 15 breeds) with contextual phrase matching (dog bed, dog bowl, pet in room). Anti-false-positive: word-boundary regex, negation handling ("no dogs"), and curated-field-only scanning
+- 🏠 **In House Dashboard** — Real-time 38-room occupancy grid (30 Main Hotel + 8 Lake House) with official room names (Knipe Suite, Tarn Suite, Sergeant Man, St Sunday Crag, Dollywagon Pike, Cat Bells, Crinkle Crags), arrival/stayover detection, room moves (Firebase sync), car plate tracking, EV charging, and print report
+- 🐕 **Dogs In House** — Breed-specific pet detection (cockapoo, labrador, spaniel + 15 breeds) with contextual phrase matching (dog bed, dog bowl, pet friendly). Anti-false-positive: requires explicit pet context (never bare 'pet'/'dog'), negation handling ("no dogs"), curated-field-only scanning (excludes raw PMS text)
 - 🏷️ **Smart Flag Detection** — 10 auto-flags (VIP, allergies, pets, occasions, prev issues) with word-boundary matching for prone-to-false-positive flags. Scans curated fields only — never raw PMS dump
 - 🏨 **Room 29 (Mint)** — Excluded from all room lists as it is not yet built / in use
 

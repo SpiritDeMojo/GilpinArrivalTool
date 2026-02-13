@@ -232,8 +232,8 @@ const GuestMobileCard: React.FC<GuestMobileCardProps> = ({ guest, onUpdate, onDe
                       <label htmlFor={`mc-fac-${index}`} className="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">Facilities & Dining</label>
                       <textarea
                         id={`mc-fac-${index}`}
-                        value={guest.facilities}
-                        onChange={(e) => onUpdate({ facilities: e.target.value })}
+                        value={guest.facilitiesRaw || guest.facilities}
+                        onChange={(e) => onUpdate({ facilitiesRaw: e.target.value, facilities: e.target.value })}
                         rows={2}
                         name="facilities"
                         autoComplete="off"

@@ -1,7 +1,7 @@
 # 🔐 Security Policy
 
-**Last Audit:** 11 February 2026  
-**Version:** 2.2.0  
+**Last Audit:** 13 February 2026  
+**Version:** 2.3.0  
 **Status:** ✅ Secure — Full audit passed, all controls verified
 
 ---
@@ -286,4 +286,4 @@ If you discover a security issue, please contact the repository owner directly.
 
 ---
 
-*Last full audit: 11 February 2026 — v2.2.0*
+*Last full audit: 13 February 2026 — v2.3.0*

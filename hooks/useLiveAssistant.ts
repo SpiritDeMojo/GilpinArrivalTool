@@ -255,6 +255,7 @@ ADULTS: ${(g as any).adults || '?'} CHILDREN: ${(g as any).children || 0} INFANT
 NOTES: ${g.prefillNotes}
 STRATEGY: ${g.preferences}
 FACILITIES: ${g.facilities || 'None'}
+FACILITIES_RAW: ${g.facilitiesRaw || 'None'}
 PACKAGE: ${(g as any).package || 'None'}
 IN_ROOM_ITEMS: ${(g as any).inRoomItems || 'None'}
 HK_NOTES: ${(g as any).hkNotes || 'None'}
@@ -477,10 +478,19 @@ ${guestsBrief}
    - Confirm conversationally (e.g., "Noted, I've marked the guest in Room 3 as on site.")
    - Then at the END of your response, output: [ACTION:UPDATE_GUEST]{"room":"3","field":"guestStatus","value":"on_site"}
    - Valid guestStatus values: "pre_arrival", "on_site", "off_site", "awaiting_room", "room_ready_notified", "checked_in", "courtesy_call_due", "call_complete", "checked_out", "no_show", "cancelled"
-   - You can also update these fields: "car" (vehicle registration), "facilities", "roomType", "inRoomItems" (gifts/amenities to place in room), "hkNotes" (housekeeping instructions), "preferences" (tactical strategy notes), "prefillNotes" (intelligence column notes).
-   - Example: User says "Room 5 car registration is AB12 CDE" → output [ACTION:UPDATE_GUEST]{"room":"5","field":"car","value":"AB12 CDE"}
+    - You can also update these fields: "car" (vehicle registration), "facilities" (formatted facility summary), "facilitiesRaw" (raw facility text that appears in the editable column), "roomType", "inRoomItems" (gifts/amenities to place in room), "hkNotes" (housekeeping instructions), "preferences" (tactical strategy notes), "prefillNotes" (intelligence column notes).
+    - Example: User says "Room 5 car registration is AB12 CDE" → output [ACTION:UPDATE_GUEST]{"room":"5","field":"car","value":"AB12 CDE"}
 
-**7. Room Upgrade Awareness**
+**7. Facility Editing Mode**
+   When the user says things like "Fix facilities for Room X", "Update Room X facilities", "Change Room X dinner to 7:30", "Reformat Room X facilities":
+   - Confirm conversationally (e.g., "Done — I've updated Room 5's facilities.")
+   - Output TWO actions to keep both fields in sync:
+     [ACTION:UPDATE_GUEST]{"room":"5","field":"facilitiesRaw","value":"🌶️ Spice (25/01 @ 19:30) • 💆 Pure Lakes (26/01 @ 10:00)"}
+     [ACTION:UPDATE_GUEST]{"room":"5","field":"facilities","value":"🌶️ Spice (25/01 @ 19:30) • 💆 Pure Lakes (26/01 @ 10:00)"}
+   - Use emoji icons: 🌶️ Spice, 🍽️ Source/Dinner, 🍰 Tea/Lake House, 🍱 Bento, 💆 Spa/ESPA/Massage, ♨️ Steam/Hot Tub
+   - Format: {Icon} {Venue} (DD/MM @ HH:MM) separated by " • "
+
+**8. Room Upgrade Awareness**
    The system has an AI-powered room upgrade feature accessible from the In House dashboard ("AI Upgrades" button).
    - If asked about upgrades, explain that the system analyses returning guests, celebrations, VIPs, and long stays to suggest complimentary room upgrades to available empty rooms.
    - You can discuss which guests might be good upgrade candidates based on their [CLEAN DATA] (e.g., returning guests, special occasions in notes).

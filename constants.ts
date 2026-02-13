@@ -5,10 +5,10 @@ export const ROOM_MAP: RoomMapping = {
   'lyth': 1, 'winster': 2, 'cleabarrow': 3, 'crosthwaite': 4, 'crook': 5, 'wetherlam': 6,
   'heathwaite': 7, 'troutbeck': 8, 'kentmere': 9, 'rydal': 10, 'grasmere': 11, 'patterdale': 12,
   'thirlmere': 13, 'buttermere': 14, 'catbells': 15, 'cat bells': 15, 'crinkle': 16, 'crinkle crags': 16,
-  'dollywagon': 17, 'haystacks': 18, 'st sunday': 19, 'sergeant': 20, 'birdoswald': 21,
+  'dollywagon': 17, 'dollywagon pike': 17, 'haystacks': 18, 'st sunday': 19, 'st sunday crag': 19, 'sergeant': 20, 'sergeant man': 20, 'birdoswald': 21,
   'maglona': 22, 'glannoventa': 23, 'voreda': 24, 'hardknott': 25, 'brathay': 26,
   'crake': 27, 'duddon': 28, 'mint': 29, 'lowther': 30, 'lyvennet': 31,
-  'harriet': 51, 'ethel': 52, 'adgie': 53, 'gertie': 54, 'maud': 55, 'beatrice': 56, 'tarn': 57, 'knipe': 58,
+  'harriet': 51, 'ethel': 52, 'adgie': 53, 'gertie': 54, 'maud': 55, 'beatrice': 56, 'knipe': 57, 'knipe suite': 57, 'tarn': 58, 'tarn suite': 58,
   'boat': 60, 'lodge': 60
 };
 

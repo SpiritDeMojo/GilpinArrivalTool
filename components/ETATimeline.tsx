@@ -134,7 +134,7 @@ const ETATimeline: React.FC<ETATimelineProps> = ({ guests, onGuestClick }) => {
                             <div className="flex">
                                 {timeSlots.map(slot => (
                                     <div key={slot.hour} className="flex-1 flex flex-col items-center gap-1 min-h-[60px]">
-                                        {slot.guests.slice(0, 4).map((guest, idx) => (
+                                        {slot.guests.map((guest, idx) => (
                                             <div
                                                 key={guest.id}
                                                 onClick={(e) => { e.stopPropagation(); onGuestClick?.(guest.id); }}
@@ -159,12 +159,6 @@ const ETATimeline: React.FC<ETATimelineProps> = ({ guests, onGuestClick }) => {
                                             </div>
                                         ))}
 
-                                        {/* Overflow indicator */}
-                                        {slot.guests.length > 4 && (
-                                            <div className="text-[9px] font-bold text-slate-400">
-                                                +{slot.guests.length - 4}
-                                            </div>
-                                        )}
                                     </div>
                                 ))}
                             </div>

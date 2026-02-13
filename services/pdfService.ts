@@ -1019,7 +1019,10 @@ export class PDFService {
     const inRoomItemsText = [...new Set(allInRoomItems)].join(" • ");
 
     // --- Dog/Pet detection: ensure routing to In-Room + notes ---
-    const hasPet = /\b(?:dog|pet|puppy|canine)\b/i.test(singleLineText) || /\bPets?\b/.test(singleLineText);
+    // Tightened detection to avoid false positives: bare "pet" is too broad (matches
+    // "Rose Petal", "Competition", etc). Use explicit pet-context phrases instead.
+    const hasPet = /\b(?:dog\s+(?:bed|bowl|friendly|in\s+room|welcome)|pet\s+(?:friendly|welcome|fee|policy|request|supplies|dog)|bringing\s+(?:a\s+)?dog|puppy|canine|dog\s+bed|dog\s+bowls?)\b/i.test(singleLineText)
+      || /\bDog\b/.test(singleLineText) && /\b(?:In\s+Room|HK\s+Notes|Guest\s+Notes|Booking\s+Notes)\b/i.test(singleLineText.substring(Math.max(0, singleLineText.search(/\bDog\b/) - 150), singleLineText.search(/\bDog\b/) + 150));
     const petInRoom = ["Dog Bed", "Dog Bowls"].filter(item =>
       !inRoomItemsText.toLowerCase().includes(item.toLowerCase())
     );

@@ -909,6 +909,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                     ...existing,
                     prefillNotes: ref.notes || existing.prefillNotes,
                     facilities: bestFacilities,
+                    facilitiesRaw: bestFacilities || existing.facilitiesRaw,
                     inRoomItems: ref.inRoomItems || existing.inRoomItems,
                     preferences: ref.preferences || existing.preferences,
                     packageName: correctedPackage || existing.packageName,

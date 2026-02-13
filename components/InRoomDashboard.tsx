@@ -35,8 +35,8 @@ const ALL_ROOMS: { name: string; number: number; property: 'main' | 'lake' }[] =
   ...[
     'Lyth', 'Winster', 'Cleabarrow', 'Crosthwaite', 'Crook', 'Wetherlam',
     'Heathwaite', 'Troutbeck', 'Kentmere', 'Rydal', 'Grasmere', 'Patterdale',
-    'Thirlmere', 'Buttermere', 'Catbells', 'Crinkle', 'Dollywagon',
-    'Haystacks', 'St Sunday', 'Sergeant', 'Birdoswald', 'Maglona',
+    'Thirlmere', 'Buttermere', 'Cat Bells', 'Crinkle Crags', 'Dollywagon Pike',
+    'Haystacks', 'St Sunday Crag', 'Sergeant Man', 'Birdoswald', 'Maglona',
     'Glannoventa', 'Voreda', 'Hardknott', 'Brathay', 'Crake',
     'Duddon', /* Room 29 'Mint' excluded — not yet built */ 'Lowther', 'Lyvennet',
   ].map((name, i) => {
@@ -45,7 +45,7 @@ const ALL_ROOMS: { name: string; number: number; property: 'main' | 'lake' }[] =
     return { name, number: num, property: 'main' as const };
   }),
   ...[
-    'Harriet', 'Ethel', 'Adgie', 'Gertie', 'Maud', 'Beatrice', 'Tarn', 'Knipe',
+    'Harriet', 'Ethel', 'Adgie', 'Gertie', 'Maud', 'Beatrice', 'Knipe Suite', 'Tarn Suite',
   ].map((name, i) => ({ name, number: 51 + i, property: 'lake' as const })),
 ];
 
