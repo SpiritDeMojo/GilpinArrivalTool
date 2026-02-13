@@ -824,8 +824,7 @@ export const useGuestManager = (initialFlags: Flag[]) => {
 
             // Facilities validation: if AI returns facilities but no facility keywords in raw text
             if (ref.facilities && ref.facilities.trim()) {
-              const hasFacilityKeyword = /\/(spice|source|the lake house|gh\s*pure|spa|massage|aromatherapy|treatments|bento|tea|pure)/i.test(original.rawHtml || '') ||
-                /dinner\s+for\s+\d|spa\s+in-room|champagne\s+on|facility\s+booking/i.test(rawLower);
+              const hasFacilityKeyword = /\b(spice|source|lake\s*house|gh\s*pure|spa|massage|aromatherapy|treatments?|bento|tea|pure\s*lakes?|espa|hamper|facial|hot\s*stone|dinner\s+for\s+\d|spa\s+in-room|champagne|facility\s*booking)/i.test(rawLower);
               if (!hasFacilityKeyword) {
                 console.warn(`[AI Audit] FABRICATION DETECTED: Facilities "${ref.facilities.substring(0, 50)}" but no facility keywords in raw text for ${original.name} — discarding`);
                 ref.facilities = '';
@@ -911,6 +910,8 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                     ll: ref.history || existing.ll,
                     // Parser car is more reliable (regex-based) — AI only fills gaps
                     car: existing.car || ref.car || '',
+                    // AI-translated room type (human-readable) — parser raw code as fallback
+                    roomType: ref.roomType || existing.roomType || '',
                     // Housekeeping intelligence (allergies, dietary, room prep, smoking, children)
                     hkNotes: ref.hkNotes || existing.hkNotes || '',
                     // ── Explicitly preserve parser-extracted structured fields (Issue #6) ──
