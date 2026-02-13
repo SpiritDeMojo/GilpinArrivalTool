@@ -731,6 +731,11 @@ export const useGuestManager = (initialFlags: Flag[]) => {
     for (let i = 0; i < batch.length; i += BATCH_SIZE) chunks.push(batch.slice(i, i + BATCH_SIZE));
     setTotalBatches(chunks.length);
 
+    // ── GUARD: Prevent Firebase echo from overwriting in-flight audit data ──
+    // Mark ALL guest IDs as pending so mergeRemoteSessions keeps local state
+    // instead of overwriting with stale Firebase echoes between batches.
+    batch.forEach(g => pendingLocalUpdates.current.add(g.id));
+
     try {
       for (let i = 0; i < chunks.length; i++) {
         const currentBatchGuests = chunks[i];
@@ -952,6 +957,8 @@ export const useGuestManager = (initialFlags: Flag[]) => {
         await new Promise(r => setTimeout(r, 2000));
       }
     } finally {
+      // ── Release pending guards so Firebase sync resumes normally ──
+      batch.forEach(g => pendingLocalUpdates.current.delete(g.id));
       setAuditPhase('complete');
       setProgressMsg('COMPLETE');
       // Brief flash of complete phase before hiding
