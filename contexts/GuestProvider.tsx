@@ -115,7 +115,9 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         let result = filteredGuests;
         if (propertyFilter !== 'total') {
             result = result.filter(g => {
-                const rNum = parseInt(g.room.split(' ')[0]);
+                const rNum = parseInt(g.room?.split(' ')[0]);
+                // Non-numeric rooms (empty, TBD, etc.) always pass through
+                if (isNaN(rNum)) return true;
                 if (propertyFilter === 'main') return rNum > 0 && rNum <= 31;
                 if (propertyFilter === 'lake') return rNum >= 51 && rNum <= 58;
                 return true;
