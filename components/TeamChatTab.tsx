@@ -227,10 +227,28 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
         if (externalMessages) {
             // Parent provides messages — no internal subscription needed
             setMessages(externalMessages);
-            // Track unread count changes
+            // Track unread count changes + trigger notifications
             if (!isVisibleRef.current && externalMessages.length > lastCountRef.current) {
                 const newCount = externalMessages.length - lastCountRef.current;
                 onUnreadChange(newCount);
+                // Notify for the latest message (same as internal subscription path)
+                const latest = externalMessages[externalMessages.length - 1];
+                if (latest && latest.author !== userName) {
+                    playChatChime();
+                    showChatNotification(latest.author, latest.text);
+                    if (onPushNotification) {
+                        onPushNotification({
+                            type: 'chat_message',
+                            department: 'frontofhouse',
+                            room: '',
+                            guestName: latest.author,
+                            message: latest.text.length > 60 ? latest.text.substring(0, 60) + '…' : latest.text,
+                            emoji: '💬',
+                            color: DEPT_COLORS[latest.department] || '#c5a065',
+                            badgeTabs: [],
+                        });
+                    }
+                }
             }
             lastCountRef.current = externalMessages.length;
             return;
