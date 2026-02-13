@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const ai = new GoogleGenAI({ apiKey });
-        const modelName = 'gemini-3-flash-preview';
+        const modelName = 'gemini-3-pro-preview';
 
         const systemInstruction = `**ROLE:** Gilpin Room Upgrade Strategist.
 **MISSION:** Suggest strategic complimentary room upgrades. The purpose is to FREE UP cheaper rooms for potential last-minute bookings while rewarding deserving guests. The guest is UNAWARE of the strategic motive — they simply receive a complimentary upgrade as a gesture of goodwill.
