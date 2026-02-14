@@ -675,91 +675,56 @@ export class PDFService {
       }
     }
 
-    // --- 4. CAR REGISTRATION (Position-Based + Regex) ---
-    // Strategy: Use the detected column header x-position to precisely locate car reg text.
-    // Falls back to x > 480 if no column header was found.
+    // --- 4. CAR REGISTRATION (Position-Based — captures ALL plate formats) ---
+    // Strategy: Grab whatever text sits in the Car Reg column X-position on the
+    // first line. No regex plate-pattern matching — this captures standard plates,
+    // personalised/custom plates (M8VOU, J88 RLA, PK74), and notes (TRAIN, NOT SURE).
     let car = "";
 
-    const platePatterns = [
-      /\b[A-Z]{2}\d{2}\s?[A-Z]{3}\b/i,         // New format: AB12 CDE, DG18 WXF
-      /\b[A-Z]\d{1,3}\s[A-Z]{3}\b/i,            // Prefix with space: M88 HCT, A123 BCD
-      /\b\d{1,4}\s[A-Z]{2,3}\b/i,               // Numeric prefix: 30 BHJ
-      /\b[A-Z]{2}\d{2,4}\b/i,                    // Short: LN75, AB1234
-      /\b[A-Z]\d[A-Z]{3}\b/i,                    // Very short personal: J1BLP
-    ];
-    const monthFilter = /^(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)$/i;
-    const carExclusions = /^(BB\d|APR|RO|COMP|GS|JS|GR|MR|CR|SL|SS|LH|MAG|RATE|ID|PAGE|DATE|ROOM|UNIT|TOKEN|TOTAL|DEPOSIT|NET|VAT|GBP|MAN|UA|AD|CH|GRP|DEF|CHI|VAC|MOT|NDR|POB|MIN|CEL|MCT)$/i;
+    // Noise exclusions: room type codes, PMS codes, and content words that
+    // could bleed into the car reg column from adjacent columns.
+    const carExclusions = /^(BB\d?|APR|RO|COMP|GS|JS|GR|MR|CR|SL|SS|LH|MAG|RATE|ID|PAGE|DATE|ROOM|UNIT|TOKEN|TOTAL|DEPOSIT|NET|VAT|GBP|MAN|UA|AD|CH|GRP|DEF|CHI|VAC|MOT|NDR|POB|MIN|CEL|MCT|LHSS|LHBB|LHM|LHS|LHC|LHB|MAGESC|MINIMOON|NBMINI|CEL_DBB_\d|APR_\d_BB|BB_\d|BB\d|RO_\d|DBB_\d|DBB|LHBB\d|LHAPR|LHMAG|POB_STAFF)$/i;
     const contentFilter = /table|spice|source|dinner|lunch|spa|hamper|massage|pure|bento|tea|booking|facility|allergy|note|gilpin|hotel|token|billing|deposit|checked|arrival/i;
 
-    // Determine the x-range to search for car reg items
-    const carXMin = carRegColumnX ? carRegColumnX.min : 480;
+    // Determine the x-range to search for car reg items.
+    // Widen tolerance to 15px (data items render slightly left of the column header).
+    const carXMin = carRegColumnX ? carRegColumnX.min - 10 : 480;
     const carXMax = carRegColumnX ? carRegColumnX.max : Infinity;
 
-    // Room type codes that should be stripped from car reg scanning
-    const roomTypeCodes = /^(MR|CR|JS|GR|GS|SL|SS|MAG|MOT|LHC|LHM|LHS|LHSS|LH|LHB|LHBB)$/i;
-
-    // Only scan the FIRST LINE (header row) — car reg column is always there
+    // Only scan the FIRST LINE — car reg column is always on the header row
     const firstLineItems = block.lines[0]?.items || [];
-    const rightItems = firstLineItems
+    const carColItems = firstLineItems
       .filter((i: any) => i.x >= carXMin && i.x <= carXMax)
       .sort((a: any, b: any) => a.x - b.x);
 
-    if (rightItems.length > 0) {
-      // Try combining the last N items (plate may be split: "DG18" + "WXF" or "*M88" + "HCT")
-      for (const windowSize of [1, 2, 3, 4]) {
-        if (car) break;
-        const lastItems = rightItems.slice(-windowSize);
-        const combinedText = lastItems
-          .map((i: any) => i.str.trim().replace(/^\*+/, ''))
-          // Pre-filter: strip room type codes and bare "0" tokens (pax count remnants)
-          .filter((s: string) => s.length > 0 && !contentFilter.test(s) && !roomTypeCodes.test(s) && s !== '0')
-          .join(' ')
-          .toUpperCase()
-          .trim();
+    if (carColItems.length > 0) {
+      // Combine all items in the car reg column (plate may be split: "DG18" + "WXF")
+      const combinedText = carColItems
+        .map((i: any) => i.str.trim().replace(/^\*+/, ''))
+        .filter((s: string) => s.length > 0 && !carExclusions.test(s) && s !== '0' && !/^\d{1,3},?\d{3}\.\d{2}$/.test(s))
+        .join(' ')
+        .trim();
 
-        if (!combinedText || contentFilter.test(combinedText)) continue;
-
-        for (const pattern of platePatterns) {
-          const match = combinedText.match(pattern);
-          if (match) {
-            const candidate = match[0].trim();
-            const cleanCandidate = candidate.replace(/\s/g, '');
-            if (cleanCandidate.length >= 4 && !monthFilter.test(candidate) && !carExclusions.test(cleanCandidate)) {
-              car = candidate;
-              break;
-            }
-          }
-        }
+      // Accept if non-empty, not content-noise, and contains at least one alphanumeric char
+      if (combinedText && combinedText.replace(/[^a-zA-Z0-9]/g, '').length >= 2 && !contentFilter.test(combinedText) && !carExclusions.test(combinedText.replace(/\s/g, ''))) {
+        car = combinedText;
       }
     }
 
-    // Fallback: If column position was used but found nothing, try broad x > 480
-    if (!car && carRegColumnX) {
-      const broadRightItems = firstLineItems
-        .filter((i: any) => i.x > 480)
+    // Fallback: If column header detected but nothing found, try the rightmost
+    // items on the first line (x > last known column before Car Reg)
+    if (!car) {
+      const fallbackMin = carRegColumnX ? carRegColumnX.min - 15 : 740;
+      const fallbackItems = firstLineItems
+        .filter((i: any) => i.x >= fallbackMin)
         .sort((a: any, b: any) => a.x - b.x);
-      for (const windowSize of [1, 2, 3]) {
-        if (car) break;
-        const lastItems = broadRightItems.slice(-windowSize);
-        const combinedText = lastItems
-          .map((i: any) => i.str.trim().replace(/^\*+/, ''))
-          // Pre-filter: strip room type codes and bare "0" tokens (pax count remnants)
-          .filter((s: string) => s.length > 0 && !contentFilter.test(s) && !roomTypeCodes.test(s) && s !== '0')
-          .join(' ')
-          .toUpperCase()
-          .trim();
-        if (!combinedText || contentFilter.test(combinedText)) continue;
-        for (const pattern of platePatterns) {
-          const match = combinedText.match(pattern);
-          if (match) {
-            const candidate = match[0].trim();
-            const cleanCandidate = candidate.replace(/\s/g, '');
-            if (cleanCandidate.length >= 4 && !monthFilter.test(candidate) && !carExclusions.test(cleanCandidate)) {
-              car = candidate;
-              break;
-            }
-          }
-        }
+      const combinedFallback = fallbackItems
+        .map((i: any) => i.str.trim().replace(/^\*+/, ''))
+        .filter((s: string) => s.length > 0 && !carExclusions.test(s) && s !== '0' && !contentFilter.test(s) && !/^\d{1,3},?\d{3}\.\d{2}$/.test(s))
+        .join(' ')
+        .trim();
+      if (combinedFallback && !contentFilter.test(combinedFallback) && !carExclusions.test(combinedFallback.replace(/\s/g, ''))) {
+        car = combinedFallback;
       }
     }
 
@@ -773,25 +738,29 @@ export class PDFService {
 
     // Method 1 (Primary): Search ALL text for "ETA:" prefix in booking notes
     // Handles: "ETA: 2.30-3pm", "ETA: 15-16:00", "ETA: 3pm", "ETA: 1pm", "ETA: 14:00"
-    const etaLabelMatch = singleLineText.match(/ETA:?\s*([\d.:,-]+(?:\s*-\s*[\d.:]+)?(?:\s*(?:pm|am))?|\d{1,2}(?:[.:,]\d{2})?\s*(?:pm|am))/i);
+    // The regex requires at least one digit after ETA: to avoid matching bare punctuation.
+    const etaLabelMatch = singleLineText.match(/ETA:?\s*(\d[\d.:,-]*(?:\s*-\s*[\d.:]+)?(?:\s*(?:pm|am))?|\d{1,2}(?:[.:,]\d{2})?\s*(?:pm|am))/i);
     if (etaLabelMatch) {
       let etaStr = etaLabelMatch[1].trim();
 
-      // Handle ranges: take the first time. "2.30-3pm" → "2.30pm", "15-16:00" → "15"
-      // Preserve am/pm suffix from end if the first part doesn't have one
-      const ampmSuffix = etaStr.match(/(am|pm)$/i)?.[1] || '';
-      if (etaStr.includes('-')) {
-        etaStr = etaStr.split('-')[0].trim();
-        // Reattach am/pm if the first part doesn't have it
-        if (ampmSuffix && !etaStr.match(/(am|pm)/i)) {
-          etaStr += ampmSuffix;
+      // Reject if it's just punctuation or too short to be a time
+      if (etaStr.length > 0 && /\d/.test(etaStr)) {
+        // Handle ranges: take the first time. "2.30-3pm" → "2.30pm", "15-16:00" → "15"
+        // Preserve am/pm suffix from end if the first part doesn't have one
+        const ampmSuffix = etaStr.match(/(am|pm)$/i)?.[1] || '';
+        if (etaStr.includes('-')) {
+          etaStr = etaStr.split('-')[0].trim();
+          // Reattach am/pm if the first part doesn't have it
+          if (ampmSuffix && !etaStr.match(/(am|pm)/i)) {
+            etaStr += ampmSuffix;
+          }
         }
+
+        // Normalize dots to colons: "2.30pm" → "2:30pm"
+        etaStr = etaStr.replace(/\./g, ':');
+
+        eta = this.parseTimeString(etaStr);
       }
-
-      // Normalize dots to colons: "2.30pm" → "2:30pm"
-      etaStr = etaStr.replace(/\./g, ':');
-
-      eta = this.parseTimeString(etaStr);
     }
 
     // Method 2 (Fallback): Look for 4-digit time or HH:MM on first line
