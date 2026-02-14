@@ -321,52 +321,92 @@ export class PDFService {
       { key: "Lunch", icon: "🍽️" }
     ];
 
-    // ── Protect dates before splitting on "/" ──
-    // Dates like 06/02/26, 06/02/2026, 14/02 would otherwise be split into fragments.
-    // Replace DD/MM/YYYY, DD/MM/YY, DD/MM with placeholder §DD§MM§YYYY (safe char not in PMS data).
-    const dateHolder: string[] = [];
-    let safe = text.replace(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/g, (_match, d, m, y) => {
-      const dateStr = y ? `${d}/${m}/${y}` : `${d}/${m}`;
-      const idx = dateHolder.length;
-      dateHolder.push(dateStr);
-      return `§DATE${idx}§`;
-    });
+    // ── Venue-aware splitting ──
+    // Instead of naively splitting on "/" (which conflicts with dates like DD/MM/YY),
+    // use a regex that splits on "/" ONLY when followed by a known venue keyword.
+    // This is the same approach used in BookingStream.tsx's highlightFacilities().
+    const venueKeywords = 'GH\\s+ESPA\\s+Natural\\s+Inner\\s+Calm\\s+Massage|GH\\s+ESPA\\s+Signature\\s+Treatment|GH\\s+ESPA\\s+Indian\\s+Head\\s+Massage|GH\\s+ESPA\\s+Inner\\s+Beauty\\s+Facial|LH\\s+Natural\\s+Ultimate\\s+Inner\\s+Calm\\s+Massage|LH\\s+Pure\\s+Lakes\\s+Aromatherapy\\s+Massage|GH\\s+Pure\\s+Lakes\\s+Aromatherapy\\s+Massage|Couples\\s+Spa\\s+Hot\\s+Tub|Bento\\s+Box\\s+Lunch|GH\\s+ESPA|LH\\s+ESPA|GH\\s+Pure\\s+Lakes|LH\\s+Pure\\s+Lakes|GH\\s+Pure|LH\\s+Pure|LH\\s+Natural|The\\s+Lake\\s+House|Spice|Source|Afternoon\\s+Tea|Steam\\s+Room|Mud\\s+Treatment|Facial|Massage|Aromatherapy|Treatments|Hot\\s+Tub|Hot\\s+Stone|Bento\\s+Box|Bento|Spa|Tea|Pure|ESPA|Dinner|Lunch';
 
-    const parts = safe.split('/');
-    let result: string[] = [];
+    // Split text into individual facility entries using venue-keyword lookahead
+    const splitRegex = new RegExp(`\\/(${venueKeywords})(.*?)(?=\\/(${venueKeywords})|$)`, 'gis');
+    const entries: { venue: string; details: string }[] = [];
+    let match: RegExpExecArray | null;
+    let lastIndex = 0;
 
-    parts.forEach(part => {
-      // Restore dates in this part
-      let p = part.replace(/§DATE(\d+)§/g, (_, i) => dateHolder[Number(i)]);
-      p = p.trim();
-      if (!p) return;
+    // Also capture any leading text before the first /Venue (rare but possible)
+    while ((match = splitRegex.exec(text)) !== null) {
+      if (match.index > lastIndex && entries.length === 0) {
+        // Leading text before first /Venue — could be standalone "Dinner for ..." line
+        const leading = text.substring(lastIndex, match.index).trim();
+        if (leading) entries.push({ venue: '', details: leading });
+      }
+      entries.push({ venue: match[1].trim(), details: match[2].trim() });
+      lastIndex = match.index + match[0].length;
+    }
 
-      const dateMatch = p.match(/(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/);
-      const timeMatch = p.match(/(\d{1,2}:\d{2})/);
-      const tableMatch = p.match(/Table for (\d+)/i);
+    // If no /Venue patterns found, fall back to the old date-safe splitting method
+    if (entries.length === 0) {
+      const dateHolder: string[] = [];
+      let safe = text.replace(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/g, (_match, d, m, y) => {
+        const dateStr = y ? `${d}/${m}/${y}` : `${d}/${m}`;
+        const idx = dateHolder.length;
+        dateHolder.push(dateStr);
+        return `§DATE${idx}§`;
+      });
+      const parts = safe.split('/');
+      parts.forEach(part => {
+        let p = part.replace(/§DATE(\d+)§/g, (_, i) => dateHolder[Number(i)]).trim();
+        if (p) entries.push({ venue: '', details: p });
+      });
+    }
+
+    const result: string[] = [];
+
+    for (const entry of entries) {
+      const fullText = entry.venue ? `${entry.venue}: ${entry.details}` : entry.details;
+      if (!fullText.trim()) continue;
+
+      // Extract structured data
+      const dateMatch = fullText.match(/(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/);
+      const timeMatch = fullText.match(/(?:@\s*)?(\d{1,2}:\d{2})/);
+      const tableMatch = fullText.match(/Table for (\d+)/i);
+      const forNMatch = fullText.match(/for (\d+)/i);
 
       const date = dateMatch ? dateMatch[1] : "";
-      const time = timeMatch ? `@ ${timeMatch[1]}` : "";
-      const pax = tableMatch ? `(T-${tableMatch[1]})` : "";
+      const time = timeMatch ? timeMatch[1] : "";
+      const pax = tableMatch ? tableMatch[1] : (forNMatch ? forNMatch[1] : "");
 
-      let cleanDetails = p.replace(/\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/, "")
-        .replace(/\d{1,2}:\d{2}/, "")
-        .replace(/Table for \d+/i, "")
-        .replace(/^[:\s\-@]+|[:\s\-@]+$/g, "")
-        .trim();
+      // Determine venue name for emoji matching (use explicit venue or detect from details)
+      const venueName = entry.venue || fullText;
 
       let emoji = "🔹";
       for (const m of mappings) {
-        if (cleanDetails.toLowerCase().includes(m.key.toLowerCase())) {
+        if (venueName.toLowerCase().includes(m.key.toLowerCase())) {
           emoji = m.icon;
           break;
         }
       }
 
-      if (cleanDetails) {
-        result.push(`${emoji} ${cleanDetails} ${pax} ${date ? `(${date}${time})` : time}`.replace(/\s+/g, " ").trim());
-      }
-    });
+      // Build clean display name: keep the venue identity, strip extracted data
+      let displayName = venueName || fullText
+        .replace(/\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/g, "")
+        .replace(/\d{1,2}:\d{2}/g, "")
+        .replace(/Table for \d+/gi, "")
+        .replace(/@/g, "")
+        .replace(/^[:\s\-]+|[:\s\-]+$/g, "")
+        .trim();
+
+      if (!displayName) continue;
+
+      // Build output: emoji VenueName (T-N · DD/MM/YY @ HH:MM)
+      const detail_parts: string[] = [];
+      if (pax) detail_parts.push(`T-${pax}`);
+      if (date) detail_parts.push(date);
+      if (time) detail_parts.push(`@ ${time}`);
+
+      const detailStr = detail_parts.length > 0 ? ` (${detail_parts.join(' · ')})` : '';
+      result.push(`${emoji} ${displayName}${detailStr}`);
+    }
 
     return result.join(" • ");
   }
@@ -552,7 +592,9 @@ export class PDFService {
     // Strip stray booking IDs (5-digit numbers not part of prices/dates) that bleed from adjacent guest data
     cleanFacilityParts = cleanFacilityParts.map(m =>
       m.replace(/\s+\d{5}\s+/g, ' ')             // isolated 5-digit IDs like " 27783 "
-        .replace(/\s+\d{2}\/\d{2}\/\d{4}\s+/g, ' ') // stray full-year dates from previous stays
+        .replace(/\s+\d{2}\/\d{2}\/\d{4}\s+/g, ' ') // stray full-year dates from previous stays (middle)
+        .replace(/\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}\s*$/g, '') // trailing date+time (e.g. " 04/01/2026 19:30") — BEFORE date-only
+        .replace(/\s+\d{2}\/\d{2}\/\d{4}\s*$/g, '')  // trailing full-year dates (end of string)
         .replace(/\s+\d{2}\.\s+[A-Z][a-z]+\b/g, '') // room fragments like " 05. Crook"
         .replace(/\s+/g, ' ').trim()
     );

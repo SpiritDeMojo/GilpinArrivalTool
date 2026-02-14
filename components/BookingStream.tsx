@@ -82,6 +82,9 @@ function getVenueClass(venue: string): string {
  * Chain separator: / followed by a venue keyword
  * Problem: dates use / too (DD/MM/YY), so we can't just split on /
  * Solution: use lookahead for known venue keywords after /
+ *
+ * Sub-highlights: times (@ HH:MM) and dates (DD/MM/YY) get extra emphasis
+ * within each venue-colored span.
  */
 function highlightFacilities(text: string): { parts: React.ReactNode[]; lastIndex: number } | null {
     // Match: /VenueKeyword followed by content up to the next /VenueKeyword or end of line
@@ -108,8 +111,37 @@ function highlightFacilities(text: string): { parts: React.ReactNode[]; lastInde
         const fullMatch = '/' + venueName + details;
         const venueClass = getVenueClass(venueName);
 
+        // Sub-highlight: split the details to emphasise time and date
+        const detailParts: React.ReactNode[] = [];
+        let detailText = fullMatch;
+        let dKey = 0;
+        let dLastIdx = 0;
+
+        // Regex for: date (DD/MM/YY or DD/MM/YYYY) and @/at followed by time (HH:MM)
+        const subRegex = /(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)|(?:@\s*|at\s+)(\d{1,2}:\d{2})|(\d{1,2}:\d{2})/gi;
+        let subMatch: RegExpExecArray | null;
+
+        while ((subMatch = subRegex.exec(detailText)) !== null) {
+            if (subMatch.index > dLastIdx) {
+                detailParts.push(<span key={`fd${dKey++}`}>{detailText.slice(dLastIdx, subMatch.index)}</span>);
+            }
+            if (subMatch[1]) {
+                // Date — slightly brighter
+                detailParts.push(<span key={`fd${dKey++}`} className="bsh-fac-date">{subMatch[0]}</span>);
+            } else {
+                // Time — bold emphasis
+                detailParts.push(<span key={`fd${dKey++}`} className="bsh-fac-time">{subMatch[0]}</span>);
+            }
+            dLastIdx = subMatch.index + subMatch[0].length;
+        }
+        if (dLastIdx < detailText.length) {
+            detailParts.push(<span key={`fd${dKey++}`}>{detailText.slice(dLastIdx)}</span>);
+        }
+
         parts.push(
-            <span key={`fv${key++}`} className={venueClass}>{fullMatch}</span>
+            <span key={`fv${key++}`} className={venueClass}>
+                {detailParts.length > 0 ? detailParts : fullMatch}
+            </span>
         );
         lastIndex = match.index + fullMatch.length;
     }
@@ -270,16 +302,107 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
         const left: string[] = [];
         const right: string[] = [];
 
+        // Regex to detect right-column content embedded in merged lines
+        const rightColPattern = /^(Facility Bookings:|Allergies:|HK Notes:)/i;
+        const facilityVenuePattern = /\/(Source|Spice|Dinner|Lunch|Afternoon\s+Tea|Steam\s+Room|Bento|ESPA|Pure|Spa|Hot\s+Tub|GH|LH|Couples|Facial|Massage|Tea)\b/i;
+
         for (let i = 1; i < lines.length; i++) {
             const item = lines[i];
+            const txt = item.text;
+
+            // High X-coordinate → right column (standard path)
             if (item.x >= RIGHT_COL_MIN) {
-                right.push(item.text);
-            } else {
-                left.push(item.text);
+                right.push(txt);
+                continue;
+            }
+
+            // Check if this low-X line contains right-column content merged from the PDF
+            if (rightColPattern.test(txt)) {
+                right.push(txt);
+                continue;
+            }
+
+            // Check for merged lines: left-column text + facility data on the same line
+            // Example: "ID Arrival Departure Room /Source: Table for 2 03/01/26 @ 19:30/Spice: ..."
+            const facIdx = txt.search(facilityVenuePattern);
+            if (facIdx > 0) {
+                // Split: everything before the first /Venue goes left, everything from /Venue goes right
+                const leftPart = txt.substring(0, facIdx).trim();
+                const rightPart = txt.substring(facIdx).trim();
+                if (leftPart) left.push(leftPart);
+                if (rightPart) right.push(rightPart);
+                continue;
+            }
+
+            // Pure left-column content
+            left.push(txt);
+        }
+
+        // ─── Post-process: reconstruct complete facility entries ───
+        // When return guests have Previous Stays data, facility times can get
+        // merged into left-column Previous Stays rows. Recover them.
+        //
+        // Previous Stays row pattern: "12345 DD/MM/YYYY DD/MM/YYYY RoomName HH:MM"
+        // The trailing HH:MM doesn't belong to the Previous Stays table (which has
+        // columns: ID, Arrival, Departure, Room — no time column).
+        const prevStayTimePattern = /^(\d+\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}\/\d{2}\/\d{4}\s+\d+[.\-]\s*\w+(?:\s+\w+)*?)\s+(\d{1,2}:\d{2})\s*$/;
+
+        // Step 1: Find incomplete facility entries (ending with '@' or '@ ')
+        // and recover times from Previous Stays lines in the left column.
+        for (let r = right.length - 1; r >= 0; r--) {
+            if (/@\s*$/.test(right[r])) {
+                // This facility entry is incomplete — missing its time after '@'
+                // Look for an orphaned time in left-column Previous Stays lines
+                for (let l = 0; l < left.length; l++) {
+                    const prevMatch = left[l].match(prevStayTimePattern);
+                    if (prevMatch) {
+                        // Found: the trailing HH:MM belongs to the facility entry
+                        right[r] = right[r] + ' ' + prevMatch[2];
+                        left[l] = prevMatch[1];  // Strip the stolen time
+                        break;
+                    }
+                }
+                break; // Only fix the last (most recent) incomplete entry
             }
         }
 
-        return { headerLine: header, leftLines: left, rightLines: right };
+        // Step 2: Merge standalone orphaned time lines in the right column
+        // into the preceding incomplete facility entry.
+        // E.g., right = ["Facility Bookings:", "/Source ... @ 19:30/Spice ... @", "20:15"]
+        // → merge "20:15" into the previous line
+        const mergedRight: string[] = [];
+        for (let r = 0; r < right.length; r++) {
+            const line = right[r];
+            // Standalone time pattern: just "HH:MM" or "@ HH:MM"
+            if (/^\s*@?\s*\d{1,2}:\d{2}\s*$/.test(line) && mergedRight.length > 0) {
+                const prev = mergedRight[mergedRight.length - 1];
+                // Only merge if previous line ends with '@' (incomplete facility time)
+                if (/@\s*$/.test(prev)) {
+                    mergedRight[mergedRight.length - 1] = prev + ' ' + line.trim().replace(/^@\s*/, '');
+                    continue;
+                }
+            }
+            mergedRight.push(line);
+        }
+
+        // Step 3: Split combined multi-venue facility entries into individual lines
+        // E.g., "/Source: Table for 2 03/01/26 @ 19:30/Spice: Table for 2 02/01/26 @ 20:15"
+        // → two separate lines for proper per-venue highlighting
+        const finalRight: string[] = [];
+        for (const line of mergedRight) {
+            // Only split lines that contain facility venue patterns (not labels/headers)
+            if (facilityVenuePattern.test(line)) {
+                const entries = line.split(/(?=\/(?:Source|Spice|Dinner|Lunch|Afternoon\s+Tea|Steam\s+Room|Bento|ESPA|Pure|Spa|Hot\s+Tub|GH|LH|Couples|Facial|Massage|Tea)\b)/i);
+                for (const entry of entries) {
+                    const trimmed = entry.trim();
+                    if (trimmed) finalRight.push(trimmed);
+                }
+            } else {
+                finalRight.push(line);
+            }
+        }
+
+        return { headerLine: header, leftLines: left, rightLines: finalRight };
     }, [guest.bookingStreamStructured, guest.bookingStream, guest.rawHtml]);
 
     if (!headerLine) return null;

@@ -15,6 +15,12 @@ interface ItineraryGuest {
     dinnerVenue: string;   // e.g. "Gilpin Spice"
     preferences: string;   // e.g. "vegetarian, late checkout"
     duration: string;      // e.g. "3 night(s)"
+    occasions: string;     // e.g. "🎂 Birthday, 🥂 Anniversary"
+    champagne: boolean;
+    petals: boolean;
+    history: string;       // e.g. "Yes (x3)"
+    pax: number;
+    specialCard: string;   // AI-generated welcome/celebration card
 }
 
 interface ItineraryQueueProps {
@@ -47,19 +53,69 @@ export const getItineraryGuests = (guests: Guest[], session: ArrivalSession | nu
             const preset = rateCodeToPreset(g.rateCode || '');
             return preset !== null;
         })
-        .map(g => ({
-            guestId: g.id,
-            name: g.name,
-            room: g.room?.replace(/^\d+\s*/, '') || '', // Strip room number prefix
-            rateCode: g.rateCode || '',
-            presetKey: rateCodeToPreset(g.rateCode || '') || 'magic',
-            arrivalDate,
-            facilities: g.facilities || '',
-            dinnerTime: g.dinnerTime || '',
-            dinnerVenue: g.dinnerVenue || '',
-            preferences: g.preferences || '',
-            duration: g.duration || '',
-        }));
+        .map(g => {
+            // Extract occasions from notes (birthday, anniversary, honeymoon, etc.)
+            const notes = g.prefillNotes || '';
+            const occasionPatterns: string[] = [];
+            if (/birthday|🎂/i.test(notes)) occasionPatterns.push('🎂 Birthday');
+            if (/anniversary|🥂/i.test(notes)) occasionPatterns.push('🥂 Anniversary');
+            if (/honeymoon|💒/i.test(notes)) occasionPatterns.push('💒 Honeymoon');
+            if (/valentine/i.test(notes)) occasionPatterns.push('💝 Valentine\'s');
+            if (/wedding/i.test(notes)) occasionPatterns.push('💍 Wedding');
+            if (/celebration|🎉/i.test(notes)) occasionPatterns.push('🎉 Celebration');
+
+            // Extract champagne/petals from inRoomItems or notes
+            const inRoom = (g.inRoomItems || '').toLowerCase();
+            const hasChampagne = /champagne/i.test(inRoom) || /champagne/i.test(notes);
+            const hasPetals = /petal/i.test(inRoom) || /petal/i.test(notes);
+
+            return {
+                guestId: g.id,
+                name: g.name,
+                room: g.room?.replace(/^\d+\s*/, '') || '',
+                rateCode: g.rateCode || '',
+                presetKey: rateCodeToPreset(g.rateCode || '') || 'magic',
+                arrivalDate,
+                facilities: g.facilities || '',
+                dinnerTime: g.dinnerTime || '',
+                dinnerVenue: g.dinnerVenue || '',
+                preferences: g.preferences || '',
+                duration: g.duration || '',
+                occasions: occasionPatterns.join(', '),
+                champagne: hasChampagne,
+                petals: hasPetals,
+                history: g.ll || '',
+                pax: (g.adults || 2),
+                specialCard: g.specialCard || '',
+            };
+        });
+};
+
+/* ────────────── Parse facility lines for display ────────────── */
+const parseFacilityLines = (facilities: string): { icon: string; text: string }[] => {
+    if (!facilities.trim()) return [];
+
+    // Split on bullet separators, commas, or newlines
+    const parts = facilities
+        .split(/[•·\n]/)
+        .map(s => s.trim())
+        .filter(Boolean);
+
+    return parts.map(part => {
+        const lower = part.toLowerCase();
+        let icon = '📌';
+        if (/spa|espa|massage|facial|aromatherapy|hot\s*stone|treatment|body\s*wrap|reflexology|manicure|pedicure|scrub/i.test(lower)) icon = '💆';
+        else if (/source|dinner|supper|lunch/i.test(lower)) icon = '🍽️';
+        else if (/spice/i.test(lower)) icon = '🌶️';
+        else if (/lake\s*house/i.test(lower)) icon = '🏡';
+        else if (/pool|swim/i.test(lower)) icon = '🏊';
+        else if (/hamper|picnic|afternoon\s*tea|bento/i.test(lower)) icon = '🧺';
+        else if (/champagne|prosecco|wine/i.test(lower)) icon = '🥂';
+        else if (/walk|hike|outdoor/i.test(lower)) icon = '🥾';
+        else if (/breakfast/i.test(lower)) icon = '☕';
+        else if (/pure\s*lake|gym|fitness/i.test(lower)) icon = '🏋️';
+        return { icon, text: part };
+    });
 };
 
 /* ────────────── Component ────────────── */
@@ -67,6 +123,7 @@ const ItineraryQueue: React.FC<ItineraryQueueProps> = ({ guests, session, onClos
     const itineraryGuests = useMemo(() => getItineraryGuests(guests, session), [guests, session]);
     const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
     const [activeIndex, setActiveIndex] = useState(0);
+    const [showGenerator, setShowGenerator] = useState(false);
 
     const remaining = useMemo(
         () => itineraryGuests.filter(g => !completedIds.has(g.guestId)),
@@ -78,27 +135,26 @@ const ItineraryQueue: React.FC<ItineraryQueueProps> = ({ guests, session, onClos
     const handleComplete = useCallback(() => {
         if (!activeGuest) return;
         setCompletedIds(prev => new Set([...prev, activeGuest.guestId]));
-        // Move to next guest
-        const newRemaining = remaining.filter(g => g.guestId !== activeGuest.guestId);
-        if (newRemaining.length === 0) {
-            // All done
-            onClose();
-        } else {
-            setActiveIndex(0);
-        }
-    }, [activeGuest, remaining, onClose]);
+        setShowGenerator(false);
+        setActiveIndex(0);
+    }, [activeGuest]);
 
-    const handleSkip = useCallback(() => {
-        if (remaining.length <= 1) {
-            onClose();
-        } else {
-            setActiveIndex(prev => (prev + 1) % remaining.length);
-        }
-    }, [remaining, onClose]);
+    const handleDismiss = useCallback(() => {
+        if (!activeGuest) return;
+        setCompletedIds(prev => new Set([...prev, activeGuest.guestId]));
+        setShowGenerator(false);
+        setActiveIndex(0);
+    }, [activeGuest]);
 
-    if (itineraryGuests.length === 0 || remaining.length === 0) return null;
+    const handleOpenGenerator = useCallback(() => {
+        setShowGenerator(true);
+    }, []);
+
+    if (itineraryGuests.length === 0) return null;
 
     const packageLabel = activeGuest?.presetKey === 'moon' ? 'Gilpinmoon' : 'Magical Escapes';
+    const facilityLines = activeGuest ? parseFacilityLines(activeGuest.facilities) : [];
+    const allDone = remaining.length === 0;
 
     return (
         <div style={{
@@ -107,7 +163,7 @@ const ItineraryQueue: React.FC<ItineraryQueueProps> = ({ guests, session, onClos
             backdropFilter: 'blur(8px)',
             display: 'flex', flexDirection: 'column',
         }}>
-            {/* Queue Header */}
+            {/* ── Queue Header ── */}
             <div style={{
                 background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
                 padding: '12px 24px',
@@ -120,112 +176,387 @@ const ItineraryQueue: React.FC<ItineraryQueueProps> = ({ guests, session, onClos
                         Itinerary Queue
                     </div>
                     <div style={{ color: 'rgba(199,210,254,0.8)', fontSize: 12, marginTop: 2 }}>
-                        {remaining.length} remaining of {itineraryGuests.length} package guests
+                        {allDone
+                            ? `All ${itineraryGuests.length} guests processed ✓`
+                            : `${remaining.length} remaining of ${itineraryGuests.length} package guests`
+                        }
                     </div>
                 </div>
 
                 {/* Tab pills for remaining guests */}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: '60%' }}>
-                    {remaining.map((g, i) => (
+                {!allDone && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: '60%' }}>
+                        {remaining.map((g, i) => (
+                            <button
+                                key={g.guestId}
+                                onClick={() => { setActiveIndex(i); setShowGenerator(false); }}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: 8,
+                                    border: 'none',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    background: g.guestId === activeGuest?.guestId
+                                        ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
+                                        : 'rgba(255,255,255,0.1)',
+                                    color: g.guestId === activeGuest?.guestId ? 'white' : 'rgba(199,210,254,0.8)',
+                                    boxShadow: g.guestId === activeGuest?.guestId
+                                        ? '0 4px 12px rgba(99,102,241,0.4)'
+                                        : 'none',
+                                }}
+                            >
+                                {g.name.length > 20 ? g.name.substring(0, 20) + '...' : g.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                <button
+                    onClick={onClose}
+                    style={{
+                        padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)',
+                        background: 'rgba(239,68,68,0.1)', color: '#fca5a5', fontSize: 12,
+                        fontWeight: 700, cursor: 'pointer',
+                    }}
+                >
+                    Close All
+                </button>
+            </div>
+
+            {/* ── Main Area ── */}
+            <div style={{ flex: 1, overflow: 'auto', display: 'flex' }}>
+                {allDone ? (
+                    /* ── All Done Summary ── */
+                    <div style={{
+                        flex: 1, display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        background: 'linear-gradient(180deg, #1e1b4b 0%, #0a0a1a 100%)',
+                        gap: 16,
+                    }}>
+                        <div style={{ fontSize: 56 }}>✅</div>
+                        <div style={{ color: 'white', fontSize: 22, fontWeight: 800 }}>
+                            All Itineraries Processed
+                        </div>
+                        <div style={{ color: 'rgba(199,210,254,0.6)', fontSize: 14 }}>
+                            {itineraryGuests.length} package guest{itineraryGuests.length !== 1 ? 's' : ''} completed
+                        </div>
                         <button
-                            key={g.guestId}
-                            onClick={() => setActiveIndex(i)}
+                            onClick={onClose}
                             style={{
-                                padding: '6px 14px',
-                                borderRadius: 8,
-                                border: 'none',
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                background: g.guestId === activeGuest?.guestId
-                                    ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
-                                    : 'rgba(255,255,255,0.1)',
-                                color: g.guestId === activeGuest?.guestId ? 'white' : 'rgba(199,210,254,0.8)',
-                                boxShadow: g.guestId === activeGuest?.guestId
-                                    ? '0 4px 12px rgba(99,102,241,0.4)'
-                                    : 'none',
+                                marginTop: 16, padding: '12px 32px', borderRadius: 10,
+                                border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+                                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                                color: 'white',
                             }}
                         >
-                            {g.name.length > 20 ? g.name.substring(0, 20) + '...' : g.name}
+                            Return to Dashboard
                         </button>
-                    ))}
-                </div>
+                    </div>
+                ) : showGenerator && activeGuest ? (
+                    /* ── Generator View ── */
+                    <div style={{ flex: 1, background: 'white' }}>
+                        <PackageGenerator
+                            key={activeGuest.guestId}
+                            initialGuestName={activeGuest.name}
+                            initialRoomName={activeGuest.room}
+                            initialPreset={activeGuest.presetKey}
+                            initialStartDate={activeGuest.arrivalDate}
+                            initialFacilities={activeGuest.facilities}
+                            initialDinnerTime={activeGuest.dinnerTime}
+                            initialDinnerVenue={activeGuest.dinnerVenue}
+                            initialPreferences={activeGuest.preferences}
+                            initialDuration={activeGuest.duration}
+                            initialOccasions={activeGuest.occasions}
+                            initialChampagne={activeGuest.champagne}
+                            initialPetals={activeGuest.petals}
+                            initialHistory={activeGuest.history}
+                            initialPax={activeGuest.pax}
+                            initialSpecialCard={activeGuest.specialCard}
+                            onComplete={handleComplete}
+                            stripEmojis
+                        />
+                    </div>
+                ) : activeGuest ? (
+                    /* ── Facility Summary View ── */
+                    <div style={{
+                        flex: 1, display: 'flex',
+                        background: 'linear-gradient(180deg, #1e1b4b 0%, #0f0e2a 100%)',
+                    }}>
+                        {/* Left Panel — Facility Summary */}
+                        <div style={{
+                            width: 380, flexShrink: 0, padding: '28px 24px',
+                            borderRight: '1px solid rgba(99,102,241,0.15)',
+                            overflowY: 'auto',
+                            display: 'flex', flexDirection: 'column', gap: 20,
+                        }}>
+                            {/* Guest Header Card */}
+                            <div style={{
+                                background: 'rgba(99,102,241,0.08)',
+                                border: '1px solid rgba(99,102,241,0.2)',
+                                borderRadius: 16, padding: '20px 18px',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                    <span style={{
+                                        background: activeGuest.presetKey === 'moon' ? '#6366f1' : '#8b5cf6',
+                                        color: 'white', padding: '4px 12px', borderRadius: 6, fontSize: 10,
+                                        fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    }}>
+                                        {packageLabel}
+                                    </span>
+                                    {activeGuest.specialCard && (
+                                        <span style={{
+                                            background: 'rgba(197,160,101,0.2)', color: '#f5d89a',
+                                            padding: '3px 10px', borderRadius: 6, fontSize: 9,
+                                            fontWeight: 800, letterSpacing: '0.05em',
+                                        }}>
+                                            📝 Card
+                                        </span>
+                                    )}
+                                </div>
+                                <div style={{ color: 'white', fontSize: 20, fontWeight: 800, lineHeight: 1.2 }}>
+                                    {activeGuest.name}
+                                </div>
+                                <div style={{
+                                    display: 'flex', gap: 16, marginTop: 10, fontSize: 12,
+                                    color: 'rgba(199,210,254,0.7)',
+                                }}>
+                                    <span>🏠 Room {activeGuest.room}</span>
+                                    {activeGuest.duration && <span>📅 {activeGuest.duration}</span>}
+                                    {activeGuest.pax > 0 && <span>👥 {activeGuest.pax} pax</span>}
+                                </div>
+                                {activeGuest.history && /yes/i.test(activeGuest.history) && (
+                                    <div style={{
+                                        marginTop: 8, fontSize: 11, color: '#86efac',
+                                        fontWeight: 700,
+                                    }}>
+                                        ⭐ Returning Guest — {activeGuest.history}
+                                    </div>
+                                )}
+                            </div>
 
-                {/* Skip / Close */}
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                        onClick={handleSkip}
-                        style={{
-                            padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)',
-                            background: 'transparent', color: 'rgba(199,210,254,0.8)', fontSize: 12,
-                            fontWeight: 700, cursor: 'pointer',
-                        }}
-                    >
-                        Skip
-                    </button>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.4)',
-                            background: 'rgba(239,68,68,0.1)', color: '#fca5a5', fontSize: 12,
-                            fontWeight: 700, cursor: 'pointer',
-                        }}
-                    >
-                        Close All
-                    </button>
-                </div>
-            </div>
+                            {/* Facilities Card */}
+                            <div style={{
+                                background: 'rgba(16,185,129,0.06)',
+                                border: '1px solid rgba(16,185,129,0.15)',
+                                borderRadius: 16, padding: '18px 16px',
+                            }}>
+                                <div style={{
+                                    fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                    letterSpacing: '0.1em', color: '#6ee7b7', marginBottom: 12,
+                                }}>
+                                    🎯 Booked Facilities
+                                </div>
+                                {facilityLines.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {facilityLines.map((f, i) => (
+                                            <div key={i} style={{
+                                                display: 'flex', alignItems: 'flex-start', gap: 10,
+                                                padding: '8px 12px',
+                                                background: 'rgba(255,255,255,0.03)',
+                                                borderRadius: 10,
+                                                border: '1px solid rgba(255,255,255,0.05)',
+                                            }}>
+                                                <span style={{ fontSize: 16, flexShrink: 0 }}>{f.icon}</span>
+                                                <span style={{
+                                                    color: 'rgba(255,255,255,0.85)', fontSize: 13,
+                                                    fontWeight: 500, lineHeight: 1.5,
+                                                }}>
+                                                    {f.text}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, fontStyle: 'italic' }}>
+                                        No specific facilities recorded
+                                    </div>
+                                )}
+                            </div>
 
-            {/* Active guest info banner */}
-            <div style={{
-                background: 'rgba(99,102,241,0.1)',
-                borderBottom: '1px solid rgba(99,102,241,0.2)',
-                padding: '10px 24px',
-                display: 'flex', alignItems: 'center', gap: 16,
-                flexShrink: 0,
-            }}>
-                <span style={{
-                    background: activeGuest?.presetKey === 'moon' ? '#6366f1' : '#8b5cf6',
-                    color: 'white', padding: '4px 12px', borderRadius: 6, fontSize: 11,
-                    fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
-                }}>
-                    {packageLabel}
-                </span>
-                <span style={{ color: 'white', fontWeight: 700, fontSize: 14 }}>
-                    {activeGuest?.name}
-                </span>
-                <span style={{ color: 'rgba(199,210,254,0.6)', fontSize: 12 }}>
-                    Room {activeGuest?.room}
-                </span>
-                <span style={{ color: 'rgba(199,210,254,0.4)', fontSize: 11 }}>
-                    Rate: {activeGuest?.rateCode}
-                </span>
-                {activeGuest?.facilities && (
-                    <span style={{ color: 'rgba(167,243,208,0.8)', fontSize: 11 }}>
-                        🎯 {activeGuest.facilities.length > 30 ? activeGuest.facilities.substring(0, 30) + '...' : activeGuest.facilities}
-                    </span>
-                )}
-            </div>
+                            {/* Dinner Card */}
+                            {(activeGuest.dinnerTime || activeGuest.dinnerVenue) && (
+                                <div style={{
+                                    background: 'rgba(245,158,11,0.06)',
+                                    border: '1px solid rgba(245,158,11,0.15)',
+                                    borderRadius: 16, padding: '14px 16px',
+                                }}>
+                                    <div style={{
+                                        fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                        letterSpacing: '0.1em', color: '#fbbf24', marginBottom: 8,
+                                    }}>
+                                        🍽️ Dinner Reservation
+                                    </div>
+                                    <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600 }}>
+                                        {activeGuest.dinnerVenue || 'TBC'}
+                                        {activeGuest.dinnerTime && (
+                                            <span style={{ opacity: 0.6, fontWeight: 400 }}> · {activeGuest.dinnerTime}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
-            {/* PackageGenerator — takes up remaining space */}
-            <div style={{ flex: 1, overflow: 'auto', background: 'white' }}>
-                {activeGuest && (
-                    <PackageGenerator
-                        key={activeGuest.guestId} // Force remount for each guest
-                        initialGuestName={activeGuest.name}
-                        initialRoomName={activeGuest.room}
-                        initialPreset={activeGuest.presetKey}
-                        initialStartDate={activeGuest.arrivalDate}
-                        initialFacilities={activeGuest.facilities}
-                        initialDinnerTime={activeGuest.dinnerTime}
-                        initialDinnerVenue={activeGuest.dinnerVenue}
-                        initialPreferences={activeGuest.preferences}
-                        initialDuration={activeGuest.duration}
-                        onComplete={handleComplete}
-                        stripEmojis
-                    />
-                )}
+                            {/* Occasions Card */}
+                            {activeGuest.occasions && (
+                                <div style={{
+                                    background: 'rgba(236,72,153,0.06)',
+                                    border: '1px solid rgba(236,72,153,0.15)',
+                                    borderRadius: 16, padding: '14px 16px',
+                                }}>
+                                    <div style={{
+                                        fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                        letterSpacing: '0.1em', color: '#f9a8d4', marginBottom: 8,
+                                    }}>
+                                        🎉 Occasions
+                                    </div>
+                                    <div style={{
+                                        display: 'flex', flexWrap: 'wrap', gap: 6,
+                                    }}>
+                                        {activeGuest.occasions.split(', ').map((occ, i) => (
+                                            <span key={i} style={{
+                                                background: 'rgba(236,72,153,0.12)',
+                                                border: '1px solid rgba(236,72,153,0.2)',
+                                                color: '#fbcfe8', padding: '5px 12px',
+                                                borderRadius: 8, fontSize: 12, fontWeight: 700,
+                                            }}>
+                                                {occ}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* In-Room Items Card */}
+                            {(activeGuest.champagne || activeGuest.petals) && (
+                                <div style={{
+                                    background: 'rgba(197,160,101,0.06)',
+                                    border: '1px solid rgba(197,160,101,0.15)',
+                                    borderRadius: 16, padding: '14px 16px',
+                                }}>
+                                    <div style={{
+                                        fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                        letterSpacing: '0.1em', color: '#c5a065', marginBottom: 8,
+                                    }}>
+                                        🛎️ In-Room Preparations
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                        {activeGuest.champagne && (
+                                            <span style={{
+                                                background: 'rgba(197,160,101,0.12)',
+                                                border: '1px solid rgba(197,160,101,0.2)',
+                                                color: '#f5d89a', padding: '5px 12px',
+                                                borderRadius: 8, fontSize: 12, fontWeight: 700,
+                                            }}>
+                                                🍾 Champagne
+                                            </span>
+                                        )}
+                                        {activeGuest.petals && (
+                                            <span style={{
+                                                background: 'rgba(197,160,101,0.12)',
+                                                border: '1px solid rgba(197,160,101,0.2)',
+                                                color: '#f5d89a', padding: '5px 12px',
+                                                borderRadius: 8, fontSize: 12, fontWeight: 700,
+                                            }}>
+                                                🌹 Rose Petals
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Preferences Card */}
+                            {activeGuest.preferences && (
+                                <div style={{
+                                    background: 'rgba(139,92,246,0.06)',
+                                    border: '1px solid rgba(139,92,246,0.15)',
+                                    borderRadius: 16, padding: '14px 16px',
+                                }}>
+                                    <div style={{
+                                        fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                        letterSpacing: '0.1em', color: '#c4b5fd', marginBottom: 8,
+                                    }}>
+                                        ✨ Preferences
+                                    </div>
+                                    <div style={{
+                                        color: 'rgba(255,255,255,0.75)', fontSize: 12,
+                                        lineHeight: 1.7, fontWeight: 500,
+                                    }}>
+                                        {activeGuest.preferences}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right Panel — Action Zone */}
+                        <div style={{
+                            flex: 1, display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center',
+                            gap: 20, padding: 40,
+                        }}>
+                            <div style={{
+                                fontSize: 64, lineHeight: 1,
+                                filter: 'drop-shadow(0 4px 20px rgba(99,102,241,0.3))',
+                            }}>
+                                📋
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{
+                                    color: 'white', fontSize: 24, fontWeight: 800,
+                                    letterSpacing: '-0.02em', marginBottom: 8,
+                                }}>
+                                    {activeGuest.name}
+                                </div>
+                                <div style={{ color: 'rgba(199,210,254,0.6)', fontSize: 14 }}>
+                                    Room {activeGuest.room} · {packageLabel} · {activeGuest.duration || 'Duration TBC'}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                                <button
+                                    onClick={handleDismiss}
+                                    style={{
+                                        padding: '14px 28px', borderRadius: 12, fontSize: 14, fontWeight: 700,
+                                        cursor: 'pointer', transition: 'all 0.2s',
+                                        border: '1px solid rgba(239,68,68,0.3)',
+                                        background: 'rgba(239,68,68,0.08)',
+                                        color: '#fca5a5',
+                                    }}
+                                >
+                                    🗑️ Dismiss
+                                </button>
+                                <button
+                                    onClick={handleOpenGenerator}
+                                    style={{
+                                        padding: '14px 32px', borderRadius: 12, fontSize: 14, fontWeight: 700,
+                                        cursor: 'pointer', transition: 'all 0.2s', border: 'none',
+                                        background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                                        color: 'white',
+                                        boxShadow: '0 6px 24px rgba(99,102,241,0.4)',
+                                    }}
+                                >
+                                    📋 Open Itinerary Generator
+                                </button>
+                            </div>
+
+                            {remaining.length > 1 && (
+                                <button
+                                    onClick={() => {
+                                        setActiveIndex(prev => (prev + 1) % remaining.length);
+                                    }}
+                                    style={{
+                                        marginTop: 8, padding: '8px 20px', borderRadius: 8,
+                                        border: '1px solid rgba(255,255,255,0.15)',
+                                        background: 'transparent', color: 'rgba(199,210,254,0.6)',
+                                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                    }}
+                                >
+                                    ⏭️ Skip to Next Guest
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                ) : null}
             </div>
         </div>
     );

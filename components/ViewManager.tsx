@@ -224,7 +224,7 @@ const ViewManager: React.FC = () => {
                         <div className="flex items-center justify-center min-h-[60vh]">
                             <div className="text-center">
                                 <span className="text-4xl animate-pulse">📦</span>
-                                <p className="text-sm mt-4 opacity-50 font-semibold uppercase tracking-wider">Loading Package Generator…</p>
+                                <p className="text-sm mt-4 opacity-50 font-semibold uppercase tracking-wider">Loading Itinerary Generator…</p>
                             </div>
                         </div>
                     }>
@@ -287,7 +287,7 @@ const ViewManager: React.FC = () => {
                                                         <th className="w-[300px] p-5">Facilities</th>
                                                         <th className="w-[100px] p-5 text-center">ETA</th>
                                                         <th className="p-5">Intelligence</th>
-                                                        <th className="w-[280px] p-5 text-indigo-400">Tactical Strategy</th>
+                                                        <th className="w-[280px] p-5 text-[#c5a065]">Tactical Strategy</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-200 dark:divide-stone-800/40">
@@ -545,14 +545,15 @@ const ViewManager: React.FC = () => {
         }
 
         .hk-subtab-btn:hover:not(.active) {
-          background: rgba(99, 102, 241, 0.08);
+          background: rgba(197, 160, 101, 0.08);
           color: var(--text-bold, #1e293b);
         }
 
         .hk-subtab-btn.active {
-          background: linear-gradient(135deg, #6366f1, #4f46e5);
-          color: white;
-          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+          background: linear-gradient(135deg, #292524, #1c1917);
+          color: var(--gilpin-gold, #c5a065);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(197, 160, 101, 0.15);
+          border: 1px solid rgba(197, 160, 101, 0.3);
         }
 
         .hk-subtab-btn.active:first-child {

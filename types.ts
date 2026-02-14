@@ -131,6 +131,9 @@ export interface Guest {
   /** AI-generated tags from sentiment analysis */
   aiTags?: string[];
 
+  /** AI-generated welcome/celebration card text */
+  specialCard?: string;
+
   // ==========================================
   // PDF PARSER ENHANCED FIELDS
   // ==========================================

@@ -57,6 +57,23 @@ select:focus {
     background-clip: content-box;
 }
 
+/* Dark mode scrollbar — brighter thumb for visibility */
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: rgba(197, 160, 101, 0.35);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(197, 160, 101, 0.55);
+    background-clip: content-box;
+}
+
 /* --- Smooth page color transition on theme switch --- */
 *,
 *::before,

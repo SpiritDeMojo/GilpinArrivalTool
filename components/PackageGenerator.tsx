@@ -80,6 +80,18 @@ export interface PackageGeneratorProps {
   initialPreferences?: string;
   /** Pre-fill stay duration (e.g. '3 night(s)') */
   initialDuration?: string;
+  /** Pre-fill occasions (e.g. '🎂 Birthday', '🥂 Anniversary') */
+  initialOccasions?: string;
+  /** Whether champagne is in room */
+  initialChampagne?: boolean;
+  /** Whether petals are in room */
+  initialPetals?: boolean;
+  /** Pre-fill guest history (e.g. 'Yes (x3)') */
+  initialHistory?: string;
+  /** Number of guests */
+  initialPax?: number;
+  /** AI-generated special card text from audit */
+  initialSpecialCard?: string;
   /** Callback when print is complete */
   onComplete?: () => void;
   /** Hide emojis in print output */
@@ -362,6 +374,12 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
   initialDinnerVenue,
   initialPreferences,
   initialDuration,
+  initialOccasions,
+  initialChampagne,
+  initialPetals,
+  initialHistory,
+  initialPax,
+  initialSpecialCard,
   onComplete,
   stripEmojis,
 }) => {
@@ -391,6 +409,11 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
   const printRef = useRef<HTMLDivElement>(null);
   const [fmtSize, setFmtSize] = useState('3');
   const savedSelectionRef = useRef<Range | null>(null);
+
+  /* ── AI Enhancement State ── */
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [specialCardText, setSpecialCardText] = useState(initialSpecialCard || '');
 
   const fonts = FONT_STYLES[fontStyle];
 
@@ -635,6 +658,75 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
       }
     }, 600);
   }, [guestName, accentColor, onComplete]);
+
+  /* ── AI Enhance — send to Gemini for luxury rewriting ── */
+  const handleAiEnhance = useCallback(async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      // Build current itinerary from both sides
+      const currentItinerary = [...leftDays, ...rightDays].map(d => ({
+        title: d.title,
+        subtitle: d.subtitle,
+        events: d.events.map(e => ({ time: e.time, activity: e.activity })),
+      }));
+
+      const payload = {
+        guestName,
+        roomName,
+        duration: initialDuration || String(leftDays.length + rightDays.length - 1),
+        arrivalDate: startDate,
+        pax: initialPax || 2,
+        facilities: initialFacilities || '',
+        occasions: initialOccasions || '',
+        champagneInRoom: initialChampagne || false,
+        petalsInRoom: initialPetals || false,
+        preferences: initialPreferences || '',
+        history: initialHistory || '',
+        currentItinerary,
+      };
+
+      const resp = await fetch('/api/gemini-itinerary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || `AI service returned ${resp.status}`);
+      }
+
+      const rewritten: { title: string; subtitle: string; events: { time: string; activity: string }[] }[] = await resp.json();
+
+      // Map back to DayBlock[] preserving IDs
+      const allDays = [...leftDays, ...rightDays];
+      const updated = allDays.map((day, i) => {
+        if (i < rewritten.length) {
+          return {
+            ...day,
+            title: rewritten[i].title || day.title,
+            subtitle: rewritten[i].subtitle || day.subtitle,
+            events: rewritten[i].events?.map((ev, j) => ({
+              time: ev.time || day.events[j]?.time || 'TBC',
+              activity: ev.activity || day.events[j]?.activity || '',
+            })) || day.events,
+          };
+        }
+        return day;
+      });
+
+      // Re-split into left/right
+      const splitAt = leftDays.length;
+      setLeftDays(updated.slice(0, splitAt));
+      setRightDays(updated.slice(splitAt));
+    } catch (err: any) {
+      console.error('[AI Enhance] Error:', err);
+      setAiError(err?.message || 'Failed to enhance itinerary');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [leftDays, rightDays, guestName, roomName, startDate, initialDuration, initialPax, initialFacilities, initialOccasions, initialChampagne, initialPetals, initialPreferences, initialHistory]);
 
   /* ── Clear all ── */
   const clearAll = () => {
@@ -1252,6 +1344,11 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
           border-color: rgba(255,255,255,0.2);
         }
 
+        @keyframes pkgSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
         @media print {
           .pkg-sidebar, .pkg-toolbar, .pkg-toggle-sidebar, .pkg-rotate-prompt { display: none !important; }
           .pkg-workspace, .pkg-preview-area { padding: 0 !important; margin: 0 !important; background: white !important; }
@@ -1266,7 +1363,7 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
           <div className="pkg-rotate-icon">📱</div>
           <div className="pkg-rotate-title">Rotate for Best Experience</div>
           <div className="pkg-rotate-text">
-            The Package Generator is designed for landscape view.<br />
+            The Itinerary Generator is designed for landscape view.<br />
             Please rotate your device for the best editing experience.
           </div>
           <button className="pkg-rotate-dismiss" onClick={() => setDismissedRotate(true)}>
@@ -1284,7 +1381,7 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
       {/* ── SIDEBAR ── */}
       <div className={`pkg-sidebar${sidebarOpen ? '' : ' collapsed'}`}>
         <div className="pkg-sidebar-header">
-          <h3>📦 Package Manager</h3>
+          <h3>📋 Itinerary Generator</h3>
           <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: '#5a6a7a', cursor: 'pointer', fontSize: 18, transition: '0.15s' }} onMouseOver={e => (e.currentTarget.style.color = '#c5a065')} onMouseOut={e => (e.currentTarget.style.color = '#5a6a7a')}>✕</button>
         </div>
 
@@ -1303,6 +1400,46 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
               <option value="moon">Gilpinmoon (4 Day)</option>
               <option value="blank">Blank Template</option>
             </select>
+
+            {/* ── AI Enhance Button ── */}
+            <button
+              className="pkg-btn"
+              onClick={handleAiEnhance}
+              disabled={aiLoading || (leftDays.length === 0 && rightDays.length === 0)}
+              style={{
+                marginTop: 10,
+                background: aiLoading
+                  ? 'linear-gradient(135deg, #4a5568, #2d3748)'
+                  : 'linear-gradient(135deg, #c5a065, #b08d54)',
+                color: 'white',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {aiLoading ? (
+                <>
+                  <span style={{ display: 'inline-block', animation: 'pkgSpin 1s linear infinite' }}>⏳</span>
+                  Enhancing...
+                </>
+              ) : (
+                <>
+                  ✨ AI Enhance
+                </>
+              )}
+            </button>
+            {aiError && (
+              <div style={{
+                marginTop: 6,
+                fontSize: 11,
+                color: '#ff6b6b',
+                background: 'rgba(255,107,107,0.08)',
+                border: '1px solid rgba(255,107,107,0.2)',
+                borderRadius: 6,
+                padding: '8px 10px',
+              }}>
+                ⚠️ {aiError}
+              </div>
+            )}
           </div>
 
           {/* ── Guest Info ── */}
@@ -1508,8 +1645,70 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
               </div>
               <div className="pkg-panel">
                 <div className="pkg-frame" style={{ overflow: 'auto' }}>
-                  {rightDays.map(d => renderDayBlock(d, 'right'))}
-                  {closingMsg}
+                  {/* Special Card — replaces right panel content when in blank mode */}
+                  {specialCardText && rightDays.length === 0 ? (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      height: '100%',
+                      textAlign: 'center',
+                      padding: '20mm 10mm',
+                    }}>
+                      <div
+                        contentEditable
+                        suppressContentEditableWarning
+                        onBlur={e => setSpecialCardText(e.currentTarget.innerText || '')}
+                        style={{
+                          fontFamily: fonts.head,
+                          fontSize: 16,
+                          fontStyle: 'italic',
+                          lineHeight: 2,
+                          color: '#333',
+                          maxWidth: '85%',
+                          whiteSpace: 'pre-wrap',
+                        }}
+                      >
+                        {specialCardText}
+                      </div>
+                      <div style={{
+                        marginTop: 40,
+                        fontFamily: fonts.body,
+                        fontSize: 11,
+                        textTransform: 'uppercase',
+                        letterSpacing: 2,
+                        color: '#666',
+                      }}>
+                        Warmest Regards
+                      </div>
+                      <div style={{
+                        fontFamily: fonts.head,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        fontStyle: 'italic',
+                        color: accentColor,
+                        marginTop: 6,
+                      }}>
+                        Team Gilpin
+                      </div>
+                      <div style={{
+                        fontFamily: "'Cormorant Garamond', serif",
+                        fontSize: 48,
+                        color: accentColor,
+                        opacity: 0.25,
+                        marginTop: 15,
+                        lineHeight: 1,
+                      }}>
+                        𝒢
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {rightDays.map(d => renderDayBlock(d, 'right'))}
+                      {closingMsg}
+                    </>
+                  )}
                 </div>
               </div>
             </div>

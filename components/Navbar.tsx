@@ -54,7 +54,7 @@ const Navbar: React.FC<NavbarProps> = ({
       // Force reflow to restart animation
       void el.offsetWidth;
       el.classList.add('globe-spin');
-      setTimeout(() => el.classList.remove('globe-spin'), 1500);
+      setTimeout(() => el.classList.remove('globe-spin'), 700);
     };
     document.addEventListener('gilpin:viewchange', spinGlobe);
     return () => document.removeEventListener('gilpin:viewchange', spinGlobe);
@@ -124,7 +124,7 @@ const Navbar: React.FC<NavbarProps> = ({
               <h1 className="text-base md:text-2xl font-black heading-font uppercase tracking-tighter leading-none truncate">Gilpin Hotel</h1>
             ) : (
               <div className="flex items-center gap-1" title={`${weather.description} in Windermere`}>
-                <span className="text-lg md:text-2xl leading-none">{weather.icon}</span>
+                <span className="text-lg md:text-2xl leading-none weather-pulse">{weather.icon}</span>
                 <span className="text-base md:text-2xl font-black heading-font tracking-tight leading-none text-[#c5a065]">{weather.temp}°C</span>
               </div>
             )}
@@ -327,7 +327,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm hover:bg-white/5 transition-colors w-full text-left cursor-pointer ${showPackages ? 'text-[#c5a065]' : 'text-white'}`}
                   >
                     <span className="w-6 text-center">📦</span>
-                    <span>Package Generator</span>
+                    <span>Itinerary Generator</span>
                   </button>
                 )}
 
@@ -521,7 +521,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm border-t border-slate-700/30 active:bg-white/5 transition-colors ${showPackages ? 'text-[#c5a065]' : 'text-white'}`}
                   >
                     <span className="w-6 text-center">📦</span>
-                    <span>Package Generator</span>
+                    <span>Itinerary Generator</span>
                   </div>
                 )}
               </div>

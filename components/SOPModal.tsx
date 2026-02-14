@@ -37,7 +37,7 @@ const SECTIONS = [
   { id: 'sorting', num: '20', icon: '🔀', title: 'Dashboard Sorting' },
   { id: 'ainotes', num: '21', icon: '🧠', title: 'AI Note Placement' },
   { id: 'theming', num: '22', icon: '🎨', title: 'Design & Theming' },
-  { id: 'packages', num: '23', icon: '📦', title: 'Package Generator' },
+  { id: 'packages', num: '23', icon: '📋', title: 'Itinerary Generator' },
   { id: 'nightmgr', num: '24', icon: '🌙', title: 'In House Dashboard' },
   { id: 'evcharging', num: '25', icon: '⚡', title: 'EV Charging' },
   { id: 'aiupgrades', num: '26', icon: '🏠', title: 'AI Room Upgrades' },
@@ -818,10 +818,10 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
 
                 {/* ── 23 — PACKAGE GENERATOR ── */}
                 <section id="packages">
-                  <Divider num="23" title="Package Generator" />
+                  <Divider num="23" title="Itinerary Generator" />
                   <Card>
                     <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
-                      Create bespoke guest itinerary packages with the built-in Package Generator. Access via <strong>☰ → Package Generator</strong>.
+                      Create bespoke guest itinerary packages with the built-in Itinerary Generator. Access via <strong>☰ → Itinerary Generator</strong>.
                     </p>
                     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                       <MiniCard icon="✨" label="Presets" sub="Choose Magical Escape (3-day), Gilpinmoon (4-day), or start from a blank template." />
@@ -948,14 +948,14 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   <Divider num="29" title="Itinerary Queue" />
                   <Card>
                     <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
-                      The Itinerary Queue connects the arrival list to the Package Generator. Guests with facility bookings can be sent directly to the Package Generator for bespoke itinerary creation.
+                      The Itinerary Queue connects the arrival list to the Itinerary Generator. Guests with facility bookings can be sent directly to the Itinerary Generator for bespoke itinerary creation.
                     </p>
                     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                       <MiniCard icon="📦" label="Send to Package" sub="From any guest card, click 📦 Send to Package. Guest name, room, duration, facilities, and dinner details are pre-filled automatically." />
                       <MiniCard icon="✨" label="Auto-Population" sub="Facilities are parsed with date awareness — each activity is placed on the correct day of the itinerary based on its booking date." />
                       <MiniCard icon="🖨️" label="Print Ready" sub="The generated itinerary is formatted as an A4 landscape document, ready for printing and placing in the guest room." />
                     </div>
-                    <Tip>The Package Generator supports direct text editing — click any text on the preview to customise it before printing.</Tip>
+                    <Tip>The Itinerary Generator supports direct text editing — click any text on the preview to customise it before printing.</Tip>
                   </Card>
                 </section>
 

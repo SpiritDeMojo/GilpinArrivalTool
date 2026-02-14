@@ -35,10 +35,11 @@ const SessionBar: React.FC<SessionBarProps> = ({ sessions, activeId, onSwitch, o
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   if (window.confirm(`Delete "${session.label || session.id}"?\n\nThis will remove it from all devices.`)) onDelete(session.id);
                 }}
                 className={`
-                  w-6 h-6 md:w-5 md:h-5 flex items-center justify-center rounded-full transition-colors text-xs font-bold ml-1
+                  w-8 h-8 md:w-7 md:h-7 flex items-center justify-center rounded-full transition-colors text-sm font-bold ml-1 p-2
                   ${activeId === session.id ? 'bg-white/20 hover:bg-white/40 text-white' : 'bg-slate-100 dark:bg-stone-800 hover:bg-rose-500 hover:text-white text-slate-400'}
                 `}
                 title="Delete List"

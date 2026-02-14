@@ -53,7 +53,7 @@ Real-time multi-device synchronisation via Firebase Realtime Database. Upload mu
 | **Turndown** | Evening service preparation | Turndown status tracking, dinner time/venue management, stayover + arrival coverage |
 
 ### 📋 Booking Stream & SOP
-Per-guest raw data view that structures the original PMS text into readable sections (mirroring the PDF layout). Built-in SOP modal (v23.0, 30 sections) covering every operational workflow from PDF upload to itinerary generation. Facilities column is always editable via inline textarea with dual-field sync (`facilitiesRaw` + `facilities`).
+Per-guest structured data view that mirrors the original PMS PDF layout in a responsive two-column format. **Left column** displays traces, booking notes, previous stays, and operational data. **Right column** shows facility bookings (venue-highlighted: green for Source, orange for Spice), allergies, and HK notes. Content-based column routing handles merged PDF text items, and a 3-step facility time reconstruction pipeline recovers orphaned times from Previous Stays data lines. Built-in SOP modal (v23.0, 30 sections) covering every operational workflow from PDF upload to itinerary generation. Facilities column is always editable via inline textarea with dual-field sync (`facilitiesRaw` + `facilities`).
 
 ### 💬 Real-Time Messenger
 Tabbed chat panel with cross-department Team Chat and AI Live Assistant. Features messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime, FAB pulse ring for unread messages, and **voice-to-text microphone** button (Web Speech API dictation).
@@ -64,8 +64,8 @@ Cross-device notification system with distinct audio tones (chime, alert, doorbe
 ### 🖨️ Smart Print Layouts
 Three optimised print modes — **Master**, **Greeter**, and **Delivery** — with auto-sizing columns and dense formatting that maximises paper utilisation in landscape orientation. Plus dedicated **In House Report** and **Turndown List** print layouts.
 
-### 📦 Package Generator
-Bespoke guest itinerary builder with preset templates (Magical Escape, Gilpinmoon), date automation, visual styling (fonts, accent colours, custom logos), direct WYSIWYG editing, formatting toolbar (bold/italic/underline/size), and Save/Load (JSON). Print-ready A4 landscape output.
+### 📦 Itinerary Generator
+Bespoke guest itinerary builder with preset templates (Magical Escape, Gilpinmoon), date automation, visual styling (fonts, accent colours, custom logos), direct WYSIWYG editing, formatting toolbar (bold/italic/underline/size), and Save/Load (JSON). Server-side Gemini AI enhancement via `/api/gemini-itinerary` for intelligent event descriptions. Print-ready A4 landscape output.
 
 ### 🔌 Connection Resilience
 Production-hardened reconnection engine with auto-reconnect on background return (`visibilitychange` + `focus`), stale watchdog (30s timeout), and nuclear reconnect (full Firebase SDK teardown/rebuild) for permanently broken mobile WebSockets.

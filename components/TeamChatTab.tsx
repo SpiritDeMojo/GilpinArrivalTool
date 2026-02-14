@@ -117,17 +117,17 @@ function isGrouped(msgs: ChatMessage[], idx: number): { isFirst: boolean; isLast
 /* ─── iOS Bubble Tail SVG ─── */
 const BubbleTail = ({ isMe, color }: { isMe: boolean; color: string }) => (
     <svg
-        width="12" height="18"
-        viewBox="0 0 12 18"
+        width="10" height="14"
+        viewBox="0 0 10 14"
         style={{
             position: 'absolute',
             bottom: 0,
-            ...(isMe ? { right: -6 } : { left: -6 }),
+            ...(isMe ? { right: -5 } : { left: -5 }),
             transform: isMe ? 'none' : 'scaleX(-1)',
         }}
     >
         <path
-            d="M0 18 C0 18 0 0 0 0 C4 4 12 12 12 18 Z"
+            d="M0 14 C0 14 0 4 0 0 C3 3 10 10 10 14 Z"
             fill={color}
         />
     </svg>
@@ -413,11 +413,15 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                         textAlign: 'center', paddingTop: '60px',
                         color: 'var(--text-muted, #8e8e93)',
                     }}>
-                        <div style={{
-                            fontSize: '48px', marginBottom: '12px',
-                            filter: 'grayscale(0.3)',
-                        }}>💬</div>
-                        <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>
+                        <motion.div
+                            animate={{ y: [0, -6, 0], scale: [1, 1.05, 1] }}
+                            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                            style={{
+                                fontSize: '48px', marginBottom: '12px',
+                                filter: 'drop-shadow(0 4px 12px rgba(197,160,101,0.2))',
+                            }}
+                        >💬</motion.div>
+                        <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-main, #1c1c1e)' }}>
                             No Messages Yet
                         </div>
                         <div style={{ fontSize: '12px', fontWeight: 400, opacity: 0.7 }}>
@@ -447,15 +451,20 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                         <React.Fragment key={msg.id}>
                             {/* Timestamp divider */}
                             {showTs && (
-                                <div style={{
-                                    textAlign: 'center',
-                                    padding: idx === 0 ? '4px 0 8px' : '14px 0 8px',
-                                    fontSize: '11px', fontWeight: 500,
-                                    color: 'var(--text-muted, #8e8e93)',
-                                    letterSpacing: '0.01em',
-                                }}>
+                                <motion.div
+                                    initial={{ opacity: 0, y: -4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                                    style={{
+                                        textAlign: 'center',
+                                        padding: idx === 0 ? '4px 0 8px' : '14px 0 8px',
+                                        fontSize: '11px', fontWeight: 600,
+                                        color: 'var(--text-muted, #8e8e93)',
+                                        letterSpacing: '0.02em',
+                                        textTransform: 'uppercase' as const,
+                                    }}>
                                     {formatTimeLabel(msg.timestamp)}
-                                </div>
+                                </motion.div>
                             )}
 
                             <motion.div
@@ -481,40 +490,46 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                             >
                                 {/* Author name — only on first in group, only for others */}
                                 {!isMe && isFirst && (
-                                    <div style={{
-                                        fontSize: '11px', fontWeight: 600,
-                                        color: deptColor,
-                                        marginBottom: '2px', paddingLeft: '14px',
-                                        display: 'flex', alignItems: 'center', gap: '4px',
-                                    }}>
+                                    <motion.div
+                                        initial={{ opacity: 0, x: -8 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ duration: 0.2, delay: 0.05 }}
+                                        style={{
+                                            fontSize: '11px', fontWeight: 600,
+                                            color: deptColor,
+                                            marginBottom: '3px', paddingLeft: '14px',
+                                            display: 'flex', alignItems: 'center', gap: '5px',
+                                        }}>
                                         <span style={{
-                                            width: '5px', height: '5px', borderRadius: '50%',
+                                            width: '6px', height: '6px', borderRadius: '50%',
                                             background: deptColor, display: 'inline-block',
+                                            boxShadow: `0 0 6px ${deptColor}40`,
                                         }} />
-                                        {msg.author}
-                                    </div>
+                                        {msg.author.split(' ').length > 2 ? msg.author.split(' ').slice(0, 2).join(' ') : msg.author}
+                                    </motion.div>
                                 )}
 
                                 {/* Message bubble */}
-                                <div style={{
+                                <div className="chat-bubble" style={{
                                     position: 'relative',
-                                    padding: '8px 14px',
+                                    padding: '9px 14px',
                                     borderRadius,
                                     background: isMe
                                         ? 'linear-gradient(135deg, #c5a065, #b08d54)'
-                                        : 'var(--surface, rgba(229,229,234,0.6))',
+                                        : 'var(--chat-incoming-bg, rgba(229,229,234,0.7))',
                                     color: isMe ? 'white' : 'var(--text-main, #1c1c1e)',
-                                    fontSize: '14px', lineHeight: '1.45',
+                                    fontSize: '14px', lineHeight: '1.5',
                                     wordBreak: 'break-word',
                                     boxShadow: isMe
-                                        ? '0 1px 3px rgba(197,160,101,0.2)'
-                                        : '0 0.5px 1px rgba(0,0,0,0.04)',
+                                        ? '0 2px 8px rgba(197,160,101,0.25)'
+                                        : '0 1px 4px rgba(0,0,0,0.06)',
                                     cursor: 'default',
                                     userSelect: 'text',
+                                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                                 }}>
                                     {msg.text}
                                     {/* Tail on last bubble in group */}
-                                    {isLast && <BubbleTail isMe={isMe} color={isMe ? '#b08d54' : 'var(--surface-tail, #e5e5ea)'} />}
+                                    {isLast && <BubbleTail isMe={isMe} color={isMe ? '#b08d54' : 'var(--chat-incoming-bg, #e5e5ea)'} />}
                                 </div>
 
                                 {/* Reactions display */}
@@ -593,16 +608,21 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
 
                                 {/* Time on last in group */}
                                 {isLast && (
-                                    <div style={{
-                                        fontSize: '10px',
-                                        color: 'var(--text-muted, rgba(142,142,147,0.7))',
-                                        marginTop: '2px',
-                                        paddingLeft: isMe ? '0' : '14px',
-                                        paddingRight: isMe ? '14px' : '0',
-                                        fontWeight: 500,
-                                    }}>
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ duration: 0.3, delay: 0.15 }}
+                                        style={{
+                                            fontSize: '10px',
+                                            color: 'var(--text-muted, rgba(142,142,147,0.7))',
+                                            marginTop: '3px',
+                                            paddingLeft: isMe ? '0' : '14px',
+                                            paddingRight: isMe ? '14px' : '0',
+                                            fontWeight: 500,
+                                            letterSpacing: '0.01em',
+                                        }}>
                                         {formatTime(msg.timestamp)}
-                                    </div>
+                                    </motion.div>
                                 )}
                             </motion.div>
                         </React.Fragment>
@@ -625,7 +645,6 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                 background: 'var(--surface, rgba(249,249,249,0.94))',
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)',
-                borderRadius: '20px 20px 0 0',
             }}>
                 {/* Clear chat */}
                 {messages.length > 0 && (
@@ -646,14 +665,15 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                 )}
 
                 {/* Text input */}
-                <div style={{
+                <div className="chat-input-wrapper" style={{
                     flex: 1,
-                    background: 'var(--surface, rgba(255,255,255,0.8))',
+                    background: 'var(--chat-input-bg, rgba(255,255,255,0.8))',
                     border: '1px solid var(--border-ui, rgba(197,160,101,0.18))',
                     borderRadius: '20px',
                     display: 'flex', alignItems: 'center',
                     padding: '0 4px 0 14px',
                     minHeight: '36px',
+                    transition: 'border-color 0.25s ease, box-shadow 0.25s ease',
                 }}>
                     <input
                         id="team-chat-input"
@@ -716,10 +736,38 @@ const TeamChatTab: React.FC<TeamChatTabProps> = ({
                 />
             )}
 
-            {/* ─── Dark mode variable for tail ─── */}
+            {/* ─── Chat theme variables + reactive animations ─── */}
             <style>{`
-                :root { --surface-tail: #e5e5ea; }
-                [data-theme="dark"] { --surface-tail: #1c1c1e; }
+                :root {
+                    --surface-tail: #e5e5ea;
+                    --chat-incoming-bg: rgba(229, 229, 234, 0.7);
+                    --chat-input-bg: rgba(255, 255, 255, 0.8);
+                }
+                [data-theme="dark"] {
+                    --surface-tail: #2c2c2e;
+                    --chat-incoming-bg: rgba(58, 58, 60, 0.85);
+                    --chat-input-bg: rgba(44, 44, 46, 0.8);
+                }
+
+                /* Input focus glow */
+                .chat-input-wrapper:focus-within {
+                    border-color: rgba(197, 160, 101, 0.45) !important;
+                    box-shadow: 0 0 0 3px rgba(197, 160, 101, 0.1), 0 0 12px rgba(197, 160, 101, 0.06) !important;
+                }
+
+                /* Message bubble hover lift */
+                @media (hover: hover) {
+                    .chat-bubble:hover {
+                        transform: translateY(-1px) scale(1.01);
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+                    }
+                }
+
+                /* Send button pulse when ready */
+                @keyframes sendReady {
+                    0%, 100% { box-shadow: 0 0 0 0 rgba(197, 160, 101, 0.4); }
+                    50% { box-shadow: 0 0 0 6px rgba(197, 160, 101, 0); }
+                }
             `}</style>
         </div>
     );

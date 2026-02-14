@@ -193,7 +193,7 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                         background: 'var(--surface, rgba(255,255,255,0.92))',
                         backdropFilter: 'blur(40px) saturate(180%)',
                         WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 0.5px rgba(197,160,101,0.15)',
+                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(197,160,101,0.12), 0 0 40px rgba(197,160,101,0.04)',
                     }}
                 >
                     {/* ─── iOS Segmented Control Tab Bar ─── */}
@@ -320,19 +320,16 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                 .ios-chat-panel {
                     transform-origin: bottom right;
                     transition:
-                        transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
-                        opacity 0.35s ease,
-                        filter 0.35s ease;
+                        transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        opacity 0.3s ease;
                 }
                 .ios-chat-panel--open {
                     transform: scale(1) translateY(0);
                     opacity: 1;
-                    filter: blur(0);
                 }
                 .ios-chat-panel--closed {
-                    transform: scale(0.85) translateY(20px);
+                    transform: scale(0.4) translateY(40px);
                     opacity: 0;
-                    filter: blur(6px);
                 }
 
                 /* Badge bounce — slightly slower */
@@ -376,6 +373,40 @@ const UnifiedChatPanel: React.FC<UnifiedChatPanelProps> = ({
                         bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 10px)) !important;
                         right: 14px !important;
                     }
+                }
+            `}</style>
+
+            {/* ─── Reactive chat micro-animations ─── */}
+            <style>{`
+                /* Input focus glow */
+                .ios-chat-panel input:focus {
+                    box-shadow: none !important;
+                }
+                .ios-chat-panel input:focus + * {
+                    opacity: 1 !important;
+                }
+
+                /* Tab switch content slide */
+                .ios-chat-panel > div:last-of-type {
+                    transition: opacity 0.2s ease;
+                }
+
+                /* Message hover lift (desktop only) */
+                @media (min-width: 769px) {
+                    .ios-chat-panel [class*="motion"] > div[style*="padding: 8px 14px"],
+                    .ios-chat-panel [class*="motion"] > div[style*="padding: 10px 14px"] {
+                        transition: transform 0.15s ease, box-shadow 0.15s ease;
+                    }
+                    .ios-chat-panel [class*="motion"] > div[style*="padding: 8px 14px"]:hover,
+                    .ios-chat-panel [class*="motion"] > div[style*="padding: 10px 14px"]:hover {
+                        transform: translateY(-1px);
+                        box-shadow: 0 3px 12px rgba(0,0,0,0.06) !important;
+                    }
+                }
+
+                /* Smooth scroll momentum */
+                .ios-chat-panel {
+                    -webkit-overflow-scrolling: touch;
                 }
             `}</style>
         </>

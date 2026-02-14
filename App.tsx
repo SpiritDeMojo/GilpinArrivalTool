@@ -240,8 +240,8 @@ const App: React.FC = () => {
       />
 
       {isOldFile && guests.length > 0 && (
-        <div className="no-print pulsate-alert text-white text-center font-black tracking-widest text-[8px] md:text-[10px] sticky w-full z-[1009] flex items-center justify-center" style={{ top: 'var(--nav-height)', height: 'var(--alert-height)', marginTop: 0, borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
-          ⚠️ HISTORICAL FILE DETECTED • {arrivalDateStr}
+        <div className="no-print pulsate-alert text-white text-center font-black tracking-widest text-[7px] md:text-[10px] sticky w-full z-[1009] flex items-center justify-center" style={{ top: 'var(--nav-height)', height: 'var(--alert-height)', marginTop: 0, borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
+          ⚠️ HISTORICAL FILE • {arrivalDateStr}
         </div>
       )}
 

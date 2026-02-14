@@ -920,6 +920,8 @@ export const useGuestManager = (initialFlags: Flag[]) => {
                     roomType: ref.roomType || existing.roomType || '',
                     // Housekeeping intelligence (allergies, dietary, room prep, smoking, children)
                     hkNotes: ref.hkNotes || existing.hkNotes || '',
+                    // AI-generated welcome/celebration card
+                    specialCard: ref.specialCard || existing.specialCard || '',
                     // ── Explicitly preserve parser-extracted structured fields (Issue #6) ──
                     // These must never be overwritten by AI output
                     adults: existing.adults,

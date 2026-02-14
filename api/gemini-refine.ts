@@ -115,7 +115,16 @@ Return EXACTLY one result per guest, same order, same count. Never skip a guest.
 * Pet → "Dog supplies confirmed."
 * Allergy → "Confirm dietary with kitchen."
 
-### 6. packages (Human-Readable Package Name)
+### 6. specialCard (Welcome/Celebration Card)
+* For SPECIAL guests ONLY: returning guests, birthdays, anniversaries, honeymoons, valentine’s, or any stay that feels truly noteworthy.
+* Write a warm, heartfelt, personalised message (3-5 sentences) on behalf of the Gilpin team.
+* For returning guests: “Welcome back to Gilpin Hotel!”
+* For celebrations: “Congratulations!” or “Happy Birthday!” etc.
+* May reference their specific booking (e.g. dinner at Source, spa treatments). Be creative but sincere.
+* Always sign off: “Warmest Regards, Team Gilpin”
+* Return **""** for standard guests who don’t warrant a card.
+
+### 7. packages (Human-Readable Package Name)
 * BB/BB_1/BB_2/BB_3 → "Bed & Breakfast"
 * LHBB → "Bed & Breakfast (Lake House)"
 * RO → "Room Only"
@@ -129,14 +138,14 @@ Return EXACTLY one result per guest, same order, same count. Never skip a guest.
 * POB/STAFF → "Pride of Britain Staff"
 * LHMAG → "✨ Magical Escape (Lake House)"
 
-### 7. roomType
+### 8. roomType
 * Translate 2-letter codes: CR→"Classic Room", MR→"Master Room", JS→"Junior Suite", GR→"Garden Room", GS→"Garden Suite", SL→"Spa Lodge", SS→"Spa Suite", MAG→"Maglona Suite", MOT→"Motor Lodge", LHC→"Lake House Classic", LHM→"Lake House Master", LHS→"Lake House Suite", LHSS→"Lake House Spa Suite"
 * If already human-readable, keep as-is.
 
-### 8. history (Loyalty)
+### 9. history (Loyalty)
 * "Yes (x[Count])", "Yes", or "No". Never fabricate.
 
-### 9. car (Registration Plate)
+### 10. car (Registration Plate)
 * If PARSER_CAR has a value, USE IT. Only fill if you spot a plate the parser missed.
 * UK formats: AB12 CDE, A123 BCD, M88 HCT. Strip leading *.
 
@@ -190,9 +199,10 @@ Return EXACTLY one result per guest, same order, same count. Never skip a guest.
                                     history: { type: Type.STRING },
                                     car: { type: Type.STRING },
                                     hkNotes: { type: Type.STRING },
-                                    roomType: { type: Type.STRING }
+                                    roomType: { type: Type.STRING },
+                                    specialCard: { type: Type.STRING }
                                 },
-                                required: ["notes", "facilities", "inRoomItems", "preferences", "packages", "history", "car", "hkNotes", "roomType"]
+                                required: ["notes", "facilities", "inRoomItems", "preferences", "packages", "history", "car", "hkNotes", "roomType", "specialCard"]
                             }
                         }
                     }

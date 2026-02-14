@@ -865,6 +865,22 @@
     font-weight: 600;
 }
 
+/* ── SUB-HIGHLIGHTS within facility spans ── */
+
+/* Date within facility (DD/MM/YY) — slightly brighter, dotted underline */
+.bsh-fac-date {
+    color: #e2e8f0;
+    font-weight: 700;
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.35);
+}
+
+/* Time within facility (@ HH:MM) — bold accent, extra visible */
+.bsh-fac-time {
+    color: #fef08a;
+    font-weight: 800;
+    text-shadow: 0 0 4px rgba(254, 240, 138, 0.3);
+}
+
 
 /* Dinner — warm gold accent */
 .bsh-dinner {
@@ -1069,6 +1085,8 @@
 [data-theme="light"] .bsh-fac-lakehouse { color: #0284c7; background: rgba(56, 189, 248, 0.08); }
 [data-theme="light"] .bsh-fac-spa { color: #7c3aed; background: rgba(167, 139, 250, 0.08); }
 [data-theme="light"] .bsh-fac-dining { color: #92400e; background: rgba(197, 160, 101, 0.1); }
+[data-theme="light"] .bsh-fac-date { color: #1e293b; border-bottom-color: rgba(0, 0, 0, 0.2); }
+[data-theme="light"] .bsh-fac-time { color: #b45309; text-shadow: none; }
 
 [data-theme="light"] .bsh-dinner { color: #92400e; background: rgba(197, 160, 101, 0.1); }
 [data-theme="light"] .bsh-allergy { color: #dc2626; background: rgba(239, 68, 68, 0.1); }
