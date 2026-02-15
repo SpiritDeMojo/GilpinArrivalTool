@@ -12,8 +12,8 @@ function isOriginAllowed(origin: string): boolean {
     return false;
 }
 
-// Extend serverless function timeout (Vercel default is 10s, analytics can take 30s+)
-export const config = { maxDuration: 60 };
+// Extend serverless function timeout — analytics with retries can take 60s+
+export const config = { maxDuration: 120 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') {
@@ -80,8 +80,8 @@ GUESTS:
 ${s.guests.map((g: any) => `- ${g.name} | Rm: ${g.room} | LL: ${g.ll} | Nts: ${g.prefillNotes}`).join('\n')}`;
         }).join('\n\n---\n\n');
 
-        let retries = 3;
-        let delay = 2000;
+        let retries = 2;
+        let delay = 1500;
 
         while (retries > 0) {
             try {

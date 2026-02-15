@@ -7,7 +7,7 @@ interface SOPModalProps {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GILPIN ARRIVAL TOOL — OPERATIONAL HANDBOOK (SOP v23.0)
+   GILPIN ARRIVAL TOOL — OPERATIONAL HANDBOOK (SOP v24.0)
    ═══════════════════════════════════════════════════════════════
    30 sections covering every feature — from sign-in to AI voice.
    Scrollable with jump-to-section table of contents.
@@ -125,7 +125,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   </h2>
                 </div>
                 <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 dark:text-slate-500">
-                  Standard Operating Procedures • <span className="text-[#c5a065]">v23.0</span>
+                  Standard Operating Procedures • <span className="text-[#c5a065]">v24.0</span>
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -964,7 +964,7 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
               {/* ── FOOTER ── */}
               <div className="bg-slate-100 dark:bg-[#0a0a0a] p-6 md:p-8 text-center border-t border-slate-200 dark:border-[#222]">
                 <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-600 font-mono tracking-widest uppercase">
-                  Gilpin Hotel &amp; Lake House &bull; Standard Operating Procedures &bull; v23.0 &bull; Internal Use Only
+                  Gilpin Hotel &amp; Lake House &bull; Standard Operating Procedures &bull; v24.0 &bull; Internal Use Only
                 </p>
               </div>
             </div>

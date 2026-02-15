@@ -50,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const ai = new GoogleGenAI({ apiKey });
-        const modelName = 'gemini-2.5-pro';
+        const modelName = 'gemini-3-pro-preview';
 
         const systemInstruction = `**ROLE:** Gilpin Hotel Senior Receptionist (AI Audit v9.0).
 
@@ -174,71 +174,87 @@ Return EXACTLY one result per guest, same order, same count. Never skip a guest.
             return structured;
         }).join("\n\n");
 
-        let retries = 3;
-        let delay = 2000;
+        // Schema shared across Pro and Flash attempts
+        const responseSchema = {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    notes: { type: Type.STRING },
+                    facilities: { type: Type.STRING },
+                    inRoomItems: { type: Type.STRING },
+                    preferences: { type: Type.STRING },
+                    packages: { type: Type.STRING },
+                    history: { type: Type.STRING },
+                    car: { type: Type.STRING },
+                    hkNotes: { type: Type.STRING },
+                    roomType: { type: Type.STRING },
+                    specialCard: { type: Type.STRING }
+                },
+                required: ["notes", "facilities", "inRoomItems", "preferences", "packages", "history", "car", "hkNotes", "roomType", "specialCard"]
+            }
+        };
 
-        while (retries > 0) {
-            try {
-                const response = await ai.models.generateContent({
-                    model: modelName,
-                    contents: guestDataPayload,
-                    config: {
-                        systemInstruction,
-                        temperature: 0.1,
-                        responseMimeType: "application/json",
-                        responseSchema: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    notes: { type: Type.STRING },
-                                    facilities: { type: Type.STRING },
-                                    inRoomItems: { type: Type.STRING },
-                                    preferences: { type: Type.STRING },
-                                    packages: { type: Type.STRING },
-                                    history: { type: Type.STRING },
-                                    car: { type: Type.STRING },
-                                    hkNotes: { type: Type.STRING },
-                                    roomType: { type: Type.STRING },
-                                    specialCard: { type: Type.STRING }
-                                },
-                                required: ["notes", "facilities", "inRoomItems", "preferences", "packages", "history", "car", "hkNotes", "roomType", "specialCard"]
-                            }
+        // Try Pro first (2 retries), then fall back to Flash if Pro fails
+        const attempts: { model: string; retries: number; delay: number }[] = [
+            { model: 'gemini-3-pro-preview', retries: 2, delay: 2000 },
+            { model: 'gemini-2.5-flash', retries: 1, delay: 1000 },
+        ];
+
+        let lastError: string = 'Unknown error';
+
+        for (const attempt of attempts) {
+            let retries = attempt.retries;
+            let delay = attempt.delay;
+
+            while (retries > 0) {
+                try {
+                    console.log(`[gemini-refine] Trying ${attempt.model} (${retries} retries left)`);
+                    const response = await ai.models.generateContent({
+                        model: attempt.model,
+                        contents: guestDataPayload,
+                        config: {
+                            systemInstruction,
+                            temperature: 0.1,
+                            responseMimeType: "application/json",
+                            responseSchema: responseSchema as any,
                         }
-                    }
-                });
+                    });
 
-                const text = response.text || "";
-                const clean = text
-                    .replace(/^```json\s*/, '')
-                    .replace(/\s*```$/, '')
-                    .trim();
-                const data = JSON.parse(clean || '[]');
-                if (!Array.isArray(data)) {
-                    throw new Error('AI response is not an array');
+                    const text = response.text || "";
+                    const clean = text
+                        .replace(/^```json\s*/, '')
+                        .replace(/\s*```$/, '')
+                        .trim();
+                    const data = JSON.parse(clean || '[]');
+                    if (!Array.isArray(data)) {
+                        throw new Error('AI response is not an array');
+                    }
+                    // Validate result count against input guest count
+                    const expectedCount = guests.length;
+                    if (data.length !== expectedCount) {
+                        console.warn(`[gemini-refine] Result count mismatch: expected ${expectedCount}, got ${data.length}`);
+                    }
+                    res.setHeader('X-Result-Count', String(data.length));
+                    res.setHeader('X-Model-Used', attempt.model);
+                    return res.status(200).json(data);
+                } catch (error: unknown) {
+                    const err = error as Record<string, any>;
+                    const msg = err?.message?.toLowerCase?.() || '';
+                    lastError = err?.message || 'Unknown error';
+                    const isTransient = err?.status === 503 || err?.status === 429 || msg.includes('overloaded') || msg.includes('resource_exhausted');
+                    if (retries > 1 && isTransient) {
+                        await new Promise(r => setTimeout(r, delay));
+                        retries--;
+                        delay *= 2;
+                        continue;
+                    }
+                    console.error(`[gemini-refine] ${attempt.model} failed:`, error);
+                    break; // Move to next model
                 }
-                // Validate result count against input guest count
-                const expectedCount = guests.length;
-                if (data.length !== expectedCount) {
-                    console.warn(`[gemini-refine] Result count mismatch: expected ${expectedCount}, got ${data.length}`);
-                }
-                res.setHeader('X-Result-Count', String(data.length));
-                return res.status(200).json(data);
-            } catch (error: unknown) {
-                const err = error as Record<string, any>;
-                const msg = err?.message?.toLowerCase?.() || '';
-                const isTransient = err?.status === 503 || err?.status === 429 || msg.includes('overloaded') || msg.includes('resource_exhausted');
-                if (retries > 1 && isTransient) {
-                    await new Promise(r => setTimeout(r, delay));
-                    retries--;
-                    delay *= 2;
-                    continue;
-                }
-                console.error("Gemini Refine Error:", error);
-                return res.status(502).json({ error: 'AI service error', details: err?.message || 'Unknown error' });
             }
         }
-        return res.status(502).json({ error: 'AI service exhausted retries' });
+        return res.status(502).json({ error: 'AI service error — all models exhausted', details: lastError });
     } catch (error: unknown) {
         console.error("API Route Error:", error);
         const message = error instanceof Error ? error.message : 'Unknown error';

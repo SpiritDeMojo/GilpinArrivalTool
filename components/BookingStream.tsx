@@ -349,7 +349,7 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
 
         // Step 1: Find incomplete facility entries (ending with '@' or '@ ')
         // and recover times from Previous Stays lines in the left column.
-        for (let r = right.length - 1; r >= 0; r--) {
+        for (let r = 0; r < right.length; r++) {
             if (/@\s*$/.test(right[r])) {
                 // This facility entry is incomplete — missing its time after '@'
                 // Look for an orphaned time in left-column Previous Stays lines
@@ -362,7 +362,7 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
                         break;
                     }
                 }
-                break; // Only fix the last (most recent) incomplete entry
+                // Don't break outer loop — keep fixing remaining incomplete entries
             }
         }
 
@@ -388,18 +388,39 @@ const BookingStream: React.FC<BookingStreamProps> = ({ guest }) => {
         // Step 3: Split combined multi-venue facility entries into individual lines
         // E.g., "/Source: Table for 2 03/01/26 @ 19:30/Spice: Table for 2 02/01/26 @ 20:15"
         // → two separate lines for proper per-venue highlighting
-        const finalRight: string[] = [];
+        const splitRight: string[] = [];
         for (const line of mergedRight) {
             // Only split lines that contain facility venue patterns (not labels/headers)
             if (facilityVenuePattern.test(line)) {
                 const entries = line.split(/(?=\/(?:Source|Spice|Dinner|Lunch|Afternoon\s+Tea|Steam\s+Room|Bento|ESPA|Pure|Spa|Hot\s+Tub|GH|LH|Couples|Facial|Massage|Tea)\b)/i);
                 for (const entry of entries) {
                     const trimmed = entry.trim();
-                    if (trimmed) finalRight.push(trimmed);
+                    if (trimmed) splitRight.push(trimmed);
                 }
             } else {
-                finalRight.push(line);
+                splitRight.push(line);
             }
+        }
+
+        // Step 4: Reattach orphaned leading times from chain-split entries.
+        // When PDF text wraps a facility chain across lines, times end up at the START
+        // of the next text line: "19:00/Source: Table for 2 18/02/26 @ 19:00"
+        // After Step 3 splits on /Venue, we get: ["19:00", "/Source: Table for 2 ..."]
+        // The "19:00" belongs to the PREVIOUS entry which ends with "@ ".
+        const finalRight: string[] = [];
+        for (let i = 0; i < splitRight.length; i++) {
+            const entry = splitRight[i];
+            // Check if this entry is a bare orphaned time (HH:MM with optional trailing text)
+            const orphanTimeMatch = entry.match(/^(\d{1,2}:\d{2})\s*$/);
+            if (orphanTimeMatch && finalRight.length > 0) {
+                const prev = finalRight[finalRight.length - 1];
+                if (/@\s*$/.test(prev)) {
+                    // Append time to the incomplete previous entry
+                    finalRight[finalRight.length - 1] = prev + ' ' + orphanTimeMatch[1];
+                    continue;
+                }
+            }
+            finalRight.push(entry);
         }
 
         return { headerLine: header, leftLines: left, rightLines: finalRight };

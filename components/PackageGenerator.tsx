@@ -147,13 +147,26 @@ const parseFacilitiesWithDates = (facilities: string): ParsedFacility[] => {
     const emoji = emojiMatch ? emojiMatch[1].trim() : '🔹';
     let rest = emojiMatch ? part.slice(emojiMatch[0].length) : part;
 
-    // Extract date: (DD/MM @ HH:MM) or (DD/MM/YY @ HH:MM) or (DD/MM)
-    const dateTimeMatch = rest.match(/\((\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s*(?:@\s*(\d{1,2}:\d{2}))?\)/);
-    const dateStr = dateTimeMatch ? dateTimeMatch[1] : '';
-    const time = dateTimeMatch ? (dateTimeMatch[2] || null) : null;
+    // Extract date: (DD/MM @ HH:MM) or (DD/MM/YY @ HH:MM) or (DD/MM) — parenthesized format
+    let dateTimeMatch = rest.match(/\((\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s*(?:@\s*(\d{1,2}:\d{2}))?\)/);
+    let dateStr = dateTimeMatch ? dateTimeMatch[1] : '';
+    let time: string | null = dateTimeMatch ? (dateTimeMatch[2] || null) : null;
+
+    // Fallback: match bare dates like "14/02" or "14-02" or "14/02/26" NOT inside parentheses
+    if (!dateStr) {
+      const bareDateMatch = rest.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b(?:\s*@?\s*(\d{1,2}:\d{2}))?/);
+      if (bareDateMatch) {
+        dateStr = `${bareDateMatch[1]}/${bareDateMatch[2]}${bareDateMatch[3] ? '/' + bareDateMatch[3] : ''}`;
+        time = bareDateMatch[4] || null;
+      }
+    }
 
     // Remove the date portion from rest to get the type
-    let typePart = rest.replace(/\(.*?\)/, '').trim();
+    let typePart = rest
+      .replace(/\(.*?\)/, '') // Remove (DD/MM) style
+      .replace(/\b\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?\b/, '') // Remove bare DD/MM style
+      .replace(/@\s*\d{1,2}:\d{2}/, '') // Remove bare @HH:MM
+      .trim();
 
     // Extract count: "2x Aromatherapy" or "2 x Aromatherapy"
     const countMatch = typePart.match(/^(\d+)\s*x\s*/i);
@@ -232,8 +245,13 @@ const buildItineraryFromGuest = (
     dayBuckets.set(d, []);
   }
 
-  // Assign each facility to the correct day
+  // Assign each facility to the correct day (with dedup)
+  const seen = new Set<string>();
   for (const item of items) {
+    // Dedup: skip if same type+date+time already processed
+    const dedupKey = `${item.type}|${item.dateStr}|${item.time || ''}`.toLowerCase();
+    if (seen.has(dedupKey)) continue;
+    seen.add(dedupKey);
     let dayOffset = 0; // default to Day 1
 
     if (item.dateStr && arrivalDate) {
@@ -634,13 +652,13 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
         body { margin: 0; padding: 0; }
         .sheet, .pkg-sheet { width: 297mm; height: 210mm; display: flex; position: relative; page-break-after: always; background: white; }
         .panel, .pkg-panel { width: 50%; height: 100%; padding: 12mm; box-sizing: border-box; display: flex; flex-direction: column; }
-        .frame, .pkg-frame { border: 2px solid #222; height: 100%; width: 100%; position: relative; padding: 10mm; box-sizing: border-box; display: flex; flex-direction: column; }
+        .frame, .pkg-frame { border: 2px solid #222; height: 100%; width: 100%; position: relative; padding: 10mm; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; }
         .frame::after, .pkg-frame::after { content: ""; position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px; border: 1px solid ${accentColor}; pointer-events: none; }
         /* Hide edit-only UI */
         .add-item, .del-row, .del-day, .pkg-add-item, .pkg-del-day, .pkg-toggle-sidebar, .pkg-toolbar, button { display: none !important; }
         .day-block, .pkg-day-block { border: none !important; background: none !important; padding: 0 !important; }
         /* Normalize contentEditable for print */
-        [contenteditable] { outline: none !important; cursor: default !important; }
+        [contenteditable] { outline: none !important; cursor: default !important; word-break: break-word; overflow-wrap: break-word; }
       </style>
     </head><body>${el.innerHTML}</body></html>`);
     printWindow.document.close();
@@ -685,44 +703,63 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
         history: initialHistory || '',
         currentItinerary,
       };
+      // 90s client-side timeout so the UI never hangs indefinitely
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90_000);
 
-      const resp = await fetch('/api/gemini-itinerary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      try {
+        const resp = await fetch('/api/gemini-itinerary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify(payload),
+        });
 
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        throw new Error(errData.error || `AI service returned ${resp.status}`);
-      }
-
-      const rewritten: { title: string; subtitle: string; events: { time: string; activity: string }[] }[] = await resp.json();
-
-      // Map back to DayBlock[] preserving IDs
-      const allDays = [...leftDays, ...rightDays];
-      const updated = allDays.map((day, i) => {
-        if (i < rewritten.length) {
-          return {
-            ...day,
-            title: rewritten[i].title || day.title,
-            subtitle: rewritten[i].subtitle || day.subtitle,
-            events: rewritten[i].events?.map((ev, j) => ({
-              time: ev.time || day.events[j]?.time || 'TBC',
-              activity: ev.activity || day.events[j]?.activity || '',
-            })) || day.events,
-          };
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          throw new Error(errData.error || `AI service returned ${resp.status}`);
         }
-        return day;
-      });
 
-      // Re-split into left/right
-      const splitAt = leftDays.length;
-      setLeftDays(updated.slice(0, splitAt));
-      setRightDays(updated.slice(splitAt));
+        const rewritten: { title: string; subtitle: string; events: { time: string; activity: string }[] }[] = await resp.json();
+
+        // Map back to DayBlock[] preserving IDs, with safety truncation
+        const allDays = [...leftDays, ...rightDays];
+        const updated = allDays.map((day, i) => {
+          if (i < rewritten.length) {
+            return {
+              ...day,
+              title: rewritten[i].title || day.title,
+              subtitle: rewritten[i].subtitle || day.subtitle,
+              events: rewritten[i].events?.map((ev, j) => {
+                let activity = ev.activity || day.events[j]?.activity || '';
+                // Safety: truncate to 140 chars to prevent border overflow on print
+                if (activity.length > 140) {
+                  activity = activity.slice(0, 137) + '...';
+                }
+                return {
+                  time: ev.time || day.events[j]?.time || 'TBC',
+                  activity,
+                };
+              }) || day.events,
+            };
+          }
+          return day;
+        });
+
+        // Re-split into left/right
+        const splitAt = leftDays.length;
+        setLeftDays(updated.slice(0, splitAt));
+        setRightDays(updated.slice(splitAt));
+      } finally {
+        clearTimeout(timeoutId);
+      }
     } catch (err: any) {
-      console.error('[AI Enhance] Error:', err);
-      setAiError(err?.message || 'Failed to enhance itinerary');
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setAiError('AI enhancement timed out — please try again.');
+      } else {
+        console.error('[AI Enhance] Error:', err);
+        setAiError(err?.message || 'Failed to enhance itinerary');
+      }
     } finally {
       setAiLoading(false);
     }

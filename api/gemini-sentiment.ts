@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             `[${i}] ${g.name} (Room ${g.room}): "${g.notes}" | Strategy: "${g.preferences}"`
         ).join('\n');
 
-        let retries = 3;
+        let retries = 2;
         let delay = 2000;
 
         while (retries > 0) {

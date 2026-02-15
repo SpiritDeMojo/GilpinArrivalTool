@@ -8,6 +8,20 @@ interface ActivityLogPanelProps {
     onClose: () => void;
 }
 
+const FIELD_LABELS: Record<string, string> = {
+    hkStatus: 'Housekeeping Status',
+    maintenanceStatus: 'Maintenance Status',
+    guestStatus: 'Guest Status',
+    inRoomDelivered: 'In-Room Items',
+    courtesyCallNotes: 'Courtesy Call',
+    maintenanceIssue: 'Maintenance Issue',
+    maintenanceReportedBy: 'Reported By',
+    maintenanceCompletedBy: 'Completed By',
+    prefillNotes: 'Notes',
+    hkNotes: 'HK Notes',
+    room: 'Room',
+};
+
 const DEPARTMENT_COLORS: Record<string, string> = {
     housekeeping: '#3b82f6',
     maintenance: '#f59e0b',
@@ -37,6 +51,9 @@ const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
                 const fieldToDept: Record<string, string> = {
                     hkStatus: 'housekeeping',
                     maintenanceStatus: 'maintenance',
+                    maintenanceIssue: 'maintenance',
+                    maintenanceReportedBy: 'maintenance',
+                    maintenanceCompletedBy: 'maintenance',
                     guestStatus: 'frontofhouse',
                     inRoomDelivered: 'frontofhouse',
                     courtesyCallNotes: 'frontofhouse',
@@ -53,6 +70,54 @@ const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
 
         return items.sort((a, b) => b.timestamp - a.timestamp);
     }, [activityLog, roomMoves, filterDept]);
+
+    // Print handler
+    const handlePrint = () => {
+        const pw = window.open('', '_blank');
+        if (!pw) return;
+        const rows = timeline.map(item => {
+            const time = new Date(item.timestamp).toLocaleString('en-GB', {
+                day: '2-digit', month: '2-digit', year: '2-digit',
+                hour: '2-digit', minute: '2-digit',
+            });
+            if (item.type === 'room_move') {
+                const m = item.data as RoomMove;
+                return `<tr><td>${time}</td><td>Room Move</td><td>Room ${m.fromRoom} → Room ${m.toRoom}</td><td>${m.movedBy}</td></tr>`;
+            }
+            const e = item.data as AuditEntry;
+            const label = FIELD_LABELS[e.field] || e.field;
+            const detail = e.oldValue ? `${e.oldValue.replace(/_/g, ' ')} → ${e.action}` : e.action;
+            return `<tr><td>${time}</td><td>${label}</td><td>${detail}</td><td>${e.performedBy}</td></tr>`;
+        }).join('');
+
+        pw.document.write(`<!DOCTYPE html><html><head><title>Activity Log — ${guestName}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; padding: 20px; color: #1e293b; font-size: 11px; }
+  .header { text-align: center; margin-bottom: 16px; border-bottom: 3px solid #c5a065; padding-bottom: 12px; }
+  .header h1 { font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
+  .header .sub { font-size: 13px; color: #64748b; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th { background: #0f172a; color: white; padding: 6px 8px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; font-size: 11px; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .footer { text-align: center; margin-top: 20px; font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+  @media print { body { padding: 0; } }
+</style></head><body>
+<div class="header">
+  <h1>📋 Activity Log</h1>
+  <div class="sub">${guestName} • ${timeline.length} Events</div>
+</div>
+<table>
+  <thead><tr><th>Time</th><th>Category</th><th>Detail</th><th>By</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer">Gilpin Hotel & Lake House • Activity Log • Printed ${new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+</body></html>`);
+        pw.document.close();
+        setTimeout(() => pw.print(), 300);
+    };
 
     // Group by date
     const groupedByDate = useMemo(() => {
@@ -119,22 +184,41 @@ const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
                             color: 'var(--text-main)',
                         }}>{guestName}</div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            border: '1px solid var(--border-ui, rgba(197,160,101,0.2))',
-                            background: 'transparent',
-                            cursor: 'pointer',
-                            fontSize: '16px',
-                            color: 'var(--text-main)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >×</button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            onClick={handlePrint}
+                            style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                border: '1px solid var(--border-ui, rgba(197,160,101,0.2))',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                color: 'var(--text-main)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                            title="Print Activity Log"
+                        >🖨️</button>
+                        <button
+                            onClick={onClose}
+                            style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                border: '1px solid var(--border-ui, rgba(197,160,101,0.2))',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                color: 'var(--text-main)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >×</button>
+                    </div>
                 </div>
 
                 {/* Department Filter */}

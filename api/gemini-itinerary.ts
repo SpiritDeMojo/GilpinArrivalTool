@@ -1,18 +1,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, Type } from '@google/genai';
 
-// ── Inline origin guard ──
+// ── Inline origin guard (Vercel bundles each API route independently) ──
 const ALLOWED_PROJECT = 'gilpin-arrival-tool';
 function isOriginAllowed(origin: string): boolean {
-    if (!origin) return false;
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) return true;
-    try {
-        const host = new URL(origin).hostname;
-        return host.endsWith('.vercel.app') && host.includes(ALLOWED_PROJECT);
-    } catch { return false; }
+    if (!origin) return true; // same-origin (no Origin header)
+    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+    if (origin.endsWith('.vercel.app') && origin.includes(ALLOWED_PROJECT)) return true;
+    const vercelUrl = process.env.VERCEL_URL;
+    if (vercelUrl && origin.includes(vercelUrl)) return true;
+    return false;
 }
 
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 90 };
 
 /* ────────────── Types ────────────── */
 interface EventItem { time: string; activity: string; }
@@ -61,14 +61,16 @@ Your job is to REWRITE each activity description in warm, evocative, 5-star luxu
 
 ### RULES:
 1. **REWRITE ONLY** — keep the same number of days, same number of events per day, same times. Only change the activity text.
-2. **Keep it concise** — each activity should be 1-2 sentences max. Evoke luxury without being verbose.
-3. **Personalise** — weave in the guest's name naturally where appropriate (not on every line).
-4. **Occasions** — if there's a birthday, anniversary, honeymoon, etc., reflect this warmth in tone.
-5. **Champagne/Petals** — if flagged, mention in the arrival description: "A chilled bottle of Champagne" or "fresh rose petals".
-6. **Returning guests** — if history indicates return, add warmth: "Welcome back to Gilpin" on the arrival event.
-7. **Subtitles** — you may refine the day subtitle to be more evocative (e.g., "Indulge & Restore" instead of "Relax & Explore").
-8. **DO NOT add or remove events.** The structure must remain identical.
-9. **Sign off the final departure event** with warmth: "We look forward to welcoming you back to Gilpin."
+2. **CRITICAL: CHARACTER LIMIT** — each activity description MUST be 120 characters or fewer. This is essential to prevent the printed itinerary from breaking its layout borders. Count carefully. If a description would exceed 120 characters, shorten it.
+3. **Keep it concise** — each activity should be ONE sentence max. Evoke luxury without being verbose. Brevity IS luxury.
+4. **Personalise** — weave in the guest's name naturally where appropriate (not on every line).
+5. **Occasions** — if there's a birthday, anniversary, honeymoon, etc., reflect this warmth in tone.
+6. **Champagne/Petals** — if flagged, mention in the arrival description: "A chilled bottle of Champagne" or "fresh rose petals".
+7. **Returning guests** — if history indicates return, add warmth: "Welcome back to Gilpin" on the arrival event.
+8. **Subtitles** — you may refine the day subtitle to be more evocative (e.g., "Indulge & Restore" instead of "Relax & Explore").
+9. **DO NOT add or remove events.** The structure must remain identical.
+10. **Sign off the final departure event** with warmth: "We look forward to welcoming you back to Gilpin."
+11. **Keep times EXACTLY as given** — do not modify any time values.
 
 ### CONTEXT:
 - Guest: ${guestName || 'Guest'}
@@ -93,7 +95,7 @@ Return the rewritten itinerary as a JSON array of day blocks.`;
         while (retries > 0) {
             try {
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
+                    model: 'gemini-3-pro-preview',
                     contents: `Here is the current itinerary to rewrite:\n${itineraryPayload}`,
                     config: {
                         systemInstruction,

@@ -92,7 +92,7 @@ LAKE HOUSE:
             return `Room ${r.number} ${r.name} (Type: ${type}) — ${prop}`;
         }).join('\n');
 
-        let retries = 3;
+        let retries = 2;
         let delay = 2000;
 
         while (retries > 0) {

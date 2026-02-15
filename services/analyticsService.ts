@@ -2,11 +2,12 @@ import { GlobalAnalyticsData, ArrivalSession } from "../types";
 
 // ── Shared fetch-with-retry utility ────────────────────────────────────────
 // Retries on network errors and 5xx (server) responses.
-// 3 attempts with exponential backoff: 1s → 2s → 4s.
+// 2 attempts with exponential backoff: 1s → 2s.
+// NOTE: keep low to avoid stacking with server-side retries (also 2).
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
-  maxRetries = 3
+  maxRetries = 2
 ): Promise<Response> {
   let lastError: Error | null = null;
   let delay = 1000;
@@ -39,10 +40,15 @@ async function fetchWithRetry(
 
 export class AnalyticsService {
   static async generateGlobalAnalytics(sessions: ArrivalSession[]): Promise<GlobalAnalyticsData | null> {
+    // Client-side 90s timeout so the UI never hangs indefinitely
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90_000);
+
     try {
       const response = await fetchWithRetry('/api/gemini-analytics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           sessions: sessions.map(s => ({
             label: s.label,
@@ -60,13 +66,19 @@ export class AnalyticsService {
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         console.error('Analytics AI Error:', response.status, err);
-        return null;
+        throw new Error(err?.error || err?.details || `Server returned ${response.status}`);
       }
 
       return await response.json();
     } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error('[Analytics] Request timed out after 90s');
+        throw new Error('Analytics timed out. Try again with fewer sessions selected.');
+      }
       console.error("Analytics AI Error:", error);
-      return null;
+      throw error instanceof Error ? error : new Error('Unknown analytics error');
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 }

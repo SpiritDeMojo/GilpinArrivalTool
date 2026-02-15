@@ -447,7 +447,7 @@ export class PDFService {
         }
       }
       if (!foundMatch) {
-        room = rawRoomCandidate.replace(/\b(DEF|CHI|GRP|VAC|MR|SS|SL|JS)\b/gi, "")
+        room = rawRoomCandidate.replace(/\b(DEF|CHI|GRP|VAC|MR|SS|SL|JS|LCO|PRS|DNM)\b/gi, "")
           .replace(/\b(\d{4}|\d{2}:\d{2})\b/g, "")
           .replace(/\b(\d+)\s+\1\b/, "$1")
           .replace(/\s+/g, " ").trim().toUpperCase();
@@ -743,8 +743,9 @@ export class PDFService {
     if (etaLabelMatch) {
       let etaStr = etaLabelMatch[1].trim();
 
-      // Reject if it's just punctuation or too short to be a time
-      if (etaStr.length > 0 && /\d/.test(etaStr)) {
+      // Reject if it's just punctuation, too short, or looks like a booking ID (5+ digits)
+      const digitOnly = etaStr.replace(/[^0-9]/g, '');
+      if (etaStr.length > 0 && /\d/.test(etaStr) && digitOnly.length <= 4) {
         // Handle ranges: take the first time. "2.30-3pm" → "2.30pm", "15-16:00" → "15"
         // Preserve am/pm suffix from end if the first part doesn't have one
         const ampmSuffix = etaStr.match(/(am|pm)$/i)?.[1] || '';
@@ -763,26 +764,19 @@ export class PDFService {
       }
     }
 
-    // Method 2 (Fallback): Look for 4-digit time or HH:MM on first line
-    // Match patterns like "1435" or "14:35" but NOT years like "2026" or room numbers
+    // Method 2 (Fallback): Look for HH:MM (with colon) on first line ONLY
+    // IMPORTANT: Do NOT match bare 4-digit numbers (e.g. "1300") — these are rates,
+    // not times. First-line ETAs always have a colon ("14:30") or am/pm ("1pm",
+    // caught by Method 1). Rate values like 1300, 2400 would be false positives.
     if (!eta) {
-      const topTimeMatch = firstLineText.match(/\b(\d{4}|\d{1,2}:\d{2})\b/);
-      if (topTimeMatch && !topTimeMatch[0].match(/202\d/)) {
-        const t = topTimeMatch[0].replace(":", "");
-        if (t.length === 4) {
-          const hours = parseInt(t.substring(0, 2));
-          const mins = parseInt(t.substring(2, 4));
-          // Validate reasonable arrival time (06:00 - 23:59) and not a room number
-          if (hours >= 6 && hours <= 23 && mins >= 0 && mins <= 59) {
-            eta = `${t.substring(0, 2)}:${t.substring(2, 4)}`;
-          }
-        } else if (t.length === 3) {
-          // Handle times like "930" (9:30)
-          const hours = parseInt(t.substring(0, 1));
-          const mins = parseInt(t.substring(1, 3));
-          if (hours >= 6 && hours <= 23 && mins >= 0 && mins <= 59) {
-            eta = `0${hours}:${mins.toString().padStart(2, '0')}`;
-          }
+      const topTimeMatch = firstLineText.match(/\b(\d{1,2}:\d{2})\b/);
+      if (topTimeMatch) {
+        const parts = topTimeMatch[0].split(':');
+        const hours = parseInt(parts[0]);
+        const mins = parseInt(parts[1]);
+        // Validate reasonable arrival time (06:00 - 23:59)
+        if (hours >= 6 && hours <= 23 && mins >= 0 && mins <= 59) {
+          eta = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
         }
       }
     }

@@ -17,6 +17,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
   const [data, setData] = useState<GlobalAnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const sessionsRef = useRef<string>("");
 
   // Deep filtering logic: Apply Dashboard filter to all sessions before analytics processing
@@ -46,6 +47,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
     }
     setIsLoading(true);
     setChartsReady(false);
+    setErrorMsg(null);
     try {
       const result = await AnalyticsService.generateGlobalAnalytics(filteredSessions);
       if (result) {
@@ -53,8 +55,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
         sessionsRef.current = JSON.stringify(filteredSessions.map(s => ({ id: s.id, count: s.guests.length })));
         setTimeout(() => setChartsReady(true), 500);
       }
-    } catch (e) {
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Analytics generation failed';
       console.error("Strategic Analytics Sync Failed:", e);
+      setErrorMsg(msg);
     } finally {
       setIsLoading(false);
     }
@@ -222,7 +226,21 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ allSessions, activeFilter
       {!data && isLoading && (
         <div className="h-[400px] flex flex-col items-center justify-center bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-[3rem] border-2 border-dashed border-[#c5a065]/20 animate-pulse">
           <div className="w-16 h-16 border-4 border-[#c5a065]/20 border-t-[#c5a065] rounded-full animate-spin mb-4"></div>
-          <p className="text-[11px] font-black uppercase tracking-widest text-[#c5a065]">Parsing Portfolios & Generating Strategic Models...</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-[#c5a065]">Parsing Portfolios &amp; Generating Strategic Models...</p>
+        </div>
+      )}
+
+      {errorMsg && !isLoading && (
+        <div className="bg-red-500/5 dark:bg-red-500/10 border border-red-500/30 p-8 rounded-[3rem] backdrop-blur-md text-center">
+          <span className="text-3xl block mb-3">⚠️</span>
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-2">Analytics Error</h4>
+          <p className="text-xs text-red-600 dark:text-red-400 font-medium mb-4">{errorMsg}</p>
+          <button
+            onClick={fetchAnalytics}
+            className="px-6 py-2.5 rounded-full border border-[#c5a065]/30 text-[9px] font-black uppercase tracking-[0.2em] hover:bg-[#c5a065] hover:text-white transition-all bg-white dark:bg-stone-900"
+          >
+            🔄 Retry Analytics
+          </button>
         </div>
       )}
 

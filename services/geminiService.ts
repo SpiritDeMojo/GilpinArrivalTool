@@ -1,12 +1,12 @@
 import { Guest, RefinementField } from "../types";
 
-// ── Shared fetch-with-retry utility ────────────────────────────────────────
 // Retries on network errors and 5xx (server) responses.
-// 3 attempts with exponential backoff: 1s → 2s → 4s.
+// 2 attempts with exponential backoff: 1s → 2s.
+// NOTE: keep low to avoid stacking with server-side retries (also 2).
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
-  maxRetries = 3
+  maxRetries = 2
 ): Promise<Response> {
   let lastError: Error | null = null;
   let delay = 1000;
@@ -46,10 +46,15 @@ export class GeminiService {
   ): Promise<any[] | null> {
     console.log('[AI Audit] Starting refinement for', guests.length, 'guests');
 
+    // Client-side 120s timeout so the UI never hangs indefinitely
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
     try {
       const response = await fetchWithRetry('/api/gemini-refine', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           guests: guests.map(g => ({
             name: g.name,
@@ -79,7 +84,9 @@ export class GeminiService {
         if (response.status === 500 && err.error?.includes('not configured')) {
           alert('AI Audit requires the Gemini API key to be configured on the server.');
         } else {
+          const detail = err?.details || err?.error || `Server returned ${response.status}`;
           console.error('[AI Audit] Server error:', response.status, err);
+          alert(`AI Audit failed: ${detail}. Please try again.`);
         }
         return null;
       }
@@ -88,13 +95,22 @@ export class GeminiService {
       console.log('[AI Audit] Successfully received', result.length, 'refined guests');
       return result;
     } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error('[AI Audit] Request timed out after 120s');
+        alert('AI Audit timed out. The AI service may be busy — please try again in a moment.');
+        return null;
+      }
       console.error("Audit AI Error:", error);
       // Network error — likely running locally without Vercel
       const msg = error instanceof Error ? error.message : '';
       if (msg.includes('Failed to fetch') || error instanceof TypeError) {
         alert('AI features are unavailable locally. Deploy to Vercel to use AI Audit.');
+      } else {
+        alert(`AI Audit error: ${msg || 'Unknown error'}. Please try again.`);
       }
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -105,10 +121,13 @@ export class GeminiService {
   static async suggestCleaningOrder(
     guests: Guest[]
   ): Promise<{ roomOrder: string[]; reasoning: string } | null> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000);
     try {
       const response = await fetchWithRetry('/api/gemini-cleaning-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           guests: guests.map(g => ({
             room: g.room,
@@ -118,7 +137,6 @@ export class GeminiService {
             rateCode: g.rateCode,
             prefillNotes: g.prefillNotes,
             rawHtml: g.rawHtml,
-            // Enhanced fields for smarter prioritization
             children: g.children,
             infants: g.infants,
             inRoomItems: g.inRoomItems,
@@ -130,14 +148,22 @@ export class GeminiService {
         const err = await response.json().catch(() => ({}));
         if (response.status === 500 && err.error?.includes('not configured')) {
           alert('AI features require the Gemini API key to be configured on the server.');
+        } else {
+          console.error('[AI Cleaning Order] Server error:', response.status, err);
         }
         return null;
       }
 
       return await response.json();
     } catch (error) {
-      console.error('[AI Cleaning Order] Error:', error);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error('[AI Cleaning Order] Timed out after 60s');
+      } else {
+        console.error('[AI Cleaning Order] Error:', error);
+      }
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -148,10 +174,13 @@ export class GeminiService {
   static async analyzeNoteSentiment(
     guests: { name: string; notes: string; preferences: string; room: string }[]
   ): Promise<{ guestIndex: number; tags: string[] }[] | null> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000);
     try {
       const response = await fetchWithRetry('/api/gemini-sentiment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({ guests })
       });
 
@@ -159,14 +188,22 @@ export class GeminiService {
         const err = await response.json().catch(() => ({}));
         if (response.status === 500 && err.error?.includes('not configured')) {
           alert('AI features require the Gemini API key to be configured on the server.');
+        } else {
+          console.error('[AI Sentiment] Server error:', response.status, err);
         }
         return null;
       }
 
       return await response.json();
     } catch (error) {
-      console.error('[AI Sentiment] Error:', error);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error('[AI Sentiment] Timed out after 60s');
+      } else {
+        console.error('[AI Sentiment] Error:', error);
+      }
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -178,10 +215,13 @@ export class GeminiService {
     guests: { room: string; name: string; ll: string; duration: string; notes: string; preferences: string }[],
     emptyRooms: { number: number; name: string; property: 'main' | 'lake' }[]
   ): Promise<{ guestName: string; currentRoom: string; suggestedRoom: number; suggestedRoomName: string; reason: string; priority: string }[] | null> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000);
     try {
       const response = await fetchWithRetry('/api/gemini-upgrade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({ guests, emptyRooms })
       });
 
@@ -189,14 +229,22 @@ export class GeminiService {
         const err = await response.json().catch(() => ({}));
         if (response.status === 500 && err.error?.includes('not configured')) {
           alert('AI features require the Gemini API key to be configured on the server.');
+        } else {
+          console.error('[AI Upgrade] Server error:', response.status, err);
         }
         return null;
       }
 
       return await response.json();
     } catch (error) {
-      console.error('[AI Upgrade] Error:', error);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error('[AI Upgrade] Timed out after 60s');
+      } else {
+        console.error('[AI Upgrade] Error:', error);
+      }
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 }

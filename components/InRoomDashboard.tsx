@@ -19,6 +19,7 @@ import { useStayoverCalculator } from '../hooks/useStayoverCalculator';
 import { DEFAULT_FLAGS } from '../constants';
 import { useGuestData } from '../contexts/GuestDataProvider';
 import { GeminiService } from '../services/geminiService';
+import ActivityLogPanel from './ActivityLogPanel';
 
 interface InHouseDashboardProps {
   sessions: ArrivalSession[];
@@ -164,6 +165,7 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
   const [upgradeSuggestions, setUpgradeSuggestions] = useState<any[]>([]);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [showUpgradePanel, setShowUpgradePanel] = useState(false);
+  const [activityLogGuest, setActivityLogGuest] = useState<Guest | null>(null);
 
   const targetDate = useMemo(() => {
     if (activeSessionDate) {
@@ -686,7 +688,7 @@ ${dogsInHouse.length > 0 ? `
                       })()}
                     </div>
                   )}
-                  {/* Room Move Button */}
+                  {/* Room Move & Activity Log Buttons */}
                   <div className="nm-action-row">
                     <button
                       className="nm-move-btn"
@@ -697,6 +699,18 @@ ${dogsInHouse.length > 0 ? `
                     >
                       🔄 Move Room
                     </button>
+                    {occ.guest.activityLog && occ.guest.activityLog.length > 0 && (
+                      <button
+                        className="nm-move-btn"
+                        style={{ marginLeft: 8 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActivityLogGuest(occ.guest);
+                        }}
+                      >
+                        📋 Activity Log ({occ.guest.activityLog.length})
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -958,6 +972,16 @@ ${dogsInHouse.length > 0 ? `
           Printed {new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
+
+      {/* Activity Log Panel Overlay */}
+      {activityLogGuest && (
+        <ActivityLogPanel
+          guestName={activityLogGuest.name}
+          activityLog={activityLogGuest.activityLog || []}
+          roomMoves={activityLogGuest.roomMoves}
+          onClose={() => setActivityLogGuest(null)}
+        />
+      )}
 
       {/* Room Move Modal */}
       <AnimatePresence>

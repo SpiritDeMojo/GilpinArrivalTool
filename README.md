@@ -9,7 +9,7 @@ Purpose-built for six operational dashboards, AI-assisted guest preparation, and
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-Realtime_DB-FFCA28?logo=firebase)](https://firebase.google.com/)
-[![Gemini AI](https://img.shields.io/badge/Gemini_AI-2.5_Pro-4285F4?logo=google)](https://ai.google.dev/)
+[![Gemini AI](https://img.shields.io/badge/Gemini_AI-3_Pro_+_2.5_Flash-4285F4?logo=google)](https://ai.google.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite)](https://vitejs.dev/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-000?logo=vercel)](https://vercel.com/)
 
@@ -31,7 +31,7 @@ The Gilpin Arrival Tool transforms unstructured PMS arrival PDFs into a live, in
 Column-aware PDF parser (1,200+ lines) that extracts 20+ fields per guest using X-coordinate spatial analysis. Extracts room assignments (38-room map with full-name aliases — Knipe Suite, Tarn Suite, Sergeant Man, St Sunday Crag, Dollywagon Pike, Cat Bells, Crinkle Crags), ETA windows (multi-format: am/pm, ranges, 3/4-digit), car registrations (multi-pattern UK plate matching with AI fallback, short-plate support), duration (first-line departure date calculation), facilities & dining (venue-tagged: Spice, Source, Lake House, ESPA — date-validated), allergies & dietary (UK Top 14 allergen scan), occasions, in-room items (28 keywords), loyalty history, rate codes (37 variants), booking source, pax (ACEB), unbooked request detection, **Previous Guest Issue (PGI) detection** with prominent warnings, **dinner coverage checker** (flags unbooked dinner nights), and **tightened dog detection** (breed-specific matching, no PMS header false positives). Quality alerts now include **room numbers** alongside guest names. Tested against 12+ real PDFs with 0 extraction errors.
 
 ### 🤖 Gemini AI Integration
-- **AI Audit** — Gemini 2.5 Pro refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes. Anti-fabrication validation prevents hallucinated facilities and car registrations. **Post-audit autosave** to Firebase and **package prompt** (auto-detects Minimoon/Magical Escape guests) with minimisable floating banner. **Dog false-positive cleanup** strips stale 🐕 flags from in-room items when AI-refined notes no longer mention pets
+- **AI Audit** — Gemini 3 Pro Preview (primary, 2 retries → Gemini 2.5 Flash fallback) refines parsed data in a single pass: detects missing package items, formats notes with operational emojis, extracts car registrations the regex misses, generates actionable greeting strategies, and routes allergies/dietary/pet info to dedicated HK notes. Anti-fabrication validation prevents hallucinated facilities and car registrations. **Post-audit autosave** to Firebase and **package prompt** (auto-detects Minimoon/Magical Escape guests) with minimisable floating banner. **Dog false-positive cleanup** strips stale 🐕 flags from in-room items when AI-refined notes no longer mention pets
 - **AI Live Assistant** — Conversational AI colleague powered by Gemini 2.5 Flash Native Audio. Answers guest queries, adds room notes, updates housekeeping/guest status via voice or text commands in real-time. Includes **voice-to-text microphone** button in the chat input bar using the Web Speech API. **Cross-department note routing**: maintenance notes auto-duplicate to HK for visibility; HK-only notes stay within housekeeping
 - **AI Cleaning Priority** — Intelligent room preparation ordering based on ETA, guest type, and operational constraints
 - **AI Room Upgrades** — Analyses guest profiles against empty rooms and suggests strategic upgrades with deduplication (each room suggested at most once). Detects guest requests for upgrades ("best room", "make it special", "surprise") as a priority criterion
@@ -53,7 +53,7 @@ Real-time multi-device synchronisation via Firebase Realtime Database. Upload mu
 | **Turndown** | Evening service preparation | Turndown status tracking, dinner time/venue management, stayover + arrival coverage |
 
 ### 📋 Booking Stream & SOP
-Per-guest structured data view that mirrors the original PMS PDF layout in a responsive two-column format. **Left column** displays traces, booking notes, previous stays, and operational data. **Right column** shows facility bookings (venue-highlighted: green for Source, orange for Spice), allergies, and HK notes. Content-based column routing handles merged PDF text items, and a 3-step facility time reconstruction pipeline recovers orphaned times from Previous Stays data lines. Built-in SOP modal (v23.0, 30 sections) covering every operational workflow from PDF upload to itinerary generation. Facilities column is always editable via inline textarea with dual-field sync (`facilitiesRaw` + `facilities`).
+Per-guest structured data view that mirrors the original PMS PDF layout in a responsive two-column format. **Left column** displays traces, booking notes, previous stays, and operational data. **Right column** shows facility bookings (venue-highlighted: green for Source, orange for Spice), allergies, and HK notes. Content-based column routing handles merged PDF text items, and a **4-step facility time reconstruction pipeline** recovers orphaned times: (1) cross-column recovery from Previous Stays rows, (2) standalone time-line merging, (3) multi-venue chain splitting, (4) orphaned leading-time reattachment. Built-in SOP modal (v24.0, 30 sections) covering every operational workflow from PDF upload to itinerary generation. Facilities column is always editable via inline textarea with dual-field sync (`facilitiesRaw` + `facilities`).
 
 ### 💬 Real-Time Messenger
 Tabbed chat panel with cross-department Team Chat and AI Live Assistant. Features messenger-style bubbles with SVG tails, message grouping, timestamp dividers, long-press emoji reactions (👍 ❤️ 😂 😮 🙏), real-time typing indicators, Framer Motion spring animations, browser notifications + audio chime, FAB pulse ring for unread messages, and **voice-to-text microphone** button (Web Speech API dictation).
@@ -65,7 +65,7 @@ Cross-device notification system with distinct audio tones (chime, alert, doorbe
 Three optimised print modes — **Master**, **Greeter**, and **Delivery** — with auto-sizing columns and dense formatting that maximises paper utilisation in landscape orientation. Plus dedicated **In House Report** and **Turndown List** print layouts.
 
 ### 📦 Itinerary Generator
-Bespoke guest itinerary builder with preset templates (Magical Escape, Gilpinmoon), date automation, visual styling (fonts, accent colours, custom logos), direct WYSIWYG editing, formatting toolbar (bold/italic/underline/size), and Save/Load (JSON). Server-side Gemini AI enhancement via `/api/gemini-itinerary` for intelligent event descriptions. Print-ready A4 landscape output.
+Bespoke guest itinerary builder with preset templates (Magical Escape, Gilpinmoon), date automation, visual styling (fonts, accent colours, custom logos), direct WYSIWYG editing, formatting toolbar (bold/italic/underline/size), and Save/Load (JSON). Server-side Gemini 3 Pro Preview enhancement via `/api/gemini-itinerary` for intelligent event descriptions. Print-ready A4 landscape output.
 
 ### 🔌 Connection Resilience
 Production-hardened reconnection engine with auto-reconnect on background return (`visibilitychange` + `focus`), stale watchdog (30s timeout), and nuclear reconnect (full Firebase SDK teardown/rebuild) for permanently broken mobile WebSockets.
@@ -106,7 +106,7 @@ The interface features a handcrafted animation system designed for a polished, p
                             │                     │
                      ┌──────▼───────┐              │
                      │  Gemini AI   │
-                     │(2.5 Pro/Flash)│
+                     │(3 Pro/2.5 Flash)│
                      └──────────────┘              │
                                                   │
                      ┌──────────────┐              │
@@ -130,7 +130,7 @@ The interface features a handcrafted animation system designed for a polished, p
 | **Animations** | Framer Motion (spring physics, AnimatePresence, staggered entrances) + CSS keyframes |
 | **Backend** | Vercel Serverless Functions (`/api/gemini-*`) |
 | **PDF Parsing** | pdfjs-dist (Mozilla PDF.js) |
-| **AI** | Google Gemini 2.5 Pro (audit) · Gemini 2.5 Flash (analytics, sentiment, cleaning, upgrades) via `@google/genai` + Gemini 2.5 Flash Native Audio (live assistant) |
+| **AI** | Google Gemini 3 Pro Preview (audit, itinerary — with 2.5 Flash fallback) · Gemini 2.5 Flash (analytics, sentiment, cleaning, upgrades) via `@google/genai` + Gemini 2.5 Flash Native Audio (live assistant) |
 | **Audio** | AudioWorklet API (ScriptProcessorNode fallback) |
 | **Real-Time Sync** | Firebase Realtime Database (defense-in-depth sanitisation) |
 | **Weather** | Open-Meteo API (Windermere, no API key required) |

@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             `Room ${g.room}: ${g.name} | ETA: ${g.eta || 'Unknown'} | VIP: ${g.prefillNotes?.includes('VIP') || g.rawHtml?.includes('VIP') ? 'Yes' : 'No'} | HK Status: ${g.hkStatus || 'pending'} | Rate: ${g.rateCode || 'Standard'}${g.children ? ` | Children: ${g.children}` : ''}${g.infants ? ` | Infants: ${g.infants}` : ''}${g.inRoomItems ? ` | In-Room: ${g.inRoomItems}` : ''}`
         ).join('\n');
 
-        let retries = 3;
+        let retries = 2;
         let delay = 2000;
 
         while (retries > 0) {
