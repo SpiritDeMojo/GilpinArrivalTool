@@ -71,6 +71,7 @@ Your job is to REWRITE each activity description in warm, evocative, 5-star luxu
 9. **DO NOT add or remove events.** The structure must remain identical.
 10. **Sign off the final departure event** with warmth: "We look forward to welcoming you back to Gilpin."
 11. **Keep times EXACTLY as given** — do not modify any time values.
+12. **Arrival Day Ordering** — Preserve the logical guest-experience sequence on Day 1: Check-in → Welcome Card → Champagne → Petals → Dinner/Facilities. This is intentional — the guest reads the card first, then opens the champagne.
 
 ### CONTEXT:
 - Guest: ${guestName || 'Guest'}

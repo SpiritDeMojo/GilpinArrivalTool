@@ -135,10 +135,84 @@ interface ParsedFacility {
   raw: string;          // original segment
 }
 
+/* ────────────── Normalize Raw /Venue: Chains → • Separated Format ────────────── */
+const normalizeRawFacilities = (raw: string): string => {
+  // If already in • format (AI-refined), return as-is
+  if (raw.includes(' • ')) return raw;
+
+  // Handle raw /Venue: chains from PDF parser
+  // e.g. "/Spice: Table for 2 17/02/26 @ 19:00/Source: Table for 2 18/02/26 @ 19:00"
+  const venuePattern = /\/(?:Source|Spice|Dinner|Lunch|Afternoon\s*Tea|Steam\s*Room|Bento|ESPA|Pure|Spa|Hot\s*Tub|GH|LH|Couples|Facial|Massage|Tea|Table)\b/i;
+  if (!venuePattern.test(raw)) return raw;
+
+  const entries = raw.split(/(?=\/(?:Source|Spice|Dinner|Lunch|Afternoon\s*Tea|Steam\s*Room|Bento|ESPA|Pure|Spa|Hot\s*Tub|GH|LH|Couples|Facial|Massage|Tea|Table)\b)/i);
+  const normalized: string[] = [];
+
+  for (const entry of entries) {
+    let text = entry.trim();
+    if (!text) continue;
+
+    // Remove leading /
+    text = text.replace(/^\//, '');
+
+    // Extract venue name (everything before the colon or first date)
+    // e.g. "Spice: Table for 2 17/02/26 @ 19:00" or "Steam Room 18/02/26 @ 11:15"
+    const colonIdx = text.indexOf(':');
+    let venue = '';
+    let details = '';
+    if (colonIdx > 0 && colonIdx < 30) {
+      venue = text.slice(0, colonIdx).trim();
+      details = text.slice(colonIdx + 1).trim();
+    } else {
+      // No colon — venue name runs up to the date
+      const dateMatch = text.match(/(\d{1,2}\/\d{1,2})/);
+      if (dateMatch && dateMatch.index) {
+        venue = text.slice(0, dateMatch.index).trim();
+        details = text.slice(dateMatch.index).trim();
+      } else {
+        venue = text;
+      }
+    }
+
+    // Extract date DD/MM/YY and time @ HH:MM from the details
+    const dateTimeMatch = details.match(/(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s*(?:@\s*(\d{1,2}:\d{2}))?/);
+    const date = dateTimeMatch ? dateTimeMatch[1] : '';
+    const time = dateTimeMatch ? dateTimeMatch[2] || '' : '';
+
+    // Extract pax: "Table for 2" or just "for 2"
+    const paxMatch = details.match(/(?:table\s+)?for\s+(\d+)/i);
+    const pax = paxMatch ? paxMatch[1] : '';
+
+    // Assign emoji based on venue
+    let emoji = '🔹';
+    const venueLow = venue.toLowerCase();
+    if (/spice/.test(venueLow)) emoji = '🌶️';
+    else if (/source|dinner/.test(venueLow)) emoji = '🍽️';
+    else if (/spa|espa|massage|facial|treatment|hot.?stone|aromatherapy|pure/.test(venueLow)) emoji = '💆';
+    else if (/steam|hot.?tub|couples/.test(venueLow)) emoji = '♨️';
+    else if (/tea|lake.?house/.test(venueLow)) emoji = '🍰';
+    else if (/bento/.test(venueLow)) emoji = '🍱';
+    else if (/lunch/.test(venueLow)) emoji = '🍽️';
+
+    // Build normalized entry: "🌶️ Spice for 2 (17/02 @ 19:00)"
+    let entry_str = `${emoji} ${venue}`;
+    if (pax) entry_str += ` for ${pax}`;
+    if (date) {
+      entry_str += ` (${date}${time ? ' @ ' + time : ''})`;
+    }
+    normalized.push(entry_str);
+  }
+
+  return normalized.length > 0 ? normalized.join(' • ') : raw;
+};
+
 /* ────────────── Parse Facilities String into Structured Items ────────────── */
 const parseFacilitiesWithDates = (facilities: string): ParsedFacility[] => {
   if (!facilities?.trim()) return [];
-  const parts = facilities.split(' • ').map(s => s.trim()).filter(Boolean);
+
+  // Pre-process: convert raw /Venue: chains to • separated format
+  const normalized = normalizeRawFacilities(facilities);
+  const parts = normalized.split(' • ').map(s => s.trim()).filter(Boolean);
   const results: ParsedFacility[] = [];
 
   for (const part of parts) {
@@ -177,9 +251,10 @@ const parseFacilitiesWithDates = (facilities: string): ParsedFacility[] => {
     const paxMatch = typePart.match(/for\s+(\d+)/i);
     const pax = paxMatch ? parseInt(paxMatch[1]) : null;
 
-    // Clean type — remove "for N", trailing/leading punctuation
+    // Clean type — remove "for N", "Table", trailing/leading punctuation
     let type = typePart
       .replace(/for\s+\d+/i, '')
+      .replace(/\btable\b/i, '')
       .replace(/\(T-\d+\)/i, '')
       .replace(/^[\s,\-:]+|[\s,\-:]+$/g, '')
       .trim();
@@ -189,7 +264,7 @@ const parseFacilitiesWithDates = (facilities: string): ParsedFacility[] => {
       if (emoji.includes('🌶') || emoji.includes('🌶️')) type = 'Spice';
       else if (emoji.includes('🍽') || emoji.includes('🍽️')) type = 'Dinner';
       else if (emoji.includes('💆')) type = 'Spa';
-      else if (emoji.includes('♨')) type = 'Spa Hamper';
+      else if (emoji.includes('♨')) type = 'Steam Room';
       else if (emoji.includes('🍰')) type = 'Afternoon Tea';
       else if (emoji.includes('🍱')) type = 'Bento';
       else type = 'Activity';
@@ -231,6 +306,12 @@ const buildItineraryFromGuest = (
   dinnerTime: string,
   dinnerVenue: string,
   presetKey: string,
+  options?: {
+    champagne?: boolean;
+    petals?: boolean;
+    specialCard?: string;
+    occasions?: string;
+  },
 ): { left: DayBlock[]; right: DayBlock[] } => {
   const totalNights = Math.max(parseInt(duration) || 2, 1);
   const totalDays = totalNights + 1; // include departure day
@@ -272,14 +353,29 @@ const buildItineraryFromGuest = (
     // Clamp to valid range
     dayOffset = Math.max(0, Math.min(dayOffset, totalDays - 1));
 
-    const timeStr = item.time || (
-      /dinner|spice|source|supper/i.test(item.type) ? '7:30pm' :
-        /lunch|bento/i.test(item.type) ? '12:30pm' :
-          /tea|lake house/i.test(item.type) ? '3:00pm' :
-            /spa|massage|aromatherapy|treatment|pure|espa|facial|hot.?stone/i.test(item.type) ? '10:30am' :
-              /hamper/i.test(item.type) ? 'On Arrival' :
-                'TBC'
-    );
+    // Convert 24h time to 12h format for display
+    let timeStr: string;
+    if (item.time) {
+      const [hStr, mStr] = item.time.split(':');
+      const h = parseInt(hStr);
+      const m = parseInt(mStr || '0');
+      if (!isNaN(h)) {
+        const suffix = h >= 12 ? 'pm' : 'am';
+        const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+        timeStr = m > 0 ? `${h12}:${mStr}${suffix}` : `${h12}:00${suffix}`;
+      } else {
+        timeStr = item.time;
+      }
+    } else {
+      // Smart defaults by venue type
+      timeStr =
+        /dinner|spice|source|supper/i.test(item.type) ? '7:30pm' :
+          /lunch|bento/i.test(item.type) ? '12:30pm' :
+            /tea|lake house/i.test(item.type) ? '3:00pm' :
+              /spa|massage|aromatherapy|treatment|pure|espa|facial|hot.?stone|steam|couples|hot.?tub/i.test(item.type) ? '10:30am' :
+                /hamper/i.test(item.type) ? 'On Arrival' :
+                  'TBC';
+    }
 
     const description = buildDescription(item);
 
@@ -314,12 +410,37 @@ const buildItineraryFromGuest = (
       events.unshift({ time: 'Morning', activity: 'A leisurely breakfast at your table — Full English, Continental, or lighter options.' });
     }
 
-    // Add check-in on arrival day
+    // Add check-in on arrival day — with logical guest-experience ordering:
+    // 1. Check-in → 2. Welcome card → 3. Champagne/Petals → 4. Facilities
     if (d === 0) {
-      events.unshift({ time: '3:00pm', activity: 'Welcome and check-in at Gilpin Hotel & Lake House.' });
-      // Add champagne for special packages
-      if (/moon|magic/i.test(presetKey)) {
-        events.splice(1, 0, { time: 'On Arrival', activity: 'A chilled bottle of Champagne awaiting you in your room.' });
+      let insertPos = 0;
+      events.splice(insertPos++, 0, { time: '3:00pm', activity: 'Welcome and check-in at Gilpin Hotel & Lake House.' });
+
+      // Welcome note/special card — guest reads this FIRST upon entering the room
+      const hasCard = options?.specialCard?.trim();
+      const hasOccasion = options?.occasions?.trim();
+      if (hasCard || hasOccasion) {
+        events.splice(insertPos++, 0, {
+          time: 'On Arrival',
+          activity: 'A personalised welcome card from Team Gilpin awaiting you in your room.',
+        });
+      }
+
+      // Champagne — opened AFTER reading the welcome card
+      const hasChampagne = options?.champagne || /moon|magic/i.test(presetKey);
+      if (hasChampagne) {
+        events.splice(insertPos++, 0, {
+          time: 'On Arrival',
+          activity: 'A chilled bottle of Champagne awaiting you in your room.',
+        });
+      }
+
+      // Rose petals
+      if (options?.petals) {
+        events.splice(insertPos++, 0, {
+          time: 'On Arrival',
+          activity: 'Fresh rose petals adorning your room.',
+        });
       }
     }
 
@@ -331,8 +452,15 @@ const buildItineraryFromGuest = (
 
     // Sort events by time within the day
     events.sort((a, b) => {
-      const timeOrder = (t: string): number => {
-        if (/on arrival/i.test(t)) return 0;
+      const timeOrder = (t: string, activity?: string): number => {
+        if (/on arrival/i.test(t)) {
+          // Sub-order within On Arrival for logical guest experience:
+          // Welcome card → Champagne → Petals → Other in-room items
+          if (activity && /welcome.*card|personalised.*card/i.test(activity)) return -3;
+          if (activity && /champagne/i.test(activity)) return -2;
+          if (activity && /petal/i.test(activity)) return -1;
+          return 0;
+        }
         if (/morning/i.test(t)) return 1;
         if (t === 'TBC') return 50;
         // Parse HH:MM or HH:MMam/pm
@@ -345,7 +473,7 @@ const buildItineraryFromGuest = (
         if (ampm === 'am' && h === 12) h = 0;
         return h * 60 + m;
       };
-      return timeOrder(a.time) - timeOrder(b.time);
+      return timeOrder(a.time, a.activity) - timeOrder(b.time, b.activity);
     });
 
     // Build title
@@ -588,6 +716,12 @@ const PackageGenerator: React.FC<PackageGeneratorProps> = ({
       initialDinnerTime || '',
       initialDinnerVenue || '',
       selectedPreset,
+      {
+        champagne: initialChampagne,
+        petals: initialPetals,
+        specialCard: initialSpecialCard,
+        occasions: initialOccasions,
+      },
     );
     setLeftDays(result.left);
     setRightDays(result.right);
