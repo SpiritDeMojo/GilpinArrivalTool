@@ -13,7 +13,7 @@
  */
 import React, { useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrivalSession, Guest } from '../types';
+import { ArrivalSession, Guest, GuestIssue } from '../types';
 import { getRoomNumber, GILPIN_LOGO_URL, getRoomType } from '../constants';
 import { useStayoverCalculator } from '../hooks/useStayoverCalculator';
 import { DEFAULT_FLAGS } from '../constants';
@@ -158,7 +158,7 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
   activeSessionDate,
   todayGuests,
 }) => {
-  const { updateGuest } = useGuestData();
+  const { updateGuest, handleAddGuestIssue, handleUpdateGuestIssue } = useGuestData();
   const [propertyFilter, setPropertyFilter] = useState<'all' | 'main' | 'lake'>('all');
   const [expandedRoom, setExpandedRoom] = useState<number | null>(null);
   const [moveGuest, setMoveGuest] = useState<{ guest: Guest; roomNum: number } | null>(null);
@@ -166,6 +166,16 @@ const InHouseDashboard: React.FC<InHouseDashboardProps> = ({
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [showUpgradePanel, setShowUpgradePanel] = useState(false);
   const [activityLogGuest, setActivityLogGuest] = useState<Guest | null>(null);
+
+  // Guest Issue state
+  const [issueModal, setIssueModal] = useState<{ guest: Guest } | null>(null);
+  const [issueText, setIssueText] = useState('');
+  const [issueCompensation, setIssueCompensation] = useState('');
+  const [issueResolved, setIssueResolved] = useState(false);
+  const [issueNeedsManager, setIssueNeedsManager] = useState(false);
+  const [issueReporter, setIssueReporter] = useState('');
+  const [showIssueLog, setShowIssueLog] = useState(false);
+  const [issueLogFilter, setIssueLogFilter] = useState<'all' | 'open' | 'manager'>('all');
 
   const targetDate = useMemo(() => {
     if (activeSessionDate) {
@@ -711,6 +721,19 @@ ${dogsInHouse.length > 0 ? `
                         📋 Activity Log ({occ.guest.activityLog.length})
                       </button>
                     )}
+                    {/* Report Issue Button */}
+                    <button
+                      className="nm-move-btn nm-issue-btn"
+                      style={{ marginLeft: 8 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIssueModal({ guest: occ.guest });
+                      }}
+                    >
+                      ⚠️ Report Issue {(occ.guest.guestIssues || []).filter(i => !i.resolved).length > 0 && (
+                        <span className="issue-count-badge">{(occ.guest.guestIssues || []).filter(i => !i.resolved).length}</span>
+                      )}
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -768,6 +791,14 @@ ${dogsInHouse.length > 0 ? `
         <button className="nm-print-btn" onClick={handlePrint}>🖨️ Print Report</button>
         <button className="nm-print-btn" onClick={handleSuggestUpgrades} disabled={upgradeLoading} style={{ marginLeft: 8 }}>
           {upgradeLoading ? '⏳ Analysing...' : '✨ AI Upgrades'}
+        </button>
+        <button className="nm-print-btn nm-issue-log-btn" onClick={() => setShowIssueLog(true)} style={{ marginLeft: 8 }}>
+          ⚠️ Guest Issues
+          {(() => {
+            let count = 0;
+            occupancyMap.forEach(({ guest }) => { count += (guest.guestIssues || []).filter(i => !i.resolved).length; });
+            return count > 0 ? <span className="issue-count-badge">{count}</span> : null;
+          })()}
         </button>
       </div>
 
@@ -994,6 +1025,232 @@ ${dogsInHouse.length > 0 ? `
             onClose={() => setMoveGuest(null)}
           />
         )}
+      </AnimatePresence>
+
+      {/* ── Guest Issue Modal ── */}
+      <AnimatePresence>
+        {issueModal && (
+          <motion.div
+            className="gi-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIssueModal(null)}
+          >
+            <motion.div
+              className="gi-modal"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3>⚠️ Report Guest Issue — Room {issueModal.guest.room}</h3>
+              <p className="gi-guest-name">{issueModal.guest.name}</p>
+
+              <label>What was the issue?</label>
+              <textarea
+                className="gi-input"
+                placeholder="Describe the issue..."
+                value={issueText}
+                onChange={(e) => setIssueText(e.target.value)}
+                rows={3}
+              />
+
+              <label>What did we do to compensate?</label>
+              <textarea
+                className="gi-input"
+                placeholder="e.g. Room upgrade, complimentary dessert, bottle of wine..."
+                value={issueCompensation}
+                onChange={(e) => setIssueCompensation(e.target.value)}
+                rows={2}
+              />
+
+              <div className="gi-toggles">
+                <div className="gi-toggle-row">
+                  <span>Is the issue resolved?</span>
+                  <button
+                    className={`gi-toggle ${issueResolved ? 'active' : ''}`}
+                    onClick={() => setIssueResolved(!issueResolved)}
+                  >
+                    {issueResolved ? '✅ Yes' : '❌ No'}
+                  </button>
+                </div>
+                <div className="gi-toggle-row">
+                  <span>Does guest need a talk with a manager?</span>
+                  <button
+                    className={`gi-toggle ${issueNeedsManager ? 'active manager' : ''}`}
+                    onClick={() => setIssueNeedsManager(!issueNeedsManager)}
+                  >
+                    {issueNeedsManager ? '🔴 Yes' : 'No'}
+                  </button>
+                </div>
+              </div>
+
+              <label>Reported by</label>
+              <input
+                className="gi-input"
+                placeholder="Your name"
+                value={issueReporter}
+                onChange={(e) => setIssueReporter(e.target.value)}
+              />
+
+              <div className="gi-actions">
+                <button className="gi-cancel" onClick={() => { setIssueModal(null); setIssueText(''); setIssueCompensation(''); setIssueResolved(false); setIssueNeedsManager(false); }}>Cancel</button>
+                <button
+                  className="gi-submit"
+                  disabled={!issueText.trim()}
+                  onClick={() => {
+                    if (!issueModal || !issueText.trim()) return;
+                    handleAddGuestIssue(issueModal.guest.id, {
+                      room: issueModal.guest.room,
+                      guestName: issueModal.guest.name,
+                      reportedBy: issueReporter || 'Staff',
+                      issue: issueText.trim(),
+                      compensation: issueCompensation.trim(),
+                      resolved: issueResolved,
+                      resolvedAt: issueResolved ? Date.now() : undefined,
+                      needsManager: issueNeedsManager,
+                    });
+                    setIssueModal(null);
+                    setIssueText('');
+                    setIssueCompensation('');
+                    setIssueResolved(false);
+                    setIssueNeedsManager(false);
+                  }}
+                >
+                  Submit Issue
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Guest Issue Log Panel ── */}
+      <AnimatePresence>
+        {showIssueLog && (() => {
+          // Collect all issues across all occupied rooms
+          const allIssues: { guest: Guest; issue: GuestIssue }[] = [];
+          occupancyMap.forEach(({ guest }) => {
+            (guest.guestIssues || []).forEach(issue => {
+              allIssues.push({ guest, issue });
+            });
+          });
+          let filteredIssues = allIssues;
+          if (issueLogFilter === 'open') filteredIssues = allIssues.filter(i => !i.issue.resolved);
+          if (issueLogFilter === 'manager') filteredIssues = allIssues.filter(i => i.issue.needsManager && !i.issue.managerHandledAt);
+          filteredIssues.sort((a, b) => b.issue.timestamp - a.issue.timestamp);
+
+          const printGuestIssueLog = () => {
+            const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const rows = filteredIssues.map(({ guest, issue }) => {
+              const status = issue.resolved ? '✅ Yes' : '❌ No';
+              const mgr = issue.needsManager ? (issue.managerHandledAt ? `Yes — ${issue.managerHandledBy}` : '🔴 Awaiting') : 'No';
+              return `<tr>
+                <td>${guest.room}</td>
+                <td>${guest.name}</td>
+                <td>${issue.issue}</td>
+                <td>${issue.compensation || '—'}</td>
+                <td>${status}</td>
+                <td>${mgr}</td>
+                <td>${issue.reportedBy}</td>
+              </tr>`;
+            }).join('');
+            const html = `<!DOCTYPE html><html><head><title>Guest Issue Log</title>
+            <style>
+              body{font-family:'Segoe UI',sans-serif;padding:40px;color:#1e293b}
+              h1{font-size:22px;margin:0 0 4px}h2{font-size:14px;font-weight:400;color:#64748b;margin:0 0 24px}
+              table{width:100%;border-collapse:collapse;font-size:12px}
+              th{background:#1e3a5f;color:#fff;padding:10px 12px;text-align:left;font-weight:600}
+              td{padding:10px 12px;border-bottom:1px solid #e2e8f0}
+              tr:nth-child(even){background:#f8fafc}
+              @media print{body{padding:20px}}
+            </style></head><body>
+            <h1>Gilpin Hotel — Guest Issue Log</h1>
+            <h2>${dateStr} • ${filteredIssues.length} issue(s)</h2>
+            <table><thead><tr><th>Room</th><th>Guest</th><th>Issue</th><th>Compensation</th><th>Resolved</th><th>Manager</th><th>Reported By</th></tr></thead>
+            <tbody>${rows}</tbody></table>
+            </body></html>`;
+            const w = window.open('', '_blank');
+            if (w) { w.document.write(html); w.document.close(); w.print(); }
+          };
+
+          return (
+            <motion.div
+              className="gi-log-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowIssueLog(false)}
+            >
+              <motion.div
+                className="gi-log-panel"
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="gi-log-header">
+                  <h3>📋 Guest Issue Log</h3>
+                  <div className="gi-log-actions">
+                    <button className="gi-print-btn" onClick={printGuestIssueLog}>🖨️ Print</button>
+                    <button className="gi-close-btn" onClick={() => setShowIssueLog(false)}>✕</button>
+                  </div>
+                </div>
+
+                <div className="gi-log-filters">
+                  <button className={`gi-filter ${issueLogFilter === 'all' ? 'active' : ''}`} onClick={() => setIssueLogFilter('all')}>All ({allIssues.length})</button>
+                  <button className={`gi-filter ${issueLogFilter === 'open' ? 'active' : ''}`} onClick={() => setIssueLogFilter('open')}>⏳ Open</button>
+                  <button className={`gi-filter ${issueLogFilter === 'manager' ? 'active' : ''}`} onClick={() => setIssueLogFilter('manager')}>🔴 Needs Manager</button>
+                </div>
+
+                {filteredIssues.length === 0 ? (
+                  <div className="gi-empty">
+                    <span>📋</span>
+                    <p>No guest issues to display</p>
+                  </div>
+                ) : (
+                  <div className="gi-log-list">
+                    {filteredIssues.map(({ guest, issue }) => (
+                      <div key={issue.id} className={`gi-log-row ${issue.resolved ? 'resolved' : ''} ${issue.needsManager && !issue.managerHandledAt ? 'needs-manager' : ''}`}>
+                        <div className="gi-log-room">
+                          <span className="room-num">{guest.room}</span>
+                          <span className="guest-nm">{guest.name}</span>
+                        </div>
+                        <div className="gi-log-body">
+                          <p className="gi-log-issue">{issue.issue}</p>
+                          {issue.compensation && <p className="gi-log-comp">💰 {issue.compensation}</p>}
+                          <div className="gi-log-meta">
+                            <span>{issue.resolved ? '✅ Resolved' : '⏳ Open'}</span>
+                            {issue.needsManager && <span className="manager-flag">{issue.managerHandledAt ? `✅ Manager: ${issue.managerHandledBy}` : '🔴 Needs Manager'}</span>}
+                            <span className="gi-log-time">{new Date(issue.timestamp).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className="gi-log-reporter">by {issue.reportedBy}</span>
+                          </div>
+                          <div className="gi-log-actions-row">
+                            {!issue.resolved && (
+                              <button className="gi-resolve-btn" onClick={() => handleUpdateGuestIssue(guest.id, issue.id, { resolved: true, resolvedAt: Date.now() })}>
+                                ✓ Resolve
+                              </button>
+                            )}
+                            {issue.needsManager && !issue.managerHandledAt && (
+                              <button className="gi-manager-btn" onClick={() => {
+                                const name = prompt('Manager name:');
+                                if (name) handleUpdateGuestIssue(guest.id, issue.id, { managerHandledBy: name, managerHandledAt: Date.now() });
+                              }}>
+                                👔 Mark Manager Handled
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Styles in styles/in-room.css */}

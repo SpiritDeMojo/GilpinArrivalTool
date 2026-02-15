@@ -313,6 +313,14 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
                   <p className="guest-eta">ETA: {guest.eta || 'N/A'}</p>
                 </div>
 
+                {/* HK Notes from AI — allergies, dietary, room prep */}
+                {guest.hkNotes && (
+                  <div className="hk-notes-strip">
+                    <span className="hk-notes-icon">🏷️</span>
+                    <span className="hk-notes-text">{guest.hkNotes}</span>
+                  </div>
+                )}
+
                 {/* Room Readiness Indicator */}
                 <div className="readiness-bar">
                   <div className="readiness-item" data-done={readiness.hkDone}>
@@ -791,6 +799,36 @@ const HousekeepingDashboard: React.FC<HousekeepingDashboardProps> = ({
           margin: 4px 0 0;
           font-size: 12px;
           color: var(--text-sub);
+        }
+
+        /* HK Notes Strip — AI-generated allergies, dietary, room prep */
+        .hk-notes-strip {
+          display: flex;
+          align-items: flex-start;
+          gap: 6px;
+          padding: 8px 10px;
+          margin: 8px 0;
+          background: linear-gradient(135deg, #fef3c7 0%, #fde68a33 100%);
+          border: 1px solid #fde68a;
+          border-radius: 10px;
+          font-size: 12px;
+          line-height: 1.4;
+          color: #92400e;
+        }
+
+        [data-theme="dark"] .hk-notes-strip {
+          background: linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0.05) 100%);
+          border-color: rgba(251, 191, 36, 0.25);
+          color: #fbbf24;
+        }
+
+        .hk-notes-icon {
+          flex-shrink: 0;
+          font-size: 14px;
+        }
+
+        .hk-notes-text {
+          word-break: break-word;
         }
 
         /* Readiness Bar */

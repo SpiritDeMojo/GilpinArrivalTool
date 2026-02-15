@@ -26,13 +26,14 @@ interface NavbarProps {
   isSticky?: boolean;
   onOpenPackages?: () => void;
   showPackages?: boolean;
+  onOpenHandover?: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({
   arrivalDateStr, isDark, toggleTheme, onFileUpload, onPrint, onExcel, onAddManual, onOpenSOP,
   hasGuests, onAIRefine, onToggleAnalytics, showAnalytics,
   isMuted, onToggleMute, connectionStatus, onReconnect, onSaveSession, isSessionLocked, isSticky,
-  onOpenPackages, showPackages
+  onOpenPackages, showPackages, onOpenHandover
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDesktopMenuOpen, setIsDesktopMenuOpen] = useState(false);
@@ -321,10 +322,20 @@ const Navbar: React.FC<NavbarProps> = ({
               <div className="rounded-2xl border border-slate-700/50 overflow-hidden">
                 <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-4 pt-3 pb-1">Utilities</p>
 
+                {/* Day Handover */}
+                {onOpenHandover && (
+                  <button onClick={() => { onOpenHandover(); setIsDesktopMenuOpen(false); }}
+                    className="flex items-center gap-3 px-4 py-3 text-white font-semibold text-sm hover:bg-white/5 transition-colors w-full text-left cursor-pointer"
+                  >
+                    <span className="w-6 text-center">📝</span>
+                    <span>Day Handover</span>
+                  </button>
+                )}
+
                 {/* Package Generator */}
                 {isRec && onOpenPackages && (
                   <button onClick={() => { onOpenPackages(); setIsDesktopMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm hover:bg-white/5 transition-colors w-full text-left cursor-pointer ${showPackages ? 'text-[#c5a065]' : 'text-white'}`}
+                    className={`flex items-center gap-3 px-4 py-3 font-semibold text-sm border-t border-slate-700/30 hover:bg-white/5 transition-colors w-full text-left cursor-pointer ${showPackages ? 'text-[#c5a065]' : 'text-white'}`}
                   >
                     <span className="w-6 text-center">📦</span>
                     <span>Itinerary Generator</span>
@@ -526,6 +537,19 @@ const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
             )}
+
+            {/* ── GROUP 3: Utilities (Mobile) ── */}
+            <div className="rounded-2xl border border-slate-700/50 overflow-hidden">
+              <p className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em] px-4 pt-3 pb-1">Utilities</p>
+              {onOpenHandover && (
+                <div role="button" onClick={() => { onOpenHandover(); closeMenu(); }} style={{ cursor: 'pointer', minHeight: 'auto' }}
+                  className="flex items-center gap-3 px-4 py-3 text-white font-semibold text-sm active:bg-white/5 transition-colors"
+                >
+                  <span className="w-6 text-center">📝</span>
+                  <span>Day Handover</span>
+                </div>
+              )}
+            </div>
 
 
           </div>

@@ -167,6 +167,13 @@ export interface Guest {
 
   /** Guest-requested bookings (from traces/notes) — may not be confirmed */
   requestedBookings?: string[];
+
+  // ==========================================
+  // GUEST ISSUE TRACKING (In-House)
+  // ==========================================
+
+  /** Guest issues reported during their stay */
+  guestIssues?: GuestIssue[];
 }
 
 export interface ArrivalSession {
@@ -300,9 +307,31 @@ export interface CourtesyCallNote {
 }
 
 /**
+ * Guest issue report (In-House dashboard)
+ */
+export interface GuestIssue {
+  id: string;
+  timestamp: number;
+  room: string;
+  guestName: string;
+  reportedBy: string;
+  issue: string;
+  compensation: string;
+  resolved: boolean;
+  resolvedAt?: number;
+  needsManager: boolean;
+  managerNotes?: string;
+  managerHandledBy?: string;
+  managerHandledAt?: number;
+}
+
+
+// (Handover types moved to end of file)
+
+/**
  * Dashboard view type
  */
-export type DashboardView = 'arrivals' | 'housekeeping' | 'maintenance' | 'frontofhouse' | 'inhouse' | 'packages';
+export type DashboardView = 'arrivals' | 'housekeeping' | 'maintenance' | 'frontofhouse' | 'inhouse' | 'packages' | 'handoverHub';
 
 /**
  * Status update event for real-time sync
@@ -435,4 +464,57 @@ export function getRoomReadinessInfo(guest: Guest): { ready: boolean; hkDone: bo
   } else {
     return { ready, hkDone, maintDone, label: 'Not Ready', color: '#dc2626' };
   }
+}
+
+// ==========================================
+// HANDOVER SYSTEM TYPES
+// ==========================================
+
+/** Departments that submit handover reports */
+export type HandoverDepartment = 'housekeeping' | 'source' | 'spice' | 'reception' | 'spa' | 'maintenance' | 'reservations' | 'night' | 'lakehouse';
+
+/** Shift configuration per department */
+export type ShiftType = 'single' | 'am_pm';
+
+/** Department metadata for UI rendering */
+export interface HandoverDeptMeta {
+  label: string;
+  emoji: string;
+  color: string;
+  shiftType: ShiftType;
+  amLabel?: string;
+  pmLabel?: string;
+}
+
+export const HANDOVER_DEPT_INFO: Record<HandoverDepartment, HandoverDeptMeta> = {
+  housekeeping: { label: 'Housekeeping', emoji: '🧹', color: '#22c55e', shiftType: 'am_pm', amLabel: 'Check-ins & Stayovers', pmLabel: 'Turndown' },
+  source: { label: 'Source', emoji: '🍽️', color: '#f59e0b', shiftType: 'am_pm', amLabel: 'Breakfast', pmLabel: 'Lunch & Dinner' },
+  spice: { label: 'Spice', emoji: '🌶️', color: '#ef4444', shiftType: 'am_pm', amLabel: undefined, pmLabel: 'Dinner' },
+  reception: { label: 'Reception', emoji: '🏨', color: '#3b82f6', shiftType: 'single' },
+  spa: { label: 'Spa', emoji: '💆', color: '#8b5cf6', shiftType: 'single' },
+  maintenance: { label: 'Maintenance', emoji: '🔧', color: '#f97316', shiftType: 'single' },
+  reservations: { label: 'Reservations', emoji: '📞', color: '#ec4899', shiftType: 'single' },
+  night: { label: 'Night', emoji: '🌙', color: '#6366f1', shiftType: 'single' },
+  lakehouse: { label: 'Lake House', emoji: '🏡', color: '#0ea5e9', shiftType: 'am_pm', amLabel: 'Breakfast', pmLabel: 'Reception & Reviews' },
+};
+
+/** Data for a single shift handover */
+export interface DepartmentHandover {
+  structured: Record<string, any>;
+  freeNotes: string;
+  completedBy: string;
+  completedAt: number;
+}
+
+/** Full handover report for one department on one date */
+export interface HandoverReport {
+  id: string;
+  date: string;
+  department: HandoverDepartment;
+  amData?: DepartmentHandover;
+  pmData?: DepartmentHandover;
+  amLockedAt?: number;
+  amLockedBy?: string;
+  lastUpdated: number;
+  lastUpdatedBy: string;
 }

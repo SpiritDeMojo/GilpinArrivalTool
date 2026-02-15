@@ -6,7 +6,7 @@ import { useToast } from '../components/ToastProvider';
 import {
     Guest, Flag, FilterType, ArrivalSession, PropertyFilter,
     HKStatus, MaintenanceStatus, GuestStatus, TurndownStatus,
-    RoomNote, CourtesyCallNote
+    RoomNote, CourtesyCallNote, GuestIssue
 } from '../types';
 import { useGuestManager } from '../hooks/useGuestManager';
 import { DEFAULT_FLAGS } from '../constants';
@@ -280,6 +280,42 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         } as Partial<Guest>);
         showToast(`📞 Courtesy call logged for ${roomLabel(guestId)}`, 'success');
     }, [guests, updateGuest, showToast, roomLabel]);
+
+    // ── Guest Issue handlers ─────────────────────────────────────────────────
+    const handleAddGuestIssue = useCallback((guestId: string, issue: Omit<GuestIssue, 'id' | 'timestamp'>) => {
+        const guest = guests.find(g => g.id === guestId);
+        if (!guest) return;
+
+        const newIssue: GuestIssue = {
+            id: `issue_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            timestamp: Date.now(),
+            ...issue
+        };
+
+        const existingIssues = guest.guestIssues || [];
+        updateGuest(guestId, {
+            guestIssues: [...existingIssues, newIssue],
+            lastStatusUpdate: Date.now(),
+            lastStatusUpdatedBy: issue.reportedBy
+        } as Partial<Guest>);
+        showToast(`⚠️ Issue reported for ${roomLabel(guestId)}`, 'info');
+    }, [guests, updateGuest, showToast, roomLabel]);
+
+    const handleUpdateGuestIssue = useCallback((guestId: string, issueId: string, updates: Partial<GuestIssue>) => {
+        const guest = guests.find(g => g.id === guestId);
+        if (!guest) return;
+
+        const updatedIssues = (guest.guestIssues || []).map(issue =>
+            issue.id === issueId ? { ...issue, ...updates } : issue
+        );
+
+        updateGuest(guestId, {
+            guestIssues: updatedIssues,
+            lastStatusUpdate: Date.now(),
+            lastStatusUpdatedBy: updates.managerHandledBy || updates.reportedBy || 'User'
+        } as Partial<Guest>);
+        showToast(`✅ Issue updated for ${roomLabel(guestId)}`, 'success');
+    }, [guests, updateGuest, showToast, roomLabel]);
     // ── Turndown handlers (cross-session) ────────────────────────────────────
     const handleUpdateTurndownStatus = useCallback((guestId: string, status: TurndownStatus, originSessionId: string) => {
         updateGuestInSession(originSessionId, guestId, {
@@ -342,6 +378,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isSessionLocked, lockSession, unlockSession, verifyTurndown,
         handleUpdateHKStatus, handleUpdateMaintenanceStatus, handleUpdateGuestStatus, handleUpdateInRoomDelivery,
         handleAddRoomNote, handleResolveNote, handleAddCourtesyNote,
+        handleAddGuestIssue, handleUpdateGuestIssue,
         handleUpdateTurndownStatus, handleUpdateDinnerTime, handleUpdateDinnerVenue,
         isMuted, toggleMute, notifications, badges, pushNotification, dismissNotification, clearAllNotifications, clearBadge,
         isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput, errorMessage, hasMic,
@@ -358,6 +395,7 @@ export const GuestProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isSessionLocked, lockSession, unlockSession, verifyTurndown,
         handleUpdateHKStatus, handleUpdateMaintenanceStatus, handleUpdateGuestStatus, handleUpdateInRoomDelivery,
         handleAddRoomNote, handleResolveNote, handleAddCourtesyNote,
+        handleAddGuestIssue, handleUpdateGuestIssue,
         handleUpdateTurndownStatus, handleUpdateDinnerTime, handleUpdateDinnerVenue,
         isMuted, toggleMute, notifications, badges, pushNotification, dismissNotification, clearAllNotifications, clearBadge,
         isLiveActive, isMicEnabled, transcriptions, interimInput, interimOutput, errorMessage, hasMic,

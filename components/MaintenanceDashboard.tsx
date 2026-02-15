@@ -41,6 +41,8 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
   const [aiPriorityRooms, setAiPriorityRooms] = useState<string[]>([]);
   const [aiReasoning, setAiReasoning] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [maintTab, setMaintTab] = useState<'rooms' | 'issueLog'>('rooms');
+  const [logFilter, setLogFilter] = useState<'all' | 'open' | 'resolved'>('all');
 
   // Filter guests
   const filteredGuests = useMemo(() => {
@@ -101,6 +103,62 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
     setNoteCategory('info');
   };
 
+  // ── All room notes for the issue log ──────────────────────────────────────
+  const allNotes = useMemo(() => {
+    const notes: { guest: Guest; note: RoomNote }[] = [];
+    guests.forEach(g => {
+      (g.roomNotes || []).forEach(n => {
+        notes.push({ guest: g, note: n });
+      });
+    });
+    // Filter
+    let filtered = notes;
+    if (logFilter === 'open') filtered = notes.filter(n => !n.note.resolved);
+    if (logFilter === 'resolved') filtered = notes.filter(n => n.note.resolved);
+    // Sort newest first
+    filtered.sort((a, b) => b.note.timestamp - a.note.timestamp);
+    return filtered;
+  }, [guests, logFilter]);
+
+  // ── Print issue log ──────────────────────────────────────────────────────
+  const printIssueLog = () => {
+    const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const rows = allNotes.map(({ guest, note }) => {
+      const priority = NOTE_PRIORITY_INFO[note.priority];
+      const status = note.resolved ? `Resolved by ${note.resolvedBy || '—'}` : 'Open';
+      const time = new Date(note.timestamp).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return `<tr>
+        <td>${guest.room}</td>
+        <td>${priority.emoji} ${priority.label}</td>
+        <td>${note.message}</td>
+        <td>${note.author} (${note.department})</td>
+        <td>${time}</td>
+        <td>${status}</td>
+      </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><title>Maintenance Issue Log</title>
+    <style>
+      body{font-family:'Segoe UI',sans-serif;padding:40px;color:#1e293b}
+      h1{font-size:22px;margin:0 0 4px}h2{font-size:14px;font-weight:400;color:#64748b;margin:0 0 24px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th{background:#1e3a5f;color:#fff;padding:10px 12px;text-align:left;font-weight:600}
+      td{padding:10px 12px;border-bottom:1px solid #e2e8f0}
+      tr:nth-child(even){background:#f8fafc}
+      .logo{text-align:center;margin-bottom:24px}
+      @media print{body{padding:20px}}
+    </style></head><body>
+    <div class="logo">🔧</div>
+    <h1>Gilpin Hotel — Maintenance Issue Log</h1>
+    <h2>${dateStr} • ${allNotes.length} issue(s)</h2>
+    <table><thead><tr><th>Room</th><th>Priority</th><th>Issue</th><th>Reported By</th><th>Date</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); w.print(); }
+  };
+
   return (
     <div className="mt-dashboard">
       {/* Header — animated entrance */}
@@ -139,268 +197,340 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
         </div>
       </motion.header>
 
-      {/* Filter Bar */}
-      <div className="filter-bar">
-        <div className="status-filters">
-          <button
-            className={`filter-chip ${statusFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('all')}
-          >
-            All Rooms
-          </button>
-          {Object.entries(MAINTENANCE_STATUS_INFO).map(([status, info]) => (
-            <button
-              key={status}
-              className={`filter-chip ${statusFilter === status ? 'active' : ''}`}
-              onClick={() => setStatusFilter(status as MaintenanceStatus)}
-              style={{ '--chip-color': info.color } as React.CSSProperties}
-            >
-              {info.emoji} {info.label}
-            </button>
-          ))}
-        </div>
-        <label className="toggle-label highlight" htmlFor="mt-show-notes-only">
-          <input
-            id="mt-show-notes-only"
-            name="showOnlyWithNotes"
-            type="checkbox"
-            checked={showOnlyWithNotes}
-            onChange={e => setShowOnlyWithNotes(e.target.checked)}
-          />
-          <span>🚨 Show only rooms with issues</span>
-        </label>
-        <div className="property-toggles">
-          <button
-            className={`sort-toggle-btn`}
-            onClick={() => setSortMode(sortMode === 'eta' ? 'room' : 'eta')}
-            title={`Currently sorted by ${sortMode === 'eta' ? 'ETA' : 'Room Number'}`}
-          >
-            {sortMode === 'eta' ? '🕐 ETA Order' : '🚪 Room Order'}
-          </button>
-          <button
-            className={`ai-priority-btn ${isLoadingAI ? 'loading' : ''} ${aiPriorityRooms.length > 0 ? 'active' : ''}`}
-            disabled={isLoadingAI}
-            onClick={async () => {
-              if (aiPriorityRooms.length > 0) {
-                setAiPriorityRooms([]);
-                setAiReasoning('');
-                return;
-              }
-              setIsLoadingAI(true);
-              const result = await GeminiService.suggestCleaningOrder(guests);
-              setIsLoadingAI(false);
-              if (result) {
-                setAiPriorityRooms(result.roomOrder);
-                setAiReasoning(result.reasoning);
-              }
-            }}
-          >
-            {isLoadingAI ? '⏳' : '🤖'} {isLoadingAI ? 'Thinking...' : aiPriorityRooms.length > 0 ? 'Clear AI' : 'AI Priority'}
-          </button>
-          <label className="toggle-label" htmlFor="mt-show-main">
-            <input id="mt-show-main" name="showMainHotel" type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
-            <span>🏨 Main (1-31)</span>
-          </label>
-          <label className="toggle-label" htmlFor="mt-show-lake">
-            <input id="mt-show-lake" name="showLakeHouse" type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
-            <span>🏡 Lake (51-58)</span>
-          </label>
-        </div>
+      {/* Tab Bar */}
+      <div className="mt-tab-bar">
+        <button
+          className={`mt-tab ${maintTab === 'rooms' ? 'active' : ''}`}
+          onClick={() => setMaintTab('rooms')}
+        >
+          🔧 Active Rooms
+        </button>
+        <button
+          className={`mt-tab ${maintTab === 'issueLog' ? 'active' : ''}`}
+          onClick={() => setMaintTab('issueLog')}
+        >
+          📋 Issue Log ({allNotes.length})
+        </button>
       </div>
 
-      {/* AI Reasoning Banner */}
-      {aiPriorityRooms.length > 0 && aiReasoning && (
-        <div className="ai-reasoning-banner">
-          <span className="ai-icon">🤖</span>
-          <div>
-            <div className="ai-reasoning-title">AI Maintenance Priority</div>
-            <p className="ai-reasoning-text">{aiReasoning}</p>
-          </div>
-        </div>
-      )}
+      {maintTab === 'rooms' ? (
+        <>
 
-      {/* Room List — staggered entrance */}
-      <motion.div
-        className="room-list"
-        initial="hidden"
-        animate="show"
-        key={statusFilter + sortMode + String(showMainHotel) + String(showLakeHouse) + String(showOnlyWithNotes)}
-        variants={{
-          hidden: { opacity: 0 },
-          show: { opacity: 1, transition: { staggerChildren: 0.04 } },
-        }}
-      >
-        {filteredGuests.length === 0 ? (
-          <motion.div
-            className="empty-state"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-          >
-            <span className="empty-icon">✅</span>
-            <h3>All Clear!</h3>
-            <p>No rooms need attention</p>
-          </motion.div>
-        ) : (
-          filteredGuests.map(guest => {
-            const maintStatus = guest.maintenanceStatus || 'pending';
-            const maintInfo = MAINTENANCE_STATUS_INFO[maintStatus];
-            const readiness = getRoomReadinessInfo(guest);
-            const roomNotes = (guest.roomNotes || []).filter(n => !n.resolved);
-            const hasUrgentNote = roomNotes.some(n => n.priority === 'urgent' || n.priority === 'high');
-            const aiPriorityIndex = aiPriorityRooms.findIndex(r => r.toLowerCase() === guest.room.toLowerCase());
-
-            return (
-              <motion.div
-                key={guest.id}
-                className={`room-row ${hasUrgentNote ? 'urgent' : ''} ${aiPriorityIndex >= 0 ? 'ai-highlighted' : ''}`}
-                variants={{
-                  hidden: { opacity: 0, y: 24, scale: 0.94, filter: 'blur(5px)', rotateX: 6 },
-                  show: {
-                    opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', rotateX: 0,
-                    transition: { type: 'spring', stiffness: 300, damping: 24 },
-                  },
-                }}
-                whileHover={{ y: -3, boxShadow: '0 10px 28px rgba(197, 160, 101, 0.18), 0 0 0 1px rgba(197, 160, 101, 0.08)' }}
-                style={{ perspective: 800 }}
+          {/* Filter Bar */}
+          <div className="filter-bar">
+            <div className="status-filters">
+              <button
+                className={`filter-chip ${statusFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('all')}
               >
-                {/* AI Priority Badge */}
-                {aiPriorityIndex >= 0 && (
-                  <div className="ai-priority-badge">
-                    #{aiPriorityIndex + 1}
-                  </div>
-                )}
-                {/* Room Info */}
-                <div className="row-main">
-                  <div className="room-header">
+                All Rooms
+              </button>
+              {Object.entries(MAINTENANCE_STATUS_INFO).map(([status, info]) => (
+                <button
+                  key={status}
+                  className={`filter-chip ${statusFilter === status ? 'active' : ''}`}
+                  onClick={() => setStatusFilter(status as MaintenanceStatus)}
+                  style={{ '--chip-color': info.color } as React.CSSProperties}
+                >
+                  {info.emoji} {info.label}
+                </button>
+              ))}
+            </div>
+            <label className="toggle-label highlight" htmlFor="mt-show-notes-only">
+              <input
+                id="mt-show-notes-only"
+                name="showOnlyWithNotes"
+                type="checkbox"
+                checked={showOnlyWithNotes}
+                onChange={e => setShowOnlyWithNotes(e.target.checked)}
+              />
+              <span>🚨 Show only rooms with issues</span>
+            </label>
+            <div className="property-toggles">
+              <button
+                className={`sort-toggle-btn`}
+                onClick={() => setSortMode(sortMode === 'eta' ? 'room' : 'eta')}
+                title={`Currently sorted by ${sortMode === 'eta' ? 'ETA' : 'Room Number'}`}
+              >
+                {sortMode === 'eta' ? '🕐 ETA Order' : '🚪 Room Order'}
+              </button>
+              <button
+                className={`ai-priority-btn ${isLoadingAI ? 'loading' : ''} ${aiPriorityRooms.length > 0 ? 'active' : ''}`}
+                disabled={isLoadingAI}
+                onClick={async () => {
+                  if (aiPriorityRooms.length > 0) {
+                    setAiPriorityRooms([]);
+                    setAiReasoning('');
+                    return;
+                  }
+                  setIsLoadingAI(true);
+                  const result = await GeminiService.suggestCleaningOrder(guests);
+                  setIsLoadingAI(false);
+                  if (result) {
+                    setAiPriorityRooms(result.roomOrder);
+                    setAiReasoning(result.reasoning);
+                  }
+                }}
+              >
+                {isLoadingAI ? '⏳' : '🤖'} {isLoadingAI ? 'Thinking...' : aiPriorityRooms.length > 0 ? 'Clear AI' : 'AI Priority'}
+              </button>
+              <label className="toggle-label" htmlFor="mt-show-main">
+                <input id="mt-show-main" name="showMainHotel" type="checkbox" checked={showMainHotel} onChange={e => setShowMainHotel(e.target.checked)} />
+                <span>🏨 Main (1-31)</span>
+              </label>
+              <label className="toggle-label" htmlFor="mt-show-lake">
+                <input id="mt-show-lake" name="showLakeHouse" type="checkbox" checked={showLakeHouse} onChange={e => setShowLakeHouse(e.target.checked)} />
+                <span>🏡 Lake (51-58)</span>
+              </label>
+            </div>
+          </div>
+
+          {/* AI Reasoning Banner */}
+          {aiPriorityRooms.length > 0 && aiReasoning && (
+            <div className="ai-reasoning-banner">
+              <span className="ai-icon">🤖</span>
+              <div>
+                <div className="ai-reasoning-title">AI Maintenance Priority</div>
+                <p className="ai-reasoning-text">{aiReasoning}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Room List — staggered entrance */}
+          <motion.div
+            className="room-list"
+            initial="hidden"
+            animate="show"
+            key={statusFilter + sortMode + String(showMainHotel) + String(showLakeHouse) + String(showOnlyWithNotes)}
+            variants={{
+              hidden: { opacity: 0 },
+              show: { opacity: 1, transition: { staggerChildren: 0.04 } },
+            }}
+          >
+            {filteredGuests.length === 0 ? (
+              <motion.div
+                className="empty-state"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              >
+                <span className="empty-icon">✅</span>
+                <h3>All Clear!</h3>
+                <p>No rooms need attention</p>
+              </motion.div>
+            ) : (
+              filteredGuests.map(guest => {
+                const maintStatus = guest.maintenanceStatus || 'pending';
+                const maintInfo = MAINTENANCE_STATUS_INFO[maintStatus];
+                const readiness = getRoomReadinessInfo(guest);
+                const roomNotes = (guest.roomNotes || []).filter(n => !n.resolved);
+                const hasUrgentNote = roomNotes.some(n => n.priority === 'urgent' || n.priority === 'high');
+                const aiPriorityIndex = aiPriorityRooms.findIndex(r => r.toLowerCase() === guest.room.toLowerCase());
+
+                return (
+                  <motion.div
+                    key={guest.id}
+                    className={`room-row ${hasUrgentNote ? 'urgent' : ''} ${aiPriorityIndex >= 0 ? 'ai-highlighted' : ''}`}
+                    variants={{
+                      hidden: { opacity: 0, y: 24, scale: 0.94, filter: 'blur(5px)', rotateX: 6 },
+                      show: {
+                        opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', rotateX: 0,
+                        transition: { type: 'spring', stiffness: 300, damping: 24 },
+                      },
+                    }}
+                    whileHover={{ y: -3, boxShadow: '0 10px 28px rgba(197, 160, 101, 0.18), 0 0 0 1px rgba(197, 160, 101, 0.08)' }}
+                    style={{ perspective: 800 }}
+                  >
+                    {/* AI Priority Badge */}
+                    {aiPriorityIndex >= 0 && (
+                      <div className="ai-priority-badge">
+                        #{aiPriorityIndex + 1}
+                      </div>
+                    )}
+                    {/* Room Info */}
+                    <div className="row-main">
+                      <div className="room-header">
+                        <span className="room-number">{guest.room}</span>
+                        <span className="guest-name">{guest.name}</span>
+                        <span className="eta-badge">ETA {guest.eta || 'N/A'}</span>
+                        {guest.guestStatus && guest.guestStatus !== 'pre_arrival' && (
+                          <span className={`guest-presence-chip ${guest.guestStatus === 'off_site' ? 'off-site' : 'on-site'}`}>
+                            {guest.guestStatus === 'off_site'
+                              ? '🔴 Off Site'
+                              : '🟢 On Site'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Status Badges */}
+                      <div className="status-badges">
+                        <span
+                          className="status-badge"
+                          style={{ background: maintInfo.bgColor, color: maintInfo.color }}
+                        >
+                          {maintInfo.emoji} {maintInfo.label}
+                        </span>
+                        <div className="readiness-chips">
+                          <span className={`ready-chip ${readiness.hkDone ? 'done' : ''}`}>
+                            🧹 HK {readiness.hkDone ? '✓' : '○'}
+                          </span>
+                          <span className={`ready-chip ${readiness.maintDone ? 'done' : ''}`}>
+                            🔧 Maint {readiness.maintDone ? '✓' : '○'}
+                          </span>
+                        </div>
+                        {readiness.ready && (
+                          <span className="ready-badge">✅ READY FOR GUEST</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Notes Section */}
+                    {roomNotes.length > 0 && (
+                      <div className="notes-section">
+                        <h4>📝 Room Notes ({roomNotes.length})</h4>
+                        <div className="notes-list">
+                          {roomNotes.map(note => (
+                            <div
+                              key={note.id}
+                              className="note-card"
+                              style={{ borderLeftColor: NOTE_PRIORITY_INFO[note.priority].color }}
+                            >
+                              <div className="note-header">
+                                <span
+                                  className="note-priority"
+                                  style={{
+                                    background: NOTE_PRIORITY_INFO[note.priority].bgColor,
+                                    color: NOTE_PRIORITY_INFO[note.priority].color
+                                  }}
+                                >
+                                  {NOTE_PRIORITY_INFO[note.priority].emoji} {NOTE_PRIORITY_INFO[note.priority].label}
+                                </span>
+                                <span className="note-dept">{note.department}</span>
+                                <span className="note-time">
+                                  {new Date(note.timestamp).toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="note-message">{note.message}</p>
+                              <div className="note-footer">
+                                <span className="note-author">— {note.author}</span>
+                                <button
+                                  className="resolve-btn"
+                                  onClick={() => onResolveNote(guest.id, note.id, 'Maintenance')}
+                                >
+                                  ✓ Mark Resolved
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="row-actions">
+                      <select
+                        id={`mt-status-${guest.id}`}
+                        name="maintenanceStatus"
+                        aria-label={`Maintenance status for room ${guest.room}`}
+                        className="status-select"
+                        value={maintStatus}
+                        onChange={(e) => onUpdateMaintenanceStatus(guest.id, e.target.value as MaintenanceStatus)}
+                      >
+                        {Object.entries(MAINTENANCE_STATUS_INFO).map(([key, info]) => (
+                          <option key={key} value={key}>{info.emoji} {info.label}</option>
+                        ))}
+                      </select>
+
+                      {maintStatus === 'pending' && (
+                        <motion.button
+                          className="action-btn start"
+                          onClick={() => onUpdateMaintenanceStatus(guest.id, 'in_progress')}
+                          whileTap={{ scale: 0.92 }}
+                          whileHover={{ scale: 1.03 }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                        >
+                          ⚙️ Start Check
+                        </motion.button>
+                      )}
+                      {maintStatus === 'in_progress' && (
+                        <motion.button
+                          className="action-btn complete"
+                          onClick={() => onUpdateMaintenanceStatus(guest.id, 'complete')}
+                          whileTap={{ scale: 0.92 }}
+                          whileHover={{ scale: 1.03 }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                        >
+                          ✅ Mark Complete
+                        </motion.button>
+                      )}
+                      <motion.button
+                        className="action-btn note"
+                        onClick={() => setNoteModal({ guestId: guest.id, room: guest.room })}
+                        whileTap={{ scale: 0.92 }}
+                        whileHover={{ scale: 1.03 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                      >
+                        📝 Add Note
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </motion.div>
+        </>
+      ) : (
+        /* ─── ISSUE LOG TAB ─── */
+        <div className="issue-log-section">
+          <div className="issue-log-controls">
+            <div className="log-filters">
+              <button className={`filter-chip ${logFilter === 'all' ? 'active' : ''}`} onClick={() => setLogFilter('all')}>All ({allNotes.length})</button>
+              <button className={`filter-chip ${logFilter === 'open' ? 'active' : ''}`} onClick={() => setLogFilter('open')} style={{ '--chip-color': '#f59e0b' } as React.CSSProperties}>⏳ Open</button>
+              <button className={`filter-chip ${logFilter === 'resolved' ? 'active' : ''}`} onClick={() => setLogFilter('resolved')} style={{ '--chip-color': '#22c55e' } as React.CSSProperties}>✅ Resolved</button>
+            </div>
+            <button className="print-log-btn" onClick={printIssueLog}>
+              🖨️ Print Log
+            </button>
+          </div>
+
+          {allNotes.length === 0 ? (
+            <div className="empty-state">
+              <span className="empty-icon">📋</span>
+              <h3>No Issues Logged</h3>
+              <p>Room notes will appear here once reported</p>
+            </div>
+          ) : (
+            <div className="issue-log-list">
+              {allNotes.map(({ guest, note }) => (
+                <div key={note.id} className={`issue-log-row ${note.resolved ? 'resolved' : ''}`}>
+                  <div className="issue-log-room">
                     <span className="room-number">{guest.room}</span>
                     <span className="guest-name">{guest.name}</span>
-                    <span className="eta-badge">ETA {guest.eta || 'N/A'}</span>
-                    {guest.guestStatus && guest.guestStatus !== 'pre_arrival' && (
-                      <span className={`guest-presence-chip ${guest.guestStatus === 'off_site' ? 'off-site' : 'on-site'}`}>
-                        {guest.guestStatus === 'off_site'
-                          ? '🔴 Off Site'
-                          : '🟢 On Site'}
-                      </span>
-                    )}
                   </div>
-
-                  {/* Status Badges */}
-                  <div className="status-badges">
-                    <span
-                      className="status-badge"
-                      style={{ background: maintInfo.bgColor, color: maintInfo.color }}
-                    >
-                      {maintInfo.emoji} {maintInfo.label}
-                    </span>
-                    <div className="readiness-chips">
-                      <span className={`ready-chip ${readiness.hkDone ? 'done' : ''}`}>
-                        🧹 HK {readiness.hkDone ? '✓' : '○'}
+                  <div className="issue-log-body">
+                    <div className="issue-log-meta">
+                      <span className="note-priority" style={{ background: NOTE_PRIORITY_INFO[note.priority].bgColor, color: NOTE_PRIORITY_INFO[note.priority].color }}>
+                        {NOTE_PRIORITY_INFO[note.priority].emoji} {NOTE_PRIORITY_INFO[note.priority].label}
                       </span>
-                      <span className={`ready-chip ${readiness.maintDone ? 'done' : ''}`}>
-                        🔧 Maint {readiness.maintDone ? '✓' : '○'}
-                      </span>
+                      <span className="note-dept">{note.department}</span>
+                      <span className="note-time">{new Date(note.timestamp).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
-                    {readiness.ready && (
-                      <span className="ready-badge">✅ READY FOR GUEST</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Notes Section */}
-                {roomNotes.length > 0 && (
-                  <div className="notes-section">
-                    <h4>📝 Room Notes ({roomNotes.length})</h4>
-                    <div className="notes-list">
-                      {roomNotes.map(note => (
-                        <div
-                          key={note.id}
-                          className="note-card"
-                          style={{ borderLeftColor: NOTE_PRIORITY_INFO[note.priority].color }}
-                        >
-                          <div className="note-header">
-                            <span
-                              className="note-priority"
-                              style={{
-                                background: NOTE_PRIORITY_INFO[note.priority].bgColor,
-                                color: NOTE_PRIORITY_INFO[note.priority].color
-                              }}
-                            >
-                              {NOTE_PRIORITY_INFO[note.priority].emoji} {NOTE_PRIORITY_INFO[note.priority].label}
-                            </span>
-                            <span className="note-dept">{note.department}</span>
-                            <span className="note-time">
-                              {new Date(note.timestamp).toLocaleString()}
-                            </span>
-                          </div>
-                          <p className="note-message">{note.message}</p>
-                          <div className="note-footer">
-                            <span className="note-author">— {note.author}</span>
-                            <button
-                              className="resolve-btn"
-                              onClick={() => onResolveNote(guest.id, note.id, 'Maintenance')}
-                            >
-                              ✓ Mark Resolved
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                    <p className="issue-log-message">{note.message}</p>
+                    <div className="issue-log-footer">
+                      <span className="note-author">Reported by {note.author}</span>
+                      {note.resolved ? (
+                        <span className="resolved-badge">✅ Resolved by {note.resolvedBy} • {note.resolvedAt ? new Date(note.resolvedAt).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                      ) : (
+                        <button className="resolve-btn" onClick={() => onResolveNote(guest.id, note.id, 'Maintenance')}>✓ Mark Resolved</button>
+                      )}
                     </div>
                   </div>
-                )}
-
-                {/* Actions */}
-                <div className="row-actions">
-                  <select
-                    id={`mt-status-${guest.id}`}
-                    name="maintenanceStatus"
-                    aria-label={`Maintenance status for room ${guest.room}`}
-                    className="status-select"
-                    value={maintStatus}
-                    onChange={(e) => onUpdateMaintenanceStatus(guest.id, e.target.value as MaintenanceStatus)}
-                  >
-                    {Object.entries(MAINTENANCE_STATUS_INFO).map(([key, info]) => (
-                      <option key={key} value={key}>{info.emoji} {info.label}</option>
-                    ))}
-                  </select>
-
-                  {maintStatus === 'pending' && (
-                    <motion.button
-                      className="action-btn start"
-                      onClick={() => onUpdateMaintenanceStatus(guest.id, 'in_progress')}
-                      whileTap={{ scale: 0.92 }}
-                      whileHover={{ scale: 1.03 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-                    >
-                      ⚙️ Start Check
-                    </motion.button>
-                  )}
-                  {maintStatus === 'in_progress' && (
-                    <motion.button
-                      className="action-btn complete"
-                      onClick={() => onUpdateMaintenanceStatus(guest.id, 'complete')}
-                      whileTap={{ scale: 0.92 }}
-                      whileHover={{ scale: 1.03 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-                    >
-                      ✅ Mark Complete
-                    </motion.button>
-                  )}
-                  <motion.button
-                    className="action-btn note"
-                    onClick={() => setNoteModal({ guestId: guest.id, room: guest.room })}
-                    whileTap={{ scale: 0.92 }}
-                    whileHover={{ scale: 1.03 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-                  >
-                    📝 Add Note
-                  </motion.button>
                 </div>
-              </motion.div>
-            );
-          })
-        )}
-      </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add Note Modal — rendered via Portal to escape transform containment */}
       {ReactDOM.createPortal(
@@ -1296,6 +1426,198 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({
             font-size: 14px;
           }
         }
+
+        /* ── Tab Bar ──────────────────────────── */
+        .mt-tab-bar {
+          display: flex;
+          gap: 4px;
+          padding: 4px;
+          background: rgba(0,0,0,0.04);
+          border-radius: 14px;
+          margin-bottom: 20px;
+        }
+        [data-theme="dark"] .mt-tab-bar { background: rgba(255,255,255,0.06); }
+
+        .mt-tab {
+          flex: 1;
+          padding: 10px 16px;
+          border: none;
+          border-radius: 11px;
+          background: transparent;
+          color: var(--text-sub);
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .mt-tab:hover { background: rgba(0,0,0,0.04); }
+        [data-theme="dark"] .mt-tab:hover { background: rgba(255,255,255,0.06); }
+        .mt-tab.active {
+          background: white;
+          color: var(--text-main);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        [data-theme="dark"] .mt-tab.active {
+          background: rgba(255,255,255,0.1);
+          color: #fff;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        /* ── Issue Log ────────────────────────── */
+        .issue-log-section { padding: 0 4px; }
+
+        .issue-log-controls {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .log-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .filter-chip {
+          padding: 6px 14px;
+          border: 1.5px solid var(--chip-color, #64748b);
+          border-radius: 20px;
+          background: transparent;
+          color: var(--chip-color, #64748b);
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .filter-chip.active {
+          background: var(--chip-color, #64748b);
+          color: white;
+        }
+        .filter-chip:hover { opacity: 0.8; }
+
+        .print-log-btn {
+          padding: 8px 18px;
+          border: 1.5px solid #3b82f6;
+          border-radius: 20px;
+          background: rgba(59, 130, 246, 0.08);
+          color: #3b82f6;
+          font-weight: 600;
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .print-log-btn:hover { background: rgba(59, 130, 246, 0.15); }
+
+        .issue-log-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .issue-log-row {
+          display: flex;
+          gap: 16px;
+          padding: 16px;
+          background: var(--card-bg, #fff);
+          border: 1px solid rgba(0,0,0,0.06);
+          border-radius: 14px;
+          transition: all 0.2s;
+        }
+        .issue-log-row:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+        .issue-log-row.resolved { opacity: 0.65; }
+        [data-theme="dark"] .issue-log-row { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); }
+
+        .issue-log-room {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          min-width: 60px;
+          gap: 4px;
+        }
+        .issue-log-room .room-number {
+          font-size: 22px;
+          font-weight: 800;
+          color: var(--text-main);
+        }
+        .issue-log-room .guest-name {
+          font-size: 10px;
+          color: var(--text-sub);
+          text-align: center;
+          max-width: 80px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .issue-log-body { flex: 1; min-width: 0; }
+
+        .issue-log-meta {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          margin-bottom: 6px;
+          flex-wrap: wrap;
+        }
+        .issue-log-meta .note-priority {
+          padding: 2px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .issue-log-meta .note-dept {
+          font-size: 11px;
+          color: var(--text-sub);
+          text-transform: capitalize;
+        }
+        .issue-log-meta .note-time {
+          font-size: 11px;
+          color: var(--text-sub);
+        }
+
+        .issue-log-message {
+          margin: 0 0 8px;
+          font-size: 14px;
+          line-height: 1.5;
+          color: var(--text-main);
+        }
+
+        .issue-log-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .issue-log-footer .note-author {
+          font-size: 11px;
+          color: var(--text-sub);
+        }
+        .issue-log-footer .resolved-badge {
+          font-size: 11px;
+          color: #22c55e;
+          font-weight: 600;
+        }
+        .issue-log-footer .resolve-btn {
+          padding: 4px 12px;
+          border: 1.5px solid #22c55e;
+          border-radius: 16px;
+          background: transparent;
+          color: #22c55e;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .issue-log-footer .resolve-btn:hover { background: #22c55e; color: white; }
+
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 60px 20px;
+          text-align: center;
+          color: var(--text-sub);
+        }
+        .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-state h3 { margin: 0 0 8px; font-size: 18px; color: var(--text-main); }
+        .empty-state p { margin: 0; font-size: 14px; }
+
       `}</style>
     </div>
   );

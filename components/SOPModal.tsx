@@ -7,9 +7,9 @@ interface SOPModalProps {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GILPIN ARRIVAL TOOL — OPERATIONAL HANDBOOK (SOP v24.0)
+   GILPIN ARRIVAL TOOL — OPERATIONAL HANDBOOK (SOP v25.0)
    ═══════════════════════════════════════════════════════════════
-   30 sections covering every feature — from sign-in to AI voice.
+   32 sections covering every feature — from sign-in to AI voice.
    Scrollable with jump-to-section table of contents.
    ═══════════════════════════════════════════════════════════════ */
 
@@ -44,6 +44,8 @@ const SECTIONS = [
   { id: 'turndown', num: '27', icon: '🌙', title: 'Turndown Dashboard' },
   { id: 'bookingstream', num: '28', icon: '📖', title: 'Booking Stream' },
   { id: 'itineraryqueue', num: '29', icon: '📋', title: 'Itinerary Queue' },
+  { id: 'handover', num: '30', icon: '📋', title: 'Handover Hub' },
+  { id: 'groupbookings', num: '31', icon: '👥', title: 'Group Bookings' },
 ];
 
 /* ─── Reusable sub-components ─── */
@@ -959,12 +961,52 @@ const SOPModal: React.FC<SOPModalProps> = ({ isOpen, onClose }) => {
                   </Card>
                 </section>
 
+                {/* ── 30 — HANDOVER HUB ── */}
+                <section id="handover">
+                  <Divider num="30" title="Handover Hub" />
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      The Handover Hub is a structured daily handover system for all departments. It replaces paper handover sheets with real-time, auto-saving digital forms.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="📋" label="9 Department Tabs" sub="Housekeeping, Source, Spice, Reception, Spa, Maintenance, Reservations, Night Shift, Lake House — each with tailored fields." />
+                      <MiniCard icon="☀️" label="AM / PM Shifts" sub="Housekeeping, Source, and Lake House have separate AM and PM forms. AM can be locked before PM starts. Single-shift departments have one form." />
+                      <MiniCard icon="💾" label="Auto-Save" sub="All fields auto-save with a 1.5-second debounce — no save button needed. Status indicator shows Saving → Saved → Auto-save on." />
+                      <MiniCard icon="🔒" label="Lock AM" sub="Once the AM shift is complete, click 'Lock AM' to prevent edits. The PM shift remains editable." />
+                      <MiniCard icon="🌳" label="Plant-a-Tree Rooms" sub="Enter Plant-a-Tree room numbers in Housekeeping AM. These rooms automatically appear as a skip-turndown alert in the PM Turndown section." />
+                      <MiniCard icon="🐱" label="DND Rooms" sub="Cat Sign DND rooms are logged in HK AM. Room numbers flow through to PM for turndown awareness." />
+                      <MiniCard icon="🌙" label="Night Shift" sub="Dedicated tab for overnight operations: late arrivals, early departures, security, noise complaints, facilities issues, and incident reports." />
+                      <MiniCard icon="🏡" label="Lake House" sub="AM: Lake House breakfast (covers, highlights, issues). PM: LH check-ins/outs (rooms 51–58 auto-filtered), complaints, Google reviews." />
+                      <MiniCard icon="✨" label="AI Reviews" sub="Departments with Google review fields can click 'Fetch Latest Reviews' to auto-populate ratings and review summaries via Gemini AI." />
+                      <MiniCard icon="📊" label="Day Report" sub="Click 'View Merged Day Report' to see a combined read-only summary of all 9 departments for the current date." />
+                    </div>
+                    <Tip>Reception auto-populates tomorrow's arrivals and occupancy from the next day's session data.</Tip>
+                  </Card>
+                </section>
+
+                {/* ── 31 — GROUP BOOKINGS ── */}
+                <section id="groupbookings">
+                  <Divider num="31" title="Group Bookings" />
+                  <Card>
+                    <p style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 16 }}>
+                      Group bookings are automatically detected from arrival data and flagged across the system. The 👥 Group flag appears on guest cards, and group details auto-populate in the Reception Handover.
+                    </p>
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                      <MiniCard icon="👥" label="Auto-Detection" sub="Groups are detected via: (1) matching surnames across 2+ rooms, (2) notes mentioning 'group booking', 'party of', 'X rooms', and (3) room cross-references like 'with room 7'." />
+                      <MiniCard icon="🏷️" label="Guest Flag" sub="The 👥 Group flag appears automatically on guest cards in the In House dashboard and arrival views when group keywords are detected in booking notes." />
+                      <MiniCard icon="📋" label="Reception Handover" sub="The 'Group Bookings' field in Reception auto-populates with detected groups: party name, room numbers, and guest names. Staff can edit manually to add corporate groups." />
+                      <MiniCard icon="🔗" label="Room Mapping" sub="Each detected group shows which rooms belong together, making it easy to coordinate check-ins, housekeeping, and special requests for linked parties." />
+                    </div>
+                    <Tip>Staff can always add manual group entries — the auto-detection is a starting point, not a lock. Simply edit the Group Bookings field in the Reception Handover.</Tip>
+                  </Card>
+                </section>
+
               </div>
 
               {/* ── FOOTER ── */}
               <div className="bg-slate-100 dark:bg-[#0a0a0a] p-6 md:p-8 text-center border-t border-slate-200 dark:border-[#222]">
                 <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-600 font-mono tracking-widest uppercase">
-                  Gilpin Hotel &amp; Lake House &bull; Standard Operating Procedures &bull; v24.0 &bull; Internal Use Only
+                  Gilpin Hotel &amp; Lake House &bull; Standard Operating Procedures &bull; v25.0 &bull; Internal Use Only
                 </p>
               </div>
             </div>

@@ -1017,3 +1017,129 @@ export async function addReaction(
     }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// DEPARTMENT HANDOVER SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+import type { HandoverDepartment, HandoverReport, DepartmentHandover } from '../types';
+
+/**
+ * Save (upsert) a handover report for a department on a given date.
+ * Path: handovers/{date}/{department}
+ */
+export async function saveHandoverReport(report: HandoverReport): Promise<void> {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        return;
+    }
+    try {
+        const handoverRef = ref(db, `handovers/${report.date}/${report.department}`);
+        await set(handoverRef, sanitizeForFirebase({
+            ...report,
+            lastUpdated: Date.now()
+        }));
+        console.log(`📝 Saved handover: ${report.department} for ${report.date}`);
+    } catch (error) {
+        console.error('Failed to save handover report:', error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch a single handover report for a department on a given date.
+ */
+export async function getHandoverReport(
+    date: string,
+    department: HandoverDepartment
+): Promise<HandoverReport | null> {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        return null;
+    }
+    try {
+        const handoverRef = ref(db, `handovers/${date}/${department}`);
+        const snapshot = await get(handoverRef);
+        if (snapshot.exists()) {
+            return snapshot.val() as HandoverReport;
+        }
+        return null;
+    } catch (error) {
+        console.error('Failed to fetch handover report:', error);
+        return null;
+    }
+}
+
+/**
+ * Fetch all department handovers for a given date.
+ */
+export async function getAllHandoversForDate(
+    date: string
+): Promise<HandoverReport[]> {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        return [];
+    }
+    try {
+        const dateRef = ref(db, `handovers/${date}`);
+        const snapshot = await get(dateRef);
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            return Object.values(data) as HandoverReport[];
+        }
+        return [];
+    } catch (error) {
+        console.error('Failed to fetch all handovers:', error);
+        return [];
+    }
+}
+
+/**
+ * Lock the AM shift for a department's handover.
+ * Prevents further edits to amData; PM section becomes available.
+ */
+export async function lockHandoverAM(
+    date: string,
+    department: HandoverDepartment,
+    lockedBy: string
+): Promise<void> {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        return;
+    }
+    try {
+        const handoverRef = ref(db, `handovers/${date}/${department}`);
+        await update(handoverRef, {
+            amLockedAt: Date.now(),
+            amLockedBy: lockedBy,
+            lastUpdated: Date.now(),
+            lastUpdatedBy: lockedBy
+        });
+        console.log(`🔒 Locked AM handover: ${department} for ${date}`);
+    } catch (error) {
+        console.error('Failed to lock AM handover:', error);
+        throw error;
+    }
+}
+
+/**
+ * Subscribe to all handovers for a date (real-time).
+ */
+export function subscribeToHandovers(
+    date: string,
+    onUpdate: (reports: HandoverReport[]) => void
+): () => void {
+    if (!db) {
+        onUpdate([]);
+        return () => { };
+    }
+    const dateRef = ref(db, `handovers/${date}`);
+    const unsubscribe = onValue(dateRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            onUpdate(Object.values(data) as HandoverReport[]);
+        } else {
+            onUpdate([]);
+        }
+    });
+    return unsubscribe;
+}

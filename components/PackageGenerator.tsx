@@ -17,7 +17,7 @@ const PRESETS: Record<string, PackagePreset> = {
     name: 'Magical Escapes Package',
     left: [
       { day: 'Day 1', label: 'Arrive & Settle', events: [['On Arrival', 'A chilled bottle of Champagne awaits you in your room.'], ['7.30pm', 'Dinner at Gilpin Spice, our Pan-Asian fusion restaurant.']] },
-      { day: 'Day 2', label: 'Indulge & Unwind', events: [['Morning', 'A leisurely breakfast at your table.'], ['11.00am', 'Your bespoke spa treatment at the Jetty Spa.'], ['12.30pm', 'A Bento Box lunch served to your suite.']] },
+      { day: 'Day 2', label: 'Indulge & Unwind', events: [['Morning', 'A leisurely breakfast at your table.'], ['11.00am', 'Your bespoke spa treatment at the Spa Space.'], ['12.30pm', 'A Bento Box lunch served to your suite.']] },
     ],
     right: [
       { day: 'Day 3', label: 'Farewell', events: [['Morning', 'Enjoy a final breakfast before departure.']] },
@@ -27,7 +27,7 @@ const PRESETS: Record<string, PackagePreset> = {
     name: 'The Gilpinmoon Experience',
     left: [
       { day: 'Day 1', label: 'Arrive & Settle', events: [['On Arrival', 'Champagne and a handwritten welcome note in your room.'], ['7.30pm', 'An intimate dinner at Gilpin Spice.']] },
-      { day: 'Day 2', label: 'Restore & Revive', events: [['Morning', 'A leisurely breakfast at your table.'], ['11.15am', 'Your Jetty Spa experience begins.'], ['1.30pm', 'A freshly prepared Bento Box served in the spa.']] },
+      { day: 'Day 2', label: 'Restore & Revive', events: [['Morning', 'A leisurely breakfast at your table.'], ['11.15am', 'Your Spa Space experience begins.'], ['1.30pm', 'A freshly prepared Bento Box served in the spa.']] },
     ],
     right: [
       { day: 'Day 3', label: 'Discover & Savour', events: [['Morning', 'Breakfast at your leisure.'], ['Daytime', 'A private Windermere Lake Cruise.'], ['7.30pm', 'Dinner at Source, our Michelin-starred restaurant.']] },
@@ -105,18 +105,18 @@ const VENUE_DESCRIPTIONS: Record<string, string> = {
   'Gilpin Spice': 'Dinner at Gilpin Spice, our acclaimed Pan-Asian fusion restaurant set within the heart of the Lake District.',
   'Lake House': 'Afternoon Tea at The Lake House — delicate finger sandwiches, freshly baked scones, and artisan patisserie.',
   'Afternoon Tea': 'Afternoon Tea served in the Drawing Room — a quintessential Gilpin tradition.',
-  'Bento': 'A freshly prepared Bento Box lunch served to your room or the Jetty Spa.',
-  'Spa': 'Your spa experience at the Jetty Spa — our lakeside sanctuary of calm.',
-  'Spa Use': 'Complimentary use of the Jetty Spa facilities, including the infinity pool, hot tub, and relaxation rooms.',
-  'Massage': 'A restorative massage treatment at the Jetty Spa.',
-  'Aromatherapy': 'An aromatherapy massage at the Jetty Spa — a deeply restorative experience tailored to your needs.',
-  'Treatments': 'A bespoke spa treatment at the Jetty Spa.',
-  'GH Pure': 'A GH Pure facial at the Jetty Spa — advanced skincare with visible results.',
-  'Pure Lakes': 'A Pure Lakes treatment at the Jetty Spa — harnessing the finest Cumbrian natural botanicals.',
-  'Pure Couples': 'A Pure Couples\' treatment at the Jetty Spa — a shared experience of relaxation and rejuvenation.',
-  'ESPA': 'An ESPA treatment at the Jetty Spa — luxury skincare and holistic wellbeing.',
-  'Facial': 'A bespoke facial treatment at the Jetty Spa, tailored to your skin.',
-  'Hot Stone': 'A Hot Stone massage at the Jetty Spa — warm Cumbrian stones ease tension and restore balance.',
+  'Bento': 'A freshly prepared Bento Box lunch served to your room or the Spa Space.',
+  'Spa': 'Your spa experience at the Spa Space — our lakeside sanctuary of calm.',
+  'Spa Use': 'Complimentary use of the Spa Space facilities, including the infinity pool, hot tub, and relaxation rooms.',
+  'Massage': 'A restorative massage treatment at the Spa Space.',
+  'Aromatherapy': 'An aromatherapy massage at the Spa Space — a deeply restorative experience tailored to your needs.',
+  'Treatments': 'A bespoke spa treatment at the Spa Space.',
+  'GH Pure': 'A GH Pure facial at the Spa Space — advanced skincare with visible results.',
+  'Pure Lakes': 'A Pure Lakes treatment at the Spa Space — harnessing the finest Cumbrian natural botanicals.',
+  'Pure Couples': 'A Pure Couples\' treatment at the Spa Space — a shared experience of relaxation and rejuvenation.',
+  'ESPA': 'An ESPA treatment at the Spa Space — luxury skincare and holistic wellbeing.',
+  'Facial': 'A bespoke facial treatment at the Spa Space, tailored to your skin.',
+  'Hot Stone': 'A Hot Stone massage at the Spa Space — warm Cumbrian stones ease tension and restore balance.',
   'Spa Hamper': 'A curated Spa Hamper, hand-prepared and placed in your room on arrival.',
   'In-Room Hamper': 'A curated Spa Hamper, hand-prepared and placed in your room on arrival.',
   'Hamper': 'A hand-prepared hamper awaiting you in your room.',
@@ -286,7 +286,7 @@ const buildDescription = (item: ParsedFacility): string => {
     let desc = VENUE_DESCRIPTIONS[key];
     // Personalize with count for treatments
     if (item.count > 1 && /spa|massage|aromatherapy|treatment|pure|espa|facial|hot.?stone/i.test(item.type)) {
-      desc = `Your spa experience includes ${item.count} bespoke ${item.type} treatments at the Jetty Spa.`;
+      desc = `Your spa experience includes ${item.count} bespoke ${item.type} treatments at the Spa Space.`;
     }
     // Add pax context for dining
     if (item.pax && item.pax > 1 && /dinner|source|spice|lunch/i.test(item.type)) {

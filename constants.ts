@@ -91,7 +91,8 @@ export const DEFAULT_FLAGS: Flag[] = [
   { id: 10, name: "Prev Issue", emoji: "🚩", keys: ["complaint", "PGI", "dissatisfied", "previous problem", "previous issue", "guest issue", "raised a concern"], wordBoundary: true },
   { id: 11, name: "Occasion", emoji: "🎉", keys: ["birthday", "anniversary", "honeymoon", "proposal", "engagement", "babymoon"] },
   { id: 12, name: "Voucher", emoji: "🎫", keys: ["voucher"] },
-  { id: 13, name: "Limited Mobility", emoji: "♿", keys: ["limited mobility", "wheelchair", "disabled", "disability", "accessible room", "accessibility", "walking difficulty", "walking difficulties", "mobility issue", "mobility issues", "mobility impair", "reduced mobility", "step free", "ground floor", "cannot climb stairs", "can't climb stairs", "stair lift", "walking aid", "walking frame", "zimmer", "crutches", "mobility scooter", "electric wheelchair"] }
+  { id: 13, name: "Limited Mobility", emoji: "♿", keys: ["limited mobility", "wheelchair", "disabled", "disability", "accessible room", "accessibility", "walking difficulty", "walking difficulties", "mobility issue", "mobility issues", "mobility impair", "reduced mobility", "step free", "ground floor", "cannot climb stairs", "can't climb stairs", "stair lift", "walking aid", "walking frame", "zimmer", "crutches", "mobility scooter", "electric wheelchair"] },
+  { id: 14, name: "Group", emoji: "👥", keys: ["group booking", "group of", "party of", "linked room", "with room", "same party", "travelling together", "traveling together"], wordBoundary: true }
 ];
 
 // UI Layout Constants

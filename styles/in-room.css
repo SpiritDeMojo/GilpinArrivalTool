@@ -561,3 +561,317 @@
   border-color: rgba(251,191,36,0.2);
 }
 [data-theme="dark"] .nm-dog-room { color: #fbbf24; }
+
+/* ═══════════════════════════════════════════════════════════════
+   GUEST ISSUE SYSTEM
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Issue Count Badge ─── */
+.issue-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  margin-left: 6px;
+  padding: 0 5px;
+  line-height: 1;
+}
+
+.nm-issue-btn {
+  background: rgba(239,68,68,0.08) !important;
+  border-color: rgba(239,68,68,0.25) !important;
+  color: #ef4444 !important;
+}
+.nm-issue-btn:hover {
+  background: rgba(239,68,68,0.15) !important;
+}
+
+.nm-issue-log-btn {
+  position: relative;
+}
+
+/* ─── Guest Issue Modal ─── */
+.gi-modal-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.gi-modal {
+  background: var(--bg-container, white);
+  border-radius: 20px;
+  width: 100%; max-width: 520px;
+  max-height: 90vh; overflow-y: auto;
+  padding: 28px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.gi-modal h3 {
+  margin: 0 0 4px;
+  font-size: 18px; font-weight: 800;
+  color: var(--text-bold, #1e293b);
+}
+
+.gi-guest-name {
+  margin: 0 0 20px;
+  font-size: 14px; color: var(--text-sub, #64748b);
+}
+
+.gi-modal label {
+  display: block;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-sub, #94a3b8);
+  margin: 16px 0 6px;
+}
+
+.gi-modal label:first-of-type { margin-top: 0; }
+
+.gi-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  background: var(--bg-secondary, #f8fafc);
+  color: var(--text-main, #334155);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.gi-input:focus {
+  outline: none;
+  border-color: var(--gilpin-gold, #c5a065);
+  box-shadow: 0 0 0 3px rgba(197,160,101,0.15);
+}
+[data-theme="dark"] .gi-input {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  color: #e2e8f0;
+}
+
+/* ─── Toggle Rows ─── */
+.gi-toggles {
+  margin: 20px 0;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.gi-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+.gi-toggle-row span {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-main, #334155);
+}
+[data-theme="dark"] .gi-toggle-row {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.gi-toggle {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  background: transparent;
+  color: var(--text-sub, #94a3b8);
+  font-size: 12px; font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.gi-toggle.active {
+  background: rgba(34,197,94,0.12);
+  border-color: #22c55e;
+  color: #22c55e;
+}
+.gi-toggle.active.manager {
+  background: rgba(239,68,68,0.12);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* ─── Modal Actions ─── */
+.gi-actions {
+  display: flex; gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.gi-cancel {
+  padding: 10px 20px; border-radius: 10px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: transparent;
+  color: var(--text-main, #334155);
+  font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+}
+.gi-cancel:hover { background: rgba(0,0,0,0.04); }
+
+.gi-submit {
+  padding: 10px 24px; border-radius: 10px;
+  border: none;
+  background: #ef4444;
+  color: white;
+  font-weight: 700; cursor: pointer;
+  transition: all 0.2s;
+}
+.gi-submit:hover { background: #dc2626; transform: translateY(-1px); }
+.gi-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ─── Guest Issue Log Panel ─── */
+.gi-log-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.4);
+}
+
+.gi-log-panel {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: 100%; max-width: 540px;
+  background: var(--bg-container, white);
+  box-shadow: -10px 0 40px rgba(0,0,0,0.15);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+[data-theme="dark"] .gi-log-panel {
+  background: var(--bg-container, #1e293b);
+  box-shadow: -10px 0 40px rgba(0,0,0,0.4);
+}
+
+.gi-log-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+.gi-log-header h3 { margin: 0; font-size: 18px; font-weight: 800; }
+
+.gi-log-actions { display: flex; gap: 8px; }
+
+.gi-print-btn {
+  padding: 6px 14px; border-radius: 8px;
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.2);
+  color: #3b82f6; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.gi-print-btn:hover { background: rgba(59,130,246,0.15); }
+
+.gi-close-btn {
+  background: none; border: none;
+  font-size: 20px; cursor: pointer;
+  color: var(--text-sub, #94a3b8);
+  padding: 4px 8px; border-radius: 6px;
+}
+.gi-close-btn:hover { background: rgba(0,0,0,0.06); }
+
+/* ─── Log Filters ─── */
+.gi-log-filters {
+  display: flex; gap: 6px; padding: 16px 24px;
+  flex-wrap: wrap;
+}
+
+.gi-filter {
+  padding: 6px 14px; border-radius: 20px;
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  background: transparent;
+  color: var(--text-sub, #94a3b8);
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.gi-filter.active {
+  background: var(--gilpin-gold, #c5a065);
+  border-color: var(--gilpin-gold, #c5a065);
+  color: white;
+}
+.gi-filter:hover:not(.active) {
+  background: rgba(0,0,0,0.04);
+}
+
+/* ─── Log List ─── */
+.gi-log-list {
+  flex: 1; overflow-y: auto; padding: 0 24px 24px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.gi-log-row {
+  display: flex; gap: 14px;
+  padding: 14px; border-radius: 12px;
+  background: var(--bg-secondary, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  transition: all 0.2s;
+}
+.gi-log-row.resolved { opacity: 0.6; }
+.gi-log-row.needs-manager { border-left: 3px solid #ef4444; }
+[data-theme="dark"] .gi-log-row {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.08);
+}
+
+.gi-log-room {
+  display: flex; flex-direction: column;
+  align-items: center; min-width: 50px; gap: 2px;
+}
+.gi-log-room .room-num {
+  font-size: 20px; font-weight: 900;
+  color: var(--gilpin-gold, #c5a065);
+}
+.gi-log-room .guest-nm {
+  font-size: 9px; font-weight: 600;
+  color: var(--text-sub, #64748b);
+  text-align: center; max-width: 70px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.gi-log-body { flex: 1; min-width: 0; }
+
+.gi-log-issue { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--text-bold, #1e293b); line-height: 1.4; }
+.gi-log-comp { margin: 0 0 6px; font-size: 12px; color: #f59e0b; font-weight: 600; }
+
+.gi-log-meta {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  font-size: 11px; color: var(--text-sub, #64748b);
+  margin-bottom: 8px;
+}
+.gi-log-meta .manager-flag { color: #ef4444; font-weight: 700; }
+
+.gi-log-actions-row { display: flex; gap: 8px; }
+
+.gi-resolve-btn {
+  padding: 4px 12px; border-radius: 16px;
+  border: 1.5px solid #22c55e;
+  background: transparent; color: #22c55e;
+  font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.gi-resolve-btn:hover { background: #22c55e; color: white; }
+
+.gi-manager-btn {
+  padding: 4px 12px; border-radius: 16px;
+  border: 1.5px solid #8b5cf6;
+  background: transparent; color: #8b5cf6;
+  font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.gi-manager-btn:hover { background: #8b5cf6; color: white; }
+
+/* ─── Empty State ─── */
+.gi-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 60px 20px; text-align: center;
+  color: var(--text-sub, #94a3b8);
+}
+.gi-empty span { font-size: 48px; margin-bottom: 16px; }
+.gi-empty p { margin: 0; font-size: 14px; }

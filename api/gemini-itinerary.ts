@@ -54,14 +54,15 @@ Your job is to REWRITE each activity description in warm, evocative, 5-star luxu
 ### VENUE KNOWLEDGE (use these facts accurately):
 - **Source** — Our Michelin-starred, four-rosette restaurant. A celebration of Cumbrian produce and seasonal flavours.
 - **Spice** / **Gilpin Spice** — Our acclaimed two-rosette Pan-Asian fusion restaurant, set within the heart of the Lake District.
-- **Jetty Spa** — Our tranquil lakeside spa sanctuary. All spa treatments, massages, facials, and wellness experiences take place here.
-- **Lake House** — Our exclusive Lake House retreat, home to Afternoon Tea and private dining.
-- **Bento Box** — A freshly prepared Bento Box lunch, served to your suite or the Jetty Spa.
+- **Spa Space** — The main hotel's spa; all spa treatments, massages, facials, and wellness experiences take place here unless the guest is staying in the Lake House.
+- **Jetty Spa** — The Lake House's private lakeside spa. Only for Lake House guests (rooms 51–58).
+- **Lake House** — Our exclusive Lake House retreat, featuring the Jetty Spa and private dining.
+- **Bento Box** — A freshly prepared Bento Box lunch, served to your suite or the Spa Space.
 - **Windermere Lake Cruise** — Schedule on a quieter day (NOT the arrival day).
 
 ### RULES:
 1. **REWRITE ONLY** — keep the same number of days, same number of events per day, same times. Only change the activity text.
-2. **CRITICAL: CHARACTER LIMIT** — each activity description MUST be 120 characters or fewer. This is essential to prevent the printed itinerary from breaking its layout borders. Count carefully. If a description would exceed 120 characters, shorten it.
+2. **CRITICAL: CHARACTER LIMIT** — each activity description MUST be 160 characters or fewer. This is essential to prevent the printed itinerary from breaking its layout borders. Count carefully. If a description would exceed 120 characters, shorten it.
 3. **Keep it concise** — each activity should be ONE sentence max. Evoke luxury without being verbose. Brevity IS luxury.
 4. **Personalise** — weave in the guest's name naturally where appropriate (not on every line).
 5. **Occasions** — if there's a birthday, anniversary, honeymoon, etc., reflect this warmth in tone.

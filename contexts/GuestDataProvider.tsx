@@ -2,7 +2,7 @@ import React, { createContext, useContext, useMemo } from 'react';
 import {
     Guest, FilterType, ArrivalSession, PropertyFilter,
     HKStatus, MaintenanceStatus, GuestStatus, TurndownStatus,
-    RoomNote, CourtesyCallNote
+    RoomNote, CourtesyCallNote, GuestIssue
 } from '../types';
 import type { DashboardView } from '../types';
 
@@ -70,6 +70,10 @@ export interface GuestDataContextValue {
     handleAddRoomNote: (guestId: string, note: Omit<RoomNote, 'id' | 'timestamp'>) => void;
     handleResolveNote: (guestId: string, noteId: string, resolvedBy: string) => void;
     handleAddCourtesyNote: (guestId: string, note: Omit<CourtesyCallNote, 'id' | 'timestamp'>) => void;
+
+    // Guest issue handlers (In-House)
+    handleAddGuestIssue: (guestId: string, issue: Omit<GuestIssue, 'id' | 'timestamp'>) => void;
+    handleUpdateGuestIssue: (guestId: string, issueId: string, updates: Partial<GuestIssue>) => void;
 
     // Turndown handlers (cross-session)
     handleUpdateTurndownStatus: (guestId: string, status: TurndownStatus, originSessionId: string) => void;

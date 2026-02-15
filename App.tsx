@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, Suspense } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from './contexts/ThemeProvider';
 import { useView } from './contexts/ViewProvider';
@@ -14,6 +15,8 @@ import LoadingHub from './components/LoadingHub';
 import { PrintLayout } from './components/PrintLayout';
 import ItineraryQueue from './components/ItineraryQueue';
 const SOPModal = React.lazy(() => import('./components/SOPModal'));
+const HandoverHub = React.lazy(() => import('./components/HandoverHub'));
+const DayReport = React.lazy(() => import('./components/DayReport'));
 import SessionBrowser from './components/SessionBrowser';
 import NotificationToast from './components/NotificationToast';
 import ActivityLogPanel from './components/ActivityLogPanel';
@@ -62,6 +65,10 @@ const App: React.FC = () => {
   const [packagePromptMinimised, setPackagePromptMinimised] = useState(false);
   const activeSession = sessions?.find(s => s.id === activeSessionId) || null;
   const prevAuditPhaseRef = useRef<string | undefined>(undefined);
+
+  // Handover / DayReport overlay state
+  const [showHandoverHub, setShowHandoverHub] = useState(false);
+  const [showDayReport, setShowDayReport] = useState(false);
 
   // ── Post-audit package prompt: detect audit completion ──
   useEffect(() => {
@@ -229,6 +236,7 @@ const App: React.FC = () => {
           if (activeSessionId) navigate(`/session/${activeSessionId}/packages`, { replace: true });
         }}
         showPackages={dashboardView === 'packages'}
+        onOpenHandover={() => setShowHandoverHub(true)}
       />
 
       {/* Notification Toast Overlay */}
@@ -261,6 +269,24 @@ const App: React.FC = () => {
 
       <Suspense fallback={null}>
         <SOPModal isOpen={isSopOpen} onClose={() => setIsSopOpen(false)} />
+      </Suspense>
+
+      {/* Handover Hub Overlay */}
+      <Suspense fallback={null}>
+        <AnimatePresence>
+          {showHandoverHub && (
+            <HandoverHub onClose={() => setShowHandoverHub(false)} onOpenDayReport={() => setShowDayReport(true)} />
+          )}
+        </AnimatePresence>
+      </Suspense>
+
+      {/* Day Report Overlay */}
+      <Suspense fallback={null}>
+        <AnimatePresence>
+          {showDayReport && (
+            <DayReport onClose={() => setShowDayReport(false)} />
+          )}
+        </AnimatePresence>
       </Suspense>
 
       {/* Activity Log Panel */}
