@@ -35,6 +35,14 @@
                 ".write": true
             }
         },
+        "handovers": {
+            ".read": true,
+            "$date": {
+                "$department": {
+                    ".write": true
+                }
+            }
+        },
         "$other": {
             ".read": false,
             ".write": false

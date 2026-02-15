@@ -1122,6 +1122,34 @@ export async function lockHandoverAM(
 }
 
 /**
+ * Unlock the AM shift for a department's handover.
+ * Re-enables editing of amData fields.
+ */
+export async function unlockHandoverAM(
+    date: string,
+    department: HandoverDepartment,
+    unlockedBy: string
+): Promise<void> {
+    if (!db) {
+        console.warn('Firebase not initialized');
+        return;
+    }
+    try {
+        const handoverRef = ref(db, `handovers/${date}/${department}`);
+        await update(handoverRef, {
+            amLockedAt: null,
+            amLockedBy: null,
+            lastUpdated: Date.now(),
+            lastUpdatedBy: unlockedBy
+        });
+        console.log(`🔓 Unlocked AM handover: ${department} for ${date}`);
+    } catch (error) {
+        console.error('Failed to unlock AM handover:', error);
+        throw error;
+    }
+}
+
+/**
  * Subscribe to all handovers for a date (real-time).
  */
 export function subscribeToHandovers(

@@ -341,25 +341,23 @@
 /* ─── Lock Badge ─── */
 .ho-lock-badge {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: 8px;
-  background: rgba(245,158,11,0.1);
-  border: 1px solid rgba(245,158,11,0.2);
-  font-size: 11px; font-weight: 600;
-  color: #f59e0b;
+  padding: 5px 14px; border-radius: 8px;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.3);
+  font-size: 11px; font-weight: 700;
+  color: #d97706;
+  letter-spacing: 0.3px;
 }
 
 /* ─── Locked Overlay ─── */
 .ho-locked-overlay {
   position: relative;
-  opacity: 0.6;
-  pointer-events: none;
 }
-.ho-locked-overlay::after {
-  content: '🔒 AM Locked';
-  position: absolute; top: 12px; right: 12px;
-  padding: 4px 10px; border-radius: 6px;
-  background: rgba(245,158,11,0.12);
-  color: #f59e0b; font-size: 10px; font-weight: 700;
+.ho-locked-overlay input,
+.ho-locked-overlay textarea,
+.ho-locked-overlay select {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 /* ─── PM Section — just add spacing between AM and PM ─── */

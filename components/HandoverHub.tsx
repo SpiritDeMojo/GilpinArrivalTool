@@ -7,7 +7,7 @@ import {
 import { useUser } from '../contexts/UserProvider';
 import { useGuestData } from '../contexts/GuestDataProvider';
 import {
-    saveHandoverReport, getHandoverReport, lockHandoverAM
+    saveHandoverReport, getHandoverReport, lockHandoverAM, unlockHandoverAM
 } from '../services/firebaseService';
 import '../styles/handover.css';
 
@@ -551,6 +551,23 @@ const HandoverHub: React.FC<HandoverHubProps> = ({ onClose, filterDepartment, on
         }
     }, [buildAndSave, currentDate, activeDept, userName]);
 
+    // ── Unlock AM ──
+    const handleUnlockAM = useCallback(async () => {
+        try {
+            await unlockHandoverAM(currentDate, activeDept, userName || 'Unknown');
+            setReports(prev => ({
+                ...prev,
+                [activeDept]: {
+                    ...prev[activeDept],
+                    amLockedAt: undefined,
+                    amLockedBy: undefined,
+                }
+            }));
+        } catch (err) {
+            console.error('Unlock failed:', err);
+        }
+    }, [currentDate, activeDept, userName]);
+
     // ── Fetch AI Reviews ──
     const handleFetchReviews = useCallback(async () => {
         setFetchingReviews(true);
@@ -823,10 +840,16 @@ const HandoverHub: React.FC<HandoverHubProps> = ({ onClose, filterDepartment, on
                         </button>
                     )}
 
-                    {hasAM && !isAMLocked && (
-                        <button className="ho-lock-btn" onClick={handleLockAM}>
-                            🔒 Lock {deptMeta.amLabel || 'AM'}
-                        </button>
+                    {hasAM && (
+                        isAMLocked ? (
+                            <button className="ho-lock-btn locked" onClick={handleUnlockAM}>
+                                🔓 Unlock {deptMeta.amLabel || 'AM'}
+                            </button>
+                        ) : (
+                            <button className="ho-lock-btn" onClick={handleLockAM}>
+                                🔒 Lock {deptMeta.amLabel || 'AM'}
+                            </button>
+                        )
                     )}
                 </div>
             )}
